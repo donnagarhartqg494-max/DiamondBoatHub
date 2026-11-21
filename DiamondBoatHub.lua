@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V3
+-- DIAMOND BOAT HUB V4
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -83,7 +83,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V2",
+    Text="💎 DIAMOND BOAT HUB V4",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -479,59 +479,44 @@ local function scanBases()
     selectedBase=nil
     selectedLabel.Text="Selected base: none"
 
+    local blocksFolder=Workspace:FindFirstChild("Blocks")
     local candidates={}
-    local seen={}
-
-    for _,obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") or obj:IsA("Folder") then
-            local n=obj.Name:lower()
-            local relevant=n:find("boat") or n:find("plot")
-                or n:find("base") or n:find("ship")
-
-            if relevant and not seen[obj] then
-                seen[obj]=true
-                local parts=0
-                for _,d in ipairs(obj:GetDescendants()) do
-                    if d:IsA("BasePart") then parts+=1 end
+    if blocksFolder then
+        for _,folder in ipairs(blocksFolder:GetChildren()) do
+            if folder:IsA("Folder") and folder.Name~=Player.Name then
+                local owner=Players:FindFirstChild(folder.Name)
+                local count=0
+                for _,block in ipairs(folder:GetChildren()) do
+                    if block:IsA("Model") and block:FindFirstChild("PPart") then
+                        count+=1
+                    end
                 end
-
-                if parts>0 then
-                    table.insert(candidates,{
-                        object=obj,
-                        parts=parts
-                    })
+                if owner and count>0 then
+                    table.insert(candidates,{object=folder,parts=count,owner=owner})
                 end
             end
         end
     end
 
-    table.sort(candidates,function(a,b)
-        return a.parts>b.parts
-    end)
+    if #candidates==0 then
+        warn("Workspace.Blocks player folders not found. Check game version and join a server with visible player builds.")
+    end
 
-    print("DIAMOND BASE SCAN:",#candidates,"candidates")
+    table.sort(candidates,function(a,b) return a.parts>b.parts end)
+    print("DIAMOND PLAYER BASE SCAN:",#candidates)
 
     for i,item in ipairs(candidates) do
-        local obj=item.object
         local b=button(build,
-            i..". "..obj.Name.." ["..item.parts.." parts]",
+            i..". "..item.owner.DisplayName.." (@"..item.owner.Name..") ["..item.parts.." blocks]",
             function()
-                selectedBase=obj
-                selectedLabel.Text="Selected: "..obj.Name
-                print("Selected:",obj:GetFullName())
+                selectedBase=item.object
+                selectedLabel.Text="Selected: "..item.owner.Name.." ["..item.parts.."]"
+                print("Selected player build:",selectedBase:GetFullName())
             end
         )
         table.insert(baseButtons,b)
     end
-
-    if #candidates==0 then
-        local b=button(build,"No candidate bases found",function()
-            scanBases()
-        end)
-        table.insert(baseButtons,b)
-    end
 end
-
 button(build,"SCAN BASES",scanBases)
 
 button(build,"SHOW SELECTED BASE INFO",function()
@@ -595,6 +580,166 @@ button(build,"LOCAL COPY PREVIEW",function()
 end)
 
 button(build,"REMOVE LOCAL PREVIEW",clearPreview)
+
+-- REAL AUTO BUILD V4
+local buildRunning=false
+local buildProgressLabel=label(build,"Auto Build: idle")
+
+local function getPlayerZone(plr)
+    if not plr then return nil end
+    for _,obj in ipairs(Workspace:GetChildren()) do
+        local teamColor=obj:FindFirstChild("TeamColor")
+        if teamColor and teamColor.Value==plr.TeamColor then
+            return obj
+        end
+    end
+    return nil
+end
+
+local function getBuildTool()
+    local char,hum=getCharacter()
+    if not char or not hum then return nil end
+    local tool=char:FindFirstChild("BuildingTool")
+    if not tool then
+        local backpack=Player:FindFirstChildOfClass("Backpack")
+        local stored=backpack and backpack:FindFirstChild("BuildingTool")
+        if not stored then
+            warn("BuildingTool not found in Character or Backpack")
+            return nil
+        end
+        hum:EquipTool(stored)
+        task.wait(0.25)
+        tool=char:FindFirstChild("BuildingTool")
+    end
+    if not tool then return nil end
+    local remote=tool:FindFirstChild("RF")
+    if not remote or not remote:IsA("RemoteFunction") then
+        warn("BuildingTool.RF RemoteFunction not found")
+        return nil
+    end
+    return remote
+end
+
+local function getBlockTypeId(blockName)
+    local data=Player:FindFirstChild("Data")
+    local value=data and data:FindFirstChild(blockName)
+    if value and (value:IsA("IntValue") or value:IsA("NumberValue")) then
+        return value.Value
+    end
+    if blockName=="WoodBlock" then return 9 end
+    return nil
+end
+
+local function getNewBlockCFrame(sourceBlock,sourceZone,targetZone)
+    local part=sourceBlock:FindFirstChild("PPart")
+    if not part or not sourceZone or not targetZone then return nil end
+    local offset=sourceZone.CFrame:ToObjectSpace(part.CFrame)
+    return targetZone.CFrame*offset
+end
+
+button(build,"COPY SELECTED PLAYER BASE",function()
+    if not selectedBase or not selectedBase.Parent then
+        warn("Сначала нажми SCAN BASES и выбери игрока")
+        return
+    end
+    local count=0
+    for _,block in ipairs(selectedBase:GetChildren()) do
+        if block:IsA("Model") and block:FindFirstChild("PPart") then count+=1 end
+    end
+    print("Selected build:",selectedBase.Name,"blocks:",count)
+    buildProgressLabel.Text="Auto Build: selected "..count.." blocks"
+end)
+
+button(build,"AUTO BUILD TO MY BASE",function()
+    if buildRunning then
+        warn("Auto Build уже выполняется")
+        return
+    end
+    if not selectedBase or not selectedBase.Parent then
+        warn("Сначала выбери базу игрока")
+        return
+    end
+
+    local blocksFolder=Workspace:FindFirstChild("Blocks")
+    local myBlocks=blocksFolder and blocksFolder:FindFirstChild(Player.Name)
+    local sourcePlayer=Players:FindFirstChild(selectedBase.Name)
+    local sourceZone=getPlayerZone(sourcePlayer)
+    local targetZone=getPlayerZone(Player)
+    if not myBlocks then
+        warn("Не найдена твоя папка Workspace.Blocks."..Player.Name)
+        return
+    end
+    if not sourcePlayer or not sourceZone or not targetZone then
+        warn("Не удалось определить участок исходного игрока или твою базу по TeamColor")
+        return
+    end
+
+    local buildRF=getBuildTool()
+    if not buildRF then return end
+
+    local snapshot={}
+    for _,block in ipairs(selectedBase:GetChildren()) do
+        if block:IsA("Model") and block:FindFirstChild("PPart") then
+            local pos=getNewBlockCFrame(block,sourceZone,targetZone)
+            local blockId=getBlockTypeId(block.Name)
+            if pos and blockId~=nil then
+                table.insert(snapshot,{
+                    name=block.Name,
+                    id=blockId,
+                    cframe=pos,
+                    anchored=block.PPart.Anchored
+                })
+            else
+                warn("Пропуск блока (нет ID или PPart):",block.Name)
+            end
+        end
+    end
+
+    if #snapshot==0 then
+        warn("Не найдено блоков для копирования")
+        return
+    end
+
+    buildRunning=true
+    task.spawn(function()
+        local placed=0
+        local failed=0
+        for i,item in ipairs(snapshot) do
+            if not buildRunning then break end
+            local localCF=targetZone.CFrame:ToObjectSpace(item.cframe)
+            local args={
+                item.name,
+                item.id,
+                targetZone,
+                localCF,
+                true,
+                item.cframe,
+                false
+            }
+            local ok,result=pcall(function()
+                return buildRF:InvokeServer(unpack(args))
+            end)
+            if ok then
+                placed+=1
+            else
+                failed+=1
+                warn("Не удалось поставить блок",i,item.name,result)
+            end
+            buildProgressLabel.Text="Auto Build: "..i.."/"..#snapshot.." | errors: "..failed
+            if i%5==0 then task.wait(0.18) else task.wait(0.08) end
+        end
+        buildRunning=false
+        buildProgressLabel.Text="Auto Build: finished "..placed.."/"..#snapshot
+        print("[DIAMOND AUTO BUILD] Finished. Placed requests:",placed,"Errors:",failed)
+        print("[DIAMOND AUTO BUILD] Blocks are placed through the game's BuildingTool RemoteFunction; game inventory/limits still apply.")
+    end)
+end)
+
+button(build,"STOP AUTO BUILD",function()
+    buildRunning=false
+    buildProgressLabel.Text="Auto Build: stopping..."
+end)
+
 
 button(build,"CLEAR BASE SELECTION",function()
     selectedBase=nil
@@ -889,4 +1034,4 @@ Player.CharacterAdded:Connect(function()
 end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V3 LOADED")
+print("DIAMOND BOAT HUB V4 LOADED")
