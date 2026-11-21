@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V11
+-- DIAMOND BOAT HUB V12
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -85,7 +85,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V11",
+    Text="💎 DIAMOND BOAT HUB V12",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -1002,6 +1002,8 @@ local function runFarm(runId)
     if err then farmLog("STOP:",err); farmEnabled=false; return end
     if not farmWaitAlive(runId,25) then farmLog("Character unavailable"); farmEnabled=false; return end
 
+    -- FAST CHAIN: trigger a stage and immediately move to the next one.
+    -- No progress wait, no nudge, no idle pause while the avatar is falling.
     for i=1,10 do
         if not farmEnabled or runId~=farmRunId then return end
         local stage=normal:FindFirstChild("CaveStage"..i)
@@ -1014,80 +1016,60 @@ local function runFarm(runId)
             farmLog("Missing BindableEvent at",dark:GetFullName()..".Event"); farmEnabled=false; return
         end
 
-        local progressIndex=i-1
-        local progress=other:FindFirstChild("Stage"..progressIndex)
-        if not progress then
-            farmLog("Missing OtherData.Stage"..progressIndex); farmEnabled=false; return
-        end
+        local char,root,hum=farmWaitAlive(runId,20)
+        if not root then farmLog("No live character at stage",i); farmEnabled=false; return end
 
-        -- If this stage was already recorded, do not re-trigger it.
-        if not farmHasProgress(progress.Value) then
-            local char,root,hum=farmWaitAlive(runId,25)
-            if not root then farmLog("No live character before stage",i); farmEnabled=false; return end
-            char:PivotTo(dark.CFrame)
-            task.wait(0.2)
-            local fired,fireErr=pcall(function() event:Fire() end)
-            if not fired then farmLog("Event failed at stage",i,fireErr); farmEnabled=false; return end
+        -- Place slightly above each stage trigger, fire it, then continue instantly.
+        char:PivotTo(dark.CFrame*CFrame.new(0,3,0))
+        pcall(function() event:Fire() end)
+        farmLog("Triggered stage",i)
 
-            if not farmNudge(runId) then
-                farmLog("Could not nudge character at stage",i); farmEnabled=false; return
-            end
-            local ok,why=farmWaitStage(other,progressIndex,"",runId,20)
-            if not ok then
-                farmLog("Did not confirm stage",i,why,"value=",tostring(progress.Value))
-                farmEnabled=false
-                return
-            end
-        end
-        farmLog("Stage",i,"confirmed")
-        -- If the stage killed the avatar, wait for the replacement before next stage.
-        local char,root,hum=farmCharacter()
-        if not char or not root or not hum or hum.Health<=0 then
-            farmLog("Waiting for respawn after stage",i)
-            if not farmWaitAlive(runId,25) then farmLog("Respawn timed out"); farmEnabled=false; return end
-        end
-        task.wait(farmDelay)
+        -- Yield one frame so the game can process the stage, not long enough to fall.
+        task.wait()
     end
 
     if not farmEnabled or runId~=farmRunId then return end
-    local oldCharacter=Player.Character
-    local respawned=false
-    local conn=Player.CharacterAdded:Connect(function() respawned=true end)
-    farmLog("All 10 stages confirmed. Moving to Golden Chest.")
-    if not farmTouchChest(chest,runId) then
-        conn:Disconnect()
-        farmLog("Could not activate chest touch"); farmEnabled=false; return
+    local char,root,hum=farmWaitAlive(runId,20)
+    if not root then farmLog("No live character before chest"); farmEnabled=false; return end
+
+    farmLog("All stage triggers sent; teleporting directly to Golden Chest.")
+    -- Teleport directly above the actual chest trigger and touch it immediately.
+    char:PivotTo(chest.CFrame*CFrame.new(0,3,0))
+    task.wait()
+    char,root,hum=farmCharacter()
+    if root and hum and hum.Health>0 then
+        if typeof(firetouchinterest)=="function" then
+            pcall(function()
+                firetouchinterest(root,chest,0)
+                firetouchinterest(root,chest,1)
+                task.wait()
+                firetouchinterest(root,chest,0)
+            end)
+        end
     end
 
-    local deadline=os.clock()+30
+    -- If the chest kills/resets the avatar, wait for the respawn before claiming.
+    local oldCharacter=Player.Character
+    local respawned=false
+    local conn=Player.CharacterAdded:Connect(function(newChar)
+        if newChar~=oldCharacter then respawned=true end
+    end)
+    local deadline=os.clock()+20
     while farmEnabled and runId==farmRunId and not respawned and os.clock()<deadline do
-        local c,root,hum=farmCharacter()
+        local c=Player.Character
         if c and c~=oldCharacter then respawned=true break end
-        task.wait(0.15)
+        task.wait(0.1)
     end
     conn:Disconnect()
     if not farmEnabled or runId~=farmRunId then return end
-    if not respawned then
-        farmLog("Chest did not cause respawn. Stopping instead of skipping ahead.")
-        farmEnabled=false
-        return
-    end
 
-    if not farmWaitAlive(runId,25) then farmLog("Respawn character not ready"); farmEnabled=false; return end
-    task.wait(1.2)
     if claim and claim:IsA("RemoteEvent") then
-        local ok,why=pcall(function() claim:FireServer() end)
-        farmLog("ClaimRiverResultsGold:",ok and "sent" or tostring(why))
+        pcall(function() claim:FireServer() end)
+        farmLog("Reward claim request sent")
     else
-        farmLog("ClaimRiverResultsGold not found; chest may auto-claim")
+        farmLog("Chest trigger reached; no claim remote found")
     end
-
-    if not farmWaitReset(other,runId) then
-        farmLog("Stage values did not reset yet; not starting another run to avoid skipping")
-        farmEnabled=false
-        return
-    end
-    farmLog("Reward claimed; starting next run")
+    farmLog("Fast route finished. Check gold and stage values before another cycle.")
 end
 
 button(farm,"START AUTO FARM",function()
@@ -1402,7 +1384,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V11",
+    Text="💎 DIAMOND BOAT HUB V12",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
@@ -1446,7 +1428,7 @@ local function applyLanguage(lang)
         ["Base scanner"]="Сканер баз",["Select a candidate and inspect it. Preview is local only."]="Выбери базу для просмотра. Превью видно только тебе.",["Selected base: none"]="Выбранная база: нет",
         ["SCAN BASES"]="СКАНИРОВАТЬ БАЗЫ",["SHOW SELECTED BASE INFO"]="ИНФОРМАЦИЯ О ВЫБРАННОЙ БАЗЕ",["LOCAL COPY PREVIEW"]="ЛОКАЛЬНОЕ ПРЕВЬЮ КОПИИ",["REMOVE LOCAL PREVIEW"]="УДАЛИТЬ ПРЕВЬЮ",
         ["COPY SELECTED PLAYER BASE"]="КОПИРОВАТЬ БАЗУ ИГРОКА",["AUTO BUILD TO MY BASE"]="СТРОИТЬ НА МОЕЙ БАЗЕ",["STOP AUTO BUILD"]="ОСТАНОВИТЬ СТРОЙКУ",["CLEAR BASE SELECTION"]="СБРОСИТЬ ВЫБОР БАЗЫ",["SCAN BUILD REMOTES"]="СКАНИРОВАТЬ REMOTE СТРОИТЕЛЬСТВА",
-        ["AUTO FARM GOLD V11"]="АВТОФАРМ ЗОЛОТА V11",["Each cave stage is confirmed before moving on. Death/respawn is awaited."]="Каждый этап проверяется. После смерти скрипт ждёт возрождения.",["START AUTO FARM"]="ЗАПУСТИТЬ АВТОФАРМ",["STOP AUTO FARM"]="ОСТАНОВИТЬ АВТОФАРМ",["SCAN FARM ROUTE"]="СКАНИРОВАТЬ МАРШРУТ",
+        ["AUTO FARM GOLD V12"]="АВТОФАРМ ЗОЛОТА V12",["Each cave stage is confirmed before moving on. Death/respawn is awaited."]="Каждый этап проверяется. После смерти скрипт ждёт возрождения.",["START AUTO FARM"]="ЗАПУСТИТЬ АВТОФАРМ",["STOP AUTO FARM"]="ОСТАНОВИТЬ АВТОФАРМ",["SCAN FARM ROUTE"]="СКАНИРОВАТЬ МАРШРУТ",
         ["Game diagnostics"]="Диагностика игры",["DIAGNOSTICS V3: вывод в консоль F9"]="ДИАГНОСТИКА V3: вывод в консоль F9",["FULL GAME STRUCTURE SCAN"]="ПОЛНОЕ СКАНИРОВАНИЕ ИГРЫ",["SCAN REMOTES (BUILD + REWARDS)"]="СКАНИРОВАТЬ REMOTE (СТРОЙКА + НАГРАДЫ)",["SCAN INTERACTION OBJECTS"]="СКАНИРОВАТЬ ОБЪЕКТЫ ВЗАИМОДЕЙСТВИЯ",
         ["SCAN MY CHARACTER + PLAYER DATA"]="СКАНИРОВАТЬ ПЕРСОНАЖА И ДАННЫЕ",["COPY DIAGNOSTIC INSTRUCTIONS"]="КОПИРОВАТЬ ИНСТРУКЦИЮ ДИАГНОСТИКИ",["Scan Workspace roots"]="СКАНИРОВАТЬ ОБЪЕКТЫ WORKSPACE",["Scan ReplicatedStorage remotes"]="СКАНИРОВАТЬ REMOTE В REPLICATEDSTORAGE",["Scan player attributes"]="СКАНИРОВАТЬ АТРИБУТЫ ИГРОКА",["Print current position"]="ПОКАЗАТЬ ТЕКУЩУЮ ПОЗИЦИЮ",["Print game information"]="ПОКАЗАТЬ ИНФОРМАЦИЮ ОБ ИГРЕ",
         ["Hub settings"]="Настройки хаба",["Destroy local preview"]="Удалить локальное превью",["Restore lighting"]="Восстановить освещение",["Restore camera FOV"]="Восстановить угол обзора",["Appearance / Внешний вид"]="Внешний вид",["Reset appearance"]="Сбросить внешний вид",
@@ -1466,7 +1448,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V11"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V12"
     else
         for _,obj in ipairs(GUI:GetDescendants()) do
             if obj:IsA("TextButton") or obj:IsA("TextLabel") then
@@ -1475,7 +1457,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V11"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V12"
     end
     Intro.Visible=false
     Main.Visible=true
@@ -1486,4 +1468,4 @@ languageButton("🇷🇺 Русский",122,function() applyLanguage("ru") end)
 languageButton("🇬🇧 English",174,function() applyLanguage("en") end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V11 LOADED")
+print("DIAMOND BOAT HUB V12 LOADED")
