@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V8
+-- DIAMOND BOAT HUB V9
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -83,7 +83,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V8",
+    Text="💎 DIAMOND BOAT HUB V9",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -830,102 +830,152 @@ button(build,"SCAN BUILD REMOTES",function()
     print("Remote matches:",count)
 end)
 
--- AUTO FARM V8
-label(farm,"AUTO FARM GOLD V8")
-label(farm,"Activates each CaveStage event, checks OtherData progress, touches chest, claims gold.")
+-- AUTO FARM V9
+label(farm,"AUTO FARM GOLD V9")
+label(farm,"Verified route pattern: DarknessPart.Event -> OtherData.Stage(n-1) -> chest touch -> claim.")
 
 local farmEnabled=false
 local farmRunId=0
-local farmDelay=1.2
+local farmDelay=1.5
 
 local function farmLog(...)
-    print("[DIAMOND AUTO FARM V8]",...)
+    print("[DIAMOND AUTO FARM V9]",...)
 end
 
-local function farmObjects()
-    local stages=Workspace:FindFirstChild("BoatStages")
-    local normal=stages and stages:FindFirstChild("NormalStages")
-    if not normal then return nil,nil,nil,nil,"BoatStages.NormalStages missing" end
+local function farmGet()
+    local boatStages=Workspace:FindFirstChild("BoatStages")
+    local normal=boatStages and boatStages:FindFirstChild("NormalStages")
+    if not normal then return nil,nil,nil,nil,"Workspace.BoatStages.NormalStages not found" end
     local finish=normal:FindFirstChild("TheEnd")
     local chest=finish and finish:FindFirstChild("GoldenChest")
     local trigger=chest and chest:FindFirstChild("Trigger")
-    local claim=Workspace:FindFirstChild("ClaimRiverResultsGold")
     local other=Player:FindFirstChild("OtherData")
-    if not trigger or not trigger:IsA("BasePart") then return normal,nil,claim,other,"GoldenChest.Trigger missing" end
-    return normal,trigger,claim,other,nil
+    local claim=Workspace:FindFirstChild("ClaimRiverResultsGold")
+    if not trigger or not trigger:IsA("BasePart") then
+        return normal,nil,other,claim,"GoldenChest.Trigger not found"
+    end
+    if not other then return normal,trigger,nil,claim,"LocalPlayer.OtherData not found" end
+    return normal,trigger,other,claim,nil
 end
 
-local function farmAlive()
+local function farmRoot()
     local char=Player.Character
-    local hum=char and char:FindFirstChildOfClass("Humanoid")
-    local root=char and char:FindFirstChild("HumanoidRootPart")
-    return char,root,hum
+    if not char then return nil,nil end
+    local root=char:FindFirstChild("HumanoidRootPart")
+    local hum=char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum or hum.Health<=0 then return nil,nil end
+    return char,root
 end
 
-local function farmMove(cf)
-    local char,root,hum=farmAlive()
-    if not char or not root or not hum or hum.Health<=0 then return false end
-    char:PivotTo(cf)
+local function farmStageProgress(other,index)
+    local value=other:FindFirstChild("Stage"..index)
+    return value and value.Value or nil
+end
+
+local function farmMove(part)
+    local char,root=farmRoot()
+    if not char or not part or not part:IsA("BasePart") then return false end
+    char:PivotTo(part.CFrame)
     return true
 end
 
-local function waitStageProgress(other,index,runId)
-    if not other then return true end
-    local value=other:FindFirstChild("Stage"..index)
-    if not value then return true end
-    local deadline=os.clock()+3
+local function farmWaitProgress(other,index,runId,timeout)
+    local key="Stage"..index
+    local value=other:FindFirstChild(key)
+    if not value then
+        farmLog("Missing OtherData."..key)
+        return false
+    end
+    local deadline=os.clock()+(timeout or 12)
     while farmEnabled and runId==farmRunId and os.clock()<deadline do
-        local v=value.Value
-        if v~=nil and v~="" and v~=false and v~=0 then return true end
+        if value.Value~=nil and value.Value~="" and value.Value~=false and value.Value~=0 then
+            return true
+        end
         task.wait(0.1)
     end
     return false
 end
 
-local function touchChest(trigger)
-    local char,root,hum=farmAlive()
-    if not char or not root or not hum or hum.Health<=0 then return false end
-    local target=trigger.CFrame*CFrame.new(-5,-1.7,0)*CFrame.Angles(0,math.rad(-90),0)
-    char:PivotTo(target)
-    task.wait(0.15)
+local function farmWaitReset(other,runId)
+    local deadline=os.clock()+20
+    while farmEnabled and runId==farmRunId and os.clock()<deadline do
+        local cleared=true
+        for i=0,9 do
+            local v=other:FindFirstChild("Stage"..i)
+            if v and v.Value~="" and v.Value~=false and v.Value~=0 then
+                cleared=false
+                break
+            end
+        end
+        if cleared then return true end
+        task.wait(0.25)
+    end
+    return false
+end
+
+local function farmTouchChest(root,trigger)
     if typeof(firetouchinterest)=="function" then
-        pcall(function()
+        local ok=pcall(function()
             firetouchinterest(root,trigger,1)
-            task.wait(0.1)
+            task.wait(0.12)
             firetouchinterest(root,trigger,0)
         end)
+        return ok
     end
-    return true
+    return false
 end
 
 local function runFarm(runId)
-    local normal,chest,claim,other,err=farmObjects()
+    local normal,chest,other,claim,err=farmGet()
     if err then farmLog("STOP:",err); farmEnabled=false; return end
-    if not farmAlive() then Player.CharacterAdded:Wait() end
+    if not farmRoot() then Player.CharacterAdded:Wait() end
 
     for i=1,10 do
         if not farmEnabled or runId~=farmRunId then return end
         local stage=normal:FindFirstChild("CaveStage"..i)
-        local darkness=stage and stage:FindFirstChild("DarknessPart")
-        if not darkness or not darkness:IsA("BasePart") then
+        local dark=stage and stage:FindFirstChild("DarknessPart")
+        local event=dark and dark:FindFirstChild("Event")
+        if not dark or not dark:IsA("BasePart") then
             farmLog("Missing CaveStage"..i..".DarknessPart")
             farmEnabled=false
             return
         end
-        if not farmMove(darkness.CFrame) then
+        if not event or not event:IsA("BindableEvent") then
+            farmLog("Missing BindableEvent:",dark:GetFullName()..".Event")
+            farmEnabled=false
+            return
+        end
+
+        local char,root=farmRoot()
+        if not char or not root then
             farmLog("Character not ready at stage",i)
             farmEnabled=false
             return
         end
-        local event=darkness:FindFirstChild("Event")
-        if event and event:IsA("BindableEvent") then
-            pcall(function() event:Fire() end)
-        elseif event and event:IsA("RemoteEvent") then
-            pcall(function() event:FireServer() end)
+        char:PivotTo(dark.CFrame)
+        task.wait(0.1)
+        local fired,fireErr=pcall(function() event:Fire() end)
+        if not fired then
+            farmLog("Stage event failed:",i,fireErr)
+            farmEnabled=false
+            return
         end
-        farmLog("Stage",i,"activated")
-        if not waitStageProgress(other,i,runId) then
-            farmLog("Stage"..i.." progress not confirmed; continuing cautiously")
+
+        -- BABFT records the completed previous segment in OtherData.Stage(i-1).
+        if not farmWaitProgress(other,i-1,runId,12) then
+            farmLog("Stage progress timed out:",i,"OtherData.Stage"..(i-1),
+                "current value:",tostring(farmStageProgress(other,i-1)))
+            farmEnabled=false
+            return
+        end
+        farmLog("Stage",i,"confirmed")
+        -- Small movement nudge prevents the character sticking inside the stage trigger.
+        char,root=farmRoot()
+        if root then
+            local p=root.Position
+            root.CFrame=CFrame.new(p+Vector3.new(-1,0,-1))
+            task.wait(0.05)
+            root.CFrame=CFrame.new(p)
         end
         task.wait(farmDelay)
     end
@@ -934,8 +984,12 @@ local function runFarm(runId)
     local oldChar=Player.Character
     local respawned=false
     local conn=Player.CharacterAdded:Connect(function() respawned=true end)
-    farmLog("Touching Golden Chest")
-    touchChest(chest)
+    local char,root=farmRoot()
+    if not root then conn:Disconnect(); return end
+    local chestCF=chest.CFrame*CFrame.new(-5,-1.7,0)*CFrame.Angles(0,math.rad(-90),0)
+    char:PivotTo(chestCF)
+    task.wait(0.15)
+    farmTouchChest(root,chest)
 
     local deadline=os.clock()+25
     while farmEnabled and runId==farmRunId and not respawned and os.clock()<deadline do
@@ -944,25 +998,29 @@ local function runFarm(runId)
     conn:Disconnect()
     if not farmEnabled or runId~=farmRunId then return end
     if not respawned and Player.Character==oldChar then
-        farmLog("Chest did not respawn character. Check whether all stages unlocked and touch is supported.")
+        farmLog("Chest touch did not respawn character; stopping.")
         farmEnabled=false
         return
     end
 
-    task.wait(1.5)
+    task.wait(1)
     if claim and claim:IsA("RemoteEvent") then
         local ok,why=pcall(function() claim:FireServer() end)
         farmLog("ClaimRiverResultsGold:",ok and "sent" or tostring(why))
     else
-        farmLog("ClaimRiverResultsGold RemoteEvent missing; chest may auto-claim")
+        farmLog("ClaimRiverResultsGold missing; chest may award automatically")
     end
-    task.wait(5)
-    farmLog("Run complete")
+
+    if not farmWaitReset(other,runId) then
+        farmLog("Stage progress did not reset after reward; waiting before retry.")
+        task.wait(5)
+    end
+    farmLog("Reward cycle complete")
 end
 
 button(farm,"START AUTO FARM",function()
     if farmEnabled then farmLog("Already running"); return end
-    local _,_,_,_,err=farmObjects()
+    local _,_,_,_,err=farmGet()
     if err then farmLog("Cannot start:",err); return end
     farmEnabled=true
     farmRunId+=1
@@ -984,17 +1042,17 @@ button(farm,"STOP AUTO FARM",function()
 end)
 
 button(farm,"SCAN FARM ROUTE",function()
-    local normal,chest,claim,other,err=farmObjects()
+    local normal,chest,other,claim,err=farmGet()
     if err then farmLog("SCAN:",err); return end
-    farmLog("NormalStages:",normal:GetFullName())
     for i=1,10 do
         local stage=normal:FindFirstChild("CaveStage"..i)
         local dark=stage and stage:FindFirstChild("DarknessPart")
         local event=dark and dark:FindFirstChild("Event")
-        local progress=other and other:FindFirstChild("Stage"..i)
-        farmLog("CaveStage"..i,dark and dark:GetFullName() or "MISSING",
-            "Event:",event and event.ClassName or "none",
-            "Progress:",progress and tostring(progress.Value) or "not found")
+        local progress=other:FindFirstChild("Stage"..(i-1))
+        farmLog("Stage",i,
+            "DarknessPart:",dark and dark:GetFullName() or "MISSING",
+            "Event:",event and event.ClassName or "MISSING",
+            "OtherData.Stage"..(i-1)..":",progress and tostring(progress.Value) or "MISSING")
     end
     farmLog("Chest:",chest:GetFullName())
     farmLog("Claim:",claim and claim:GetFullName() or "MISSING")
@@ -1229,4 +1287,4 @@ Player.CharacterAdded:Connect(function()
 end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V8 LOADED")
+print("DIAMOND BOAT HUB V9 LOADED")
