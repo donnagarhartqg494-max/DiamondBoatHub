@@ -1627,14 +1627,13 @@ button(music,"SCAN BINDING TOOL API",function()
             local ok,source=pcall(decompiler,localScript)
             if ok and type(source)=="string" then
                 print("[BIND SCAN] ===== BindLocalScript DECOMPILED SOURCE BEGIN =====")
+                print("[BIND SCAN] Decompiled source length:",#source)
+                local lineNo=0
                 for line in source:gmatch("[^\\r\\n]+") do
-                    if line:lower():find("invoke",1,true) or line:lower():find("rf",1,true)
-                        or line:lower():find("mouse",1,true) or line:lower():find("bind",1,true)
-                        or line:lower():find("input",1,true) or line:lower():find("output",1,true) then
-                        print("[BIND SOURCE]",line)
-                    end
+                    lineNo+=1
+                    print(string.format("[BIND SOURCE %03d] %s",lineNo,line))
                 end
-                print("[BIND SCAN] ===== SOURCE FILTER END =====")
+                print("[BIND SCAN] ===== FULL SOURCE END =====")
             else
                 warn("[BIND SCAN] Decompile failed:",tostring(source))
             end
