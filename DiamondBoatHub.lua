@@ -1163,6 +1163,61 @@ button(music,"SCAN BUILDING TOOL INVENTORY UI",function()
     print("[BUILD INVENTORY UI] Matches:",found)
     musicInventoryLabel.Text="UI scan complete: "..found.." matches — see F9"
 end)
+label(music,"MUSIC BUILDER — BLOCK ID / TOOL DIAGNOSTICS")
+label(music,"Checks real block templates and tool remotes before automatic placement.")
+button(music,"SCAN MUSIC BUILDER API",function()
+    local RS=game:GetService("ReplicatedStorage")
+    local parts=RS:FindFirstChild("BuildingParts")
+    local data=Player:FindFirstChild("Data")
+    local function stock(name)
+        local v=data and data:FindFirstChild(name)
+        return v and v.Value or 0
+    end
+    print("========== DIAMOND MUSIC BUILDER API ==========")
+    print("[MUSIC API] ReplicatedStorage.BuildingParts:",parts and "FOUND" or "MISSING")
+    if parts then
+        local children=parts:GetChildren()
+        for index,obj in ipairs(children) do
+            local low=obj.Name:lower()
+            if low:find("note",1,true) or low:find("delay",1,true) then
+                print("[MUSIC API] TEMPLATE",obj.Name,"INDEX/ID CANDIDATE",index,"CLASS",obj.ClassName,
+                    "PrimaryPart",obj:IsA("Model") and tostring(obj.PrimaryPart) or "n/a",
+                    "PPart",tostring(obj:FindFirstChild("PPart")))
+            end
+        end
+        print("[MUSIC API] BuildingParts total templates:",#children)
+    end
+    print("[MUSIC API] Inventory Note:",stock("Note"),"Delay:",stock("Delay"))
+    local backpack=Player:FindFirstChildOfClass("Backpack")
+    local char=Player.Character
+    for _,toolName in ipairs({"BuildingTool","PropertyTool","BindingTool"}) do
+        local tool=(char and char:FindFirstChild(toolName)) or (backpack and backpack:FindFirstChild(toolName))
+        print("[MUSIC API] TOOL",toolName,tool and "FOUND" or "NOT FOUND")
+        if tool then
+            for _,obj in ipairs(tool:GetDescendants()) do
+                if obj:IsA("RemoteFunction") or obj:IsA("RemoteEvent") or obj:IsA("BindableEvent") or obj:IsA("BindableFunction") then
+                    print("[MUSIC API] REMOTE",toolName,obj:GetFullName(),obj.ClassName)
+                end
+            end
+        end
+    end
+    local blocks=Workspace:FindFirstChild("Blocks")
+    local own=blocks and blocks:FindFirstChild(Player.Name)
+    if own then
+        for _,obj in ipairs(own:GetChildren()) do
+            local low=obj.Name:lower()
+            if low:find("note",1,true) or low:find("delay",1,true) then
+                print("[MUSIC API] OWNED BLOCK",obj.Name,obj:GetFullName())
+                for attr,value in pairs(obj:GetAttributes()) do print("[MUSIC API] ATTRIBUTE",attr,tostring(value)) end
+                local part=obj:FindFirstChild("PPart")
+                if part then for attr,value in pairs(part:GetAttributes()) do print("[MUSIC API] PART ATTRIBUTE",attr,tostring(value)) end end
+            end
+        end
+    else
+        warn("[MUSIC API] Own Workspace.Blocks folder not found")
+    end
+    print("========== END MUSIC BUILDER API ==========")
+end)
 label(music,"KNOWN GAME LIMITS")
 label(music,"Music Note: 25 pitches from F#3 to F#5; note sustain is about 0.85 sec.")
 label(music,"Delay Block: 0.05–10 sec. Key and delay values are set with the in-game Property Tool.")
