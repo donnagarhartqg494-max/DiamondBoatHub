@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V9
+-- DIAMOND BOAT HUB V10
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -64,6 +64,7 @@ local function outline(obj)
 end
 
 local Main = create("Frame",{
+    Visible=false,
     Size=UDim2.fromOffset(680,470),
     Position=UDim2.new(.5,-340,.5,-235),
     BackgroundColor3=DARK,
@@ -83,7 +84,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V9",
+    Text="💎 DIAMOND BOAT HUB V10",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -760,10 +761,10 @@ button(build,"AUTO BUILD TO MY BASE",function()
                 warn("Ошибка размещения блока",i,item.name,result)
             else
                 local placedBlock=nil
-                for attempt=1,12 do
+                for attempt=1,10 do
                     placedBlock=findJustPlacedBlock(beforeSet,item.name,item.cframe)
                     if placedBlock then break end
-                    task.wait(0.05)
+                    task.wait(0.035)
                 end
                 if placedBlock and item.size then
                     local scalingTool=equipScalingTool()
@@ -788,7 +789,7 @@ button(build,"AUTO BUILD TO MY BASE",function()
                 end
             end
             buildProgressLabel.Text="Auto Build: "..i.."/"..#snapshot.." | errors: "..failed
-            if i%8==0 then task.wait(0.12) else task.wait(0.035) end
+            if i%10==0 then task.wait(0.08) else task.wait(0.02) end
         end
         buildRunning=false
         buildProgressLabel.Text="Auto Build: finished "..placed.."/"..#snapshot
@@ -830,16 +831,16 @@ button(build,"SCAN BUILD REMOTES",function()
     print("Remote matches:",count)
 end)
 
--- AUTO FARM V9
-label(farm,"AUTO FARM GOLD V9")
-label(farm,"Verified route pattern: DarknessPart.Event -> OtherData.Stage(n-1) -> chest touch -> claim.")
+-- AUTO FARM V10
+label(farm,"AUTO FARM GOLD V10")
+label(farm,"Each cave stage is confirmed before moving on. Death/respawn is awaited.")
 
 local farmEnabled=false
 local farmRunId=0
-local farmDelay=1.5
+local farmDelay=1.25
 
 local function farmLog(...)
-    print("[DIAMOND AUTO FARM V9]",...)
+    print("[DIAMOND AUTO FARM V10]",...)
 end
 
 local function farmGet()
@@ -851,76 +852,102 @@ local function farmGet()
     local trigger=chest and chest:FindFirstChild("Trigger")
     local other=Player:FindFirstChild("OtherData")
     local claim=Workspace:FindFirstChild("ClaimRiverResultsGold")
-    if not trigger or not trigger:IsA("BasePart") then
-        return normal,nil,other,claim,"GoldenChest.Trigger not found"
-    end
-    if not other then return normal,trigger,nil,claim,"LocalPlayer.OtherData not found" end
+    if not trigger or not trigger:IsA("BasePart") then return normal,nil,other,claim,"GoldenChest.Trigger missing" end
+    if not other then return normal,trigger,nil,claim,"LocalPlayer.OtherData missing" end
+    if not claim or not claim:IsA("RemoteEvent") then return normal,trigger,other,nil,nil end
     return normal,trigger,other,claim,nil
 end
 
-local function farmRoot()
+local function farmCharacter()
     local char=Player.Character
-    if not char then return nil,nil end
-    local root=char:FindFirstChild("HumanoidRootPart")
-    local hum=char:FindFirstChildOfClass("Humanoid")
-    if not root or not hum or hum.Health<=0 then return nil,nil end
-    return char,root
+    local hum=char and char:FindFirstChildOfClass("Humanoid")
+    local root=char and char:FindFirstChild("HumanoidRootPart")
+    return char,root,hum
 end
 
-local function farmStageProgress(other,index)
-    local value=other:FindFirstChild("Stage"..index)
-    return value and value.Value or nil
-end
-
-local function farmMove(part)
-    local char,root=farmRoot()
-    if not char or not part or not part:IsA("BasePart") then return false end
-    char:PivotTo(part.CFrame)
-    return true
-end
-
-local function farmWaitProgress(other,index,runId,timeout)
-    local key="Stage"..index
-    local value=other:FindFirstChild(key)
-    if not value then
-        farmLog("Missing OtherData."..key)
-        return false
-    end
-    local deadline=os.clock()+(timeout or 12)
+local function farmWaitAlive(runId,timeout)
+    local deadline=os.clock()+(timeout or 25)
     while farmEnabled and runId==farmRunId and os.clock()<deadline do
-        if value.Value~=nil and value.Value~="" and value.Value~=false and value.Value~=0 then
+        local char,root,hum=farmCharacter()
+        if char and root and hum and hum.Health>0 then return char,root,hum end
+        task.wait(0.15)
+    end
+    return nil
+end
+
+local function farmStageValue(other,index)
+    local v=other:FindFirstChild("Stage"..index)
+    return v and v.Value or nil
+end
+
+local function farmHasProgress(value)
+    return value~=nil and value~="" and value~=false and value~=0
+end
+
+local function farmWaitStage(other,index,oldValue,runId,timeout)
+    local v=other:FindFirstChild("Stage"..index)
+    if not v then return false,"OtherData.Stage"..index.." missing" end
+    local deadline=os.clock()+(timeout or 18)
+    while farmEnabled and runId==farmRunId and os.clock()<deadline do
+        if farmHasProgress(v.Value) and (v.Value~=oldValue or not farmHasProgress(oldValue)) then
             return true
+        end
+        -- If this character died while the stage registered, wait for respawn
+        -- before the next teleport. Do not race ahead with a dead character.
+        local char,root,hum=farmCharacter()
+        if not char or not root or not hum or hum.Health<=0 then
+            farmLog("Died during stage",index+1,"— waiting for respawn")
+            local newChar=farmWaitAlive(runId,25)
+            if not newChar then return false,"Respawn timeout" end
         end
         task.wait(0.1)
     end
-    return false
+    return false,"Stage progress timeout"
+end
+
+local function farmNudge(runId)
+    local char,root,hum=farmWaitAlive(runId,15)
+    if not root then return false end
+    local base=root.CFrame
+    root.CFrame=base*CFrame.new(-10,0,-10)
+    task.wait(0.1)
+    if not farmEnabled or runId~=farmRunId then return false end
+    char,root,hum=farmWaitAlive(runId,15)
+    if not root then return false end
+    root.CFrame=base
+    return true
+end
+
+local function farmTouchChest(trigger,runId)
+    local char,root,hum=farmWaitAlive(runId,20)
+    if not root then return false end
+    local chestCF=trigger.CFrame*CFrame.new(-5,-1.7,0)*CFrame.Angles(0,math.rad(-90),0)
+    char:PivotTo(chestCF)
+    task.wait(0.2)
+    if typeof(firetouchinterest)=="function" then
+        local ok,err=pcall(function()
+            firetouchinterest(root,trigger,1)
+            task.wait(0.15)
+            firetouchinterest(root,trigger,0)
+        end)
+        if not ok then farmLog("Touch error:",err) end
+        return ok
+    end
+    -- Fallback: stand directly on the trigger; normal game touch handling may activate it.
+    char:PivotTo(trigger.CFrame*CFrame.new(0,3,0))
+    return true
 end
 
 local function farmWaitReset(other,runId)
-    local deadline=os.clock()+20
+    local deadline=os.clock()+25
     while farmEnabled and runId==farmRunId and os.clock()<deadline do
         local cleared=true
         for i=0,9 do
             local v=other:FindFirstChild("Stage"..i)
-            if v and v.Value~="" and v.Value~=false and v.Value~=0 then
-                cleared=false
-                break
-            end
+            if v and farmHasProgress(v.Value) then cleared=false break end
         end
         if cleared then return true end
-        task.wait(0.25)
-    end
-    return false
-end
-
-local function farmTouchChest(root,trigger)
-    if typeof(firetouchinterest)=="function" then
-        local ok=pcall(function()
-            firetouchinterest(root,trigger,1)
-            task.wait(0.12)
-            firetouchinterest(root,trigger,0)
-        end)
-        return ok
+        task.wait(0.2)
     end
     return false
 end
@@ -928,7 +955,7 @@ end
 local function runFarm(runId)
     local normal,chest,other,claim,err=farmGet()
     if err then farmLog("STOP:",err); farmEnabled=false; return end
-    if not farmRoot() then Player.CharacterAdded:Wait() end
+    if not farmWaitAlive(runId,25) then farmLog("Character unavailable"); farmEnabled=false; return end
 
     for i=1,10 do
         if not farmEnabled or runId~=farmRunId then return end
@@ -936,86 +963,86 @@ local function runFarm(runId)
         local dark=stage and stage:FindFirstChild("DarknessPart")
         local event=dark and dark:FindFirstChild("Event")
         if not dark or not dark:IsA("BasePart") then
-            farmLog("Missing CaveStage"..i..".DarknessPart")
-            farmEnabled=false
-            return
+            farmLog("Missing CaveStage"..i..".DarknessPart"); farmEnabled=false; return
         end
         if not event or not event:IsA("BindableEvent") then
-            farmLog("Missing BindableEvent:",dark:GetFullName()..".Event")
-            farmEnabled=false
-            return
+            farmLog("Missing BindableEvent at",dark:GetFullName()..".Event"); farmEnabled=false; return
         end
 
-        local char,root=farmRoot()
-        if not char or not root then
-            farmLog("Character not ready at stage",i)
-            farmEnabled=false
-            return
-        end
-        char:PivotTo(dark.CFrame)
-        task.wait(0.1)
-        local fired,fireErr=pcall(function() event:Fire() end)
-        if not fired then
-            farmLog("Stage event failed:",i,fireErr)
-            farmEnabled=false
-            return
+        local progressIndex=i-1
+        local progress=other:FindFirstChild("Stage"..progressIndex)
+        if not progress then
+            farmLog("Missing OtherData.Stage"..progressIndex); farmEnabled=false; return
         end
 
-        -- BABFT records the completed previous segment in OtherData.Stage(i-1).
-        if not farmWaitProgress(other,i-1,runId,12) then
-            farmLog("Stage progress timed out:",i,"OtherData.Stage"..(i-1),
-                "current value:",tostring(farmStageProgress(other,i-1)))
-            farmEnabled=false
-            return
+        -- If this stage was already recorded, do not re-trigger it.
+        if not farmHasProgress(progress.Value) then
+            local char,root,hum=farmWaitAlive(runId,25)
+            if not root then farmLog("No live character before stage",i); farmEnabled=false; return end
+            char:PivotTo(dark.CFrame)
+            task.wait(0.2)
+            local fired,fireErr=pcall(function() event:Fire() end)
+            if not fired then farmLog("Event failed at stage",i,fireErr); farmEnabled=false; return end
+
+            if not farmNudge(runId) then
+                farmLog("Could not nudge character at stage",i); farmEnabled=false; return
+            end
+            local ok,why=farmWaitStage(other,progressIndex,"",runId,20)
+            if not ok then
+                farmLog("Did not confirm stage",i,why,"value=",tostring(progress.Value))
+                farmEnabled=false
+                return
+            end
         end
         farmLog("Stage",i,"confirmed")
-        -- Small movement nudge prevents the character sticking inside the stage trigger.
-        char,root=farmRoot()
-        if root then
-            local p=root.Position
-            root.CFrame=CFrame.new(p+Vector3.new(-1,0,-1))
-            task.wait(0.05)
-            root.CFrame=CFrame.new(p)
+        -- If the stage killed the avatar, wait for the replacement before next stage.
+        local char,root,hum=farmCharacter()
+        if not char or not root or not hum or hum.Health<=0 then
+            farmLog("Waiting for respawn after stage",i)
+            if not farmWaitAlive(runId,25) then farmLog("Respawn timed out"); farmEnabled=false; return end
         end
         task.wait(farmDelay)
     end
 
     if not farmEnabled or runId~=farmRunId then return end
-    local oldChar=Player.Character
+    local oldCharacter=Player.Character
     local respawned=false
     local conn=Player.CharacterAdded:Connect(function() respawned=true end)
-    local char,root=farmRoot()
-    if not root then conn:Disconnect(); return end
-    local chestCF=chest.CFrame*CFrame.new(-5,-1.7,0)*CFrame.Angles(0,math.rad(-90),0)
-    char:PivotTo(chestCF)
-    task.wait(0.15)
-    farmTouchChest(root,chest)
+    farmLog("All 10 stages confirmed. Moving to Golden Chest.")
+    if not farmTouchChest(chest,runId) then
+        conn:Disconnect()
+        farmLog("Could not activate chest touch"); farmEnabled=false; return
+    end
 
-    local deadline=os.clock()+25
+    local deadline=os.clock()+30
     while farmEnabled and runId==farmRunId and not respawned and os.clock()<deadline do
-        task.wait(0.2)
+        local c,root,hum=farmCharacter()
+        if c and c~=oldCharacter then respawned=true break end
+        task.wait(0.15)
     end
     conn:Disconnect()
     if not farmEnabled or runId~=farmRunId then return end
-    if not respawned and Player.Character==oldChar then
-        farmLog("Chest touch did not respawn character; stopping.")
+    if not respawned then
+        farmLog("Chest did not cause respawn. Stopping instead of skipping ahead.")
         farmEnabled=false
         return
     end
 
-    task.wait(1)
+    if not farmWaitAlive(runId,25) then farmLog("Respawn character not ready"); farmEnabled=false; return end
+    task.wait(1.2)
     if claim and claim:IsA("RemoteEvent") then
         local ok,why=pcall(function() claim:FireServer() end)
         farmLog("ClaimRiverResultsGold:",ok and "sent" or tostring(why))
     else
-        farmLog("ClaimRiverResultsGold missing; chest may award automatically")
+        farmLog("ClaimRiverResultsGold not found; chest may auto-claim")
     end
 
     if not farmWaitReset(other,runId) then
-        farmLog("Stage progress did not reset after reward; waiting before retry.")
-        task.wait(5)
+        farmLog("Stage values did not reset yet; not starting another run to avoid skipping")
+        farmEnabled=false
+        return
     end
-    farmLog("Reward cycle complete")
+    farmLog("Reward claimed; starting next run")
 end
 
 button(farm,"START AUTO FARM",function()
@@ -1048,14 +1075,12 @@ button(farm,"SCAN FARM ROUTE",function()
         local stage=normal:FindFirstChild("CaveStage"..i)
         local dark=stage and stage:FindFirstChild("DarknessPart")
         local event=dark and dark:FindFirstChild("Event")
-        local progress=other:FindFirstChild("Stage"..(i-1))
-        farmLog("Stage",i,
-            "DarknessPart:",dark and dark:GetFullName() or "MISSING",
+        local value=other:FindFirstChild("Stage"..(i-1))
+        farmLog("Stage",i,"Part:",dark and dark:GetFullName() or "MISSING",
             "Event:",event and event.ClassName or "MISSING",
-            "OtherData.Stage"..(i-1)..":",progress and tostring(progress.Value) or "MISSING")
+            "Progress:",value and tostring(value.Value) or "MISSING")
     end
-    farmLog("Chest:",chest:GetFullName())
-    farmLog("Claim:",claim and claim:GetFullName() or "MISSING")
+    farmLog("Chest:",chest:GetFullName(),"Claim:",claim and claim:GetFullName() or "MISSING")
 end)
 
 -- TOOLS
@@ -1286,5 +1311,98 @@ Player.CharacterAdded:Connect(function()
     if flyOn then stopFly() end
 end)
 
+-- FIRST START LANGUAGE MENU
+local Intro=create("Frame",{
+    Size=UDim2.fromOffset(360,250),
+    Position=UDim2.new(0.5,-180,0.5,-125),
+    BackgroundColor3=DARK,
+    BorderSizePixel=0,
+    ZIndex=50
+},GUI)
+round(Intro,14)
+outline(Intro)
+
+create("TextLabel",{
+    Size=UDim2.new(1,-20,0,48),
+    Position=UDim2.fromOffset(10,18),
+    BackgroundTransparency=1,
+    Text="💎 DIAMOND BOAT HUB V10",
+    TextColor3=WHITE,
+    TextSize=20,
+    Font=Enum.Font.GothamBold,
+    ZIndex=51
+},Intro)
+create("TextLabel",{
+    Size=UDim2.new(1,-20,0,30),
+    Position=UDim2.fromOffset(10,72),
+    BackgroundTransparency=1,
+    Text="Choose your language / Выбери язык",
+    TextColor3=PURPLE,
+    TextSize=14,
+    Font=Enum.Font.Gotham,
+    ZIndex=51
+},Intro)
+
+local function languageButton(caption,y,callback)
+    local b=create("TextButton",{
+        Size=UDim2.new(1,-44,0,44),
+        Position=UDim2.fromOffset(22,y),
+        BackgroundColor3=PANEL,
+        Text=caption,
+        TextColor3=WHITE,
+        TextSize=16,
+        Font=Enum.Font.GothamSemibold,
+        ZIndex=51
+    },Intro)
+    round(b,8)
+    b.Activated:Connect(callback)
+end
+
+local function applyLanguage(lang)
+    local ru=lang=="ru"
+    local translations={
+        ["HOME"]="ГЛАВНАЯ",["MOVEMENT"]="ДВИЖЕНИЕ",["VISUALS"]="ГРАФИКА",
+        ["TELEPORTS"]="ТЕЛЕПОРТЫ",["AUTO BUILD"]="АВТОСТРОЙКА",
+        ["AUTO FARM"]="АВТОФАРМ",["TOOLS"]="ИНСТРУМЕНТЫ",["SETTINGS"]="НАСТРОЙКИ",
+        ["START AUTO FARM"]="ЗАПУСТИТЬ АВТОФАРМ",["STOP AUTO FARM"]="ОСТАНОВИТЬ АВТОФАРМ",
+        ["SCAN FARM ROUTE"]="СКАНИРОВАТЬ МАРШРУТ",
+        ["AUTO BUILD TO MY BASE"]="СТРОИТЬ НА МОЕЙ БАЗЕ",
+        ["STOP AUTO BUILD"]="ОСТАНОВИТЬ СТРОЙКУ",
+        ["COPY SELECTED PLAYER BASE"]="КОПИРОВАТЬ БАЗУ ИГРОКА",
+        ["CLEAR BASE SELECTION"]="СБРОСИТЬ ВЫБОР БАЗЫ",
+        ["Welcome to Diamond Boat Hub"]="Добро пожаловать в Diamond Boat Hub",
+        ["Build A Boat For Treasure"]="Build A Boat For Treasure",
+        ["Player information"]="Информация об игроке",
+        ["Character information"]="Информация о персонаже",
+        ["Reset character"]="Перезапустить персонажа",
+        ["Movement controls"]="Управление движением",
+        ["AUTO FARM GOLD V10"]="АВТОФАРМ ЗОЛОТА V10"
+    }
+    if ru then
+        for _,obj in ipairs(GUI:GetDescendants()) do
+            if obj:IsA("TextButton") or obj:IsA("TextLabel") then
+                local translated=translations[obj.Text]
+                if translated then obj.Text=translated end
+            end
+        end
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V10"
+    else
+        for _,obj in ipairs(GUI:GetDescendants()) do
+            if obj:IsA("TextButton") or obj:IsA("TextLabel") then
+                for english,russian in pairs(translations) do
+                    if obj.Text==russian then obj.Text=english end
+                end
+            end
+        end
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V10"
+    end
+    Intro.Visible=false
+    Main.Visible=true
+    showPage("HOME")
+end
+
+languageButton("🇷🇺 Русский",122,function() applyLanguage("ru") end)
+languageButton("🇬🇧 English",174,function() applyLanguage("en") end)
+
 showPage("HOME")
-print("DIAMOND BOAT HUB V9 LOADED")
+print("DIAMOND BOAT HUB V10 LOADED")
