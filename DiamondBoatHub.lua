@@ -1116,6 +1116,10 @@ button(music,"DEEP SCAN PLAYER INVENTORY",function()
         end
     end
     local data=Player:FindFirstChild("Data")
+    local noteCount=data and data:FindFirstChild("Note")
+    local delayCount=data and data:FindFirstChild("Delay")
+    noteCount=(noteCount and noteCount.Value) or 0
+    delayCount=(delayCount and delayCount.Value) or 0
     if data then inspect(data,"PLAYER_DATA") else warn("[MUSIC SCAN] Player.Data missing") end
     inspect(Player:FindFirstChildOfClass("Backpack"),"BACKPACK")
     inspect(Player.Character,"CHARACTER")
@@ -1124,6 +1128,8 @@ button(music,"DEEP SCAN PLAYER INVENTORY",function()
     print("========== DIAMOND MUSIC DEEP SCAN ==========")
     print("[MUSIC SCAN] Player.Data found:",data~=nil,"Descendants in Data:",data and #data:GetDescendants() or 0)
     print("[MUSIC SCAN] ValueBase objects scanned:",totalValues,"Actual name matches:",#matches)
+    print("[MUSIC INVENTORY] Music Note:",noteCount,"| Delay:",delayCount)
+    musicInventoryLabel.Text="Inventory: "..noteCount.." Notes / "..delayCount.." Delays"
     for _,row in ipairs(matches) do print("[MUSIC SCAN]",row) end
     if #matches==0 then
         musicInventoryLabel.Text="No Music/Note/Delay names found — see F9"
