@@ -1094,40 +1094,86 @@ button(music,"COPY RUSH E MIDI LINK",function()
     copyMusicUrl(rushEUrl,"Rush E")
 end)
 label(music,"BABFT BLOCK CHECK")
-local musicInventoryLabel=label(music,"Music Note / Delay Block: not scanned")
+local musicInventoryLabel=label(music,"Inventory: not scanned")
 button(music,"SCAN MUSIC BLOCK INVENTORY",function()
     local data=Player:FindFirstChild("Data")
     if not data then
-        musicInventoryLabel.Text="Player.Data not found — inventory unavailable"
-        warn("[DIAMOND MUSIC] Player.Data not found")
+        musicInventoryLabel.Text="Player.Data not found"
+        warn("[DIAMOND MUSIC] Player.Data missing; scan Player + Backpack in F9")
         return
     end
-    local names={"MusicNote","Music Note","MusicNoteBlock","DelayBlock","Delay Block"}
-    local found={}
-    for _,name in ipairs(names) do
-        local value=data:FindFirstChild(name)
-        if value and (value:IsA("IntValue") or value:IsA("NumberValue")) then
-            found[name]=value.Value
+    local matches={}
+    for _,obj in ipairs(data:GetDescendants()) do
+        if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+            local n=obj.Name:lower():gsub("[%s_%-]","")
+            if n:find("music",1,true) or n:find("note",1,true) or n:find("delay",1,true) then
+                table.insert(matches,{name=obj:GetFullName(),value=obj.Value})
+            end
         end
     end
-    local noteCount=found.MusicNote or found["Music Note"] or found.MusicNoteBlock
-    local delayCount=found.DelayBlock or found["Delay Block"]
-    musicInventoryLabel.Text="Notes: "..tostring(noteCount or "not found").." | Delay: "..tostring(delayCount or "not found")
-    print("[DIAMOND MUSIC] Inventory scan:")
-    for name,count in pairs(found) do print("  "..name..": "..count) end
-    if not noteCount or not delayCount then
-        warn("[DIAMOND MUSIC] One or both block inventory values were not found. Use FULL GAME STRUCTURE SCAN in TOOLS to inspect exact names.")
+    table.sort(matches,function(a,b) return a.name<b.name end)
+    print("[DIAMOND MUSIC] Matching inventory values:",#matches)
+    for _,item in ipairs(matches) do print("[MUSIC ITEM]",item.name,"=",item.value) end
+    if #matches==0 then
+        musicInventoryLabel.Text="No matching values in Player.Data"
+        warn("[DIAMOND MUSIC] No name match. Printing all numeric Data values:")
+        for _,obj in ipairs(data:GetDescendants()) do
+            if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+                print("[DATA VALUE]",obj:GetFullName(),"=",obj.Value)
+            end
+        end
+    else
+        local parts={}
+        for i,item in ipairs(matches) do
+            if i<=4 then table.insert(parts,item.name:split(".")[#item.name:split(".")].."="..tostring(item.value)) end
+        end
+        musicInventoryLabel.Text="Found "..#matches.." values: "..table.concat(parts," | ")
     end
 end)
 label(music,"KNOWN GAME LIMITS")
 label(music,"Music Note: 25 pitches from F#3 to F#5; note sustain is about 0.85 sec.")
 label(music,"Delay Block: 0.05–10 sec. Key and delay values are set with the in-game Property Tool.")
 label(music,"The current hub can place blocks, but the game's Property Tool remote schema is not verified. This build will not fake pitch or timing changes.")
-label(music,"DUPLICATION — MANUAL GLITCH NOTES")
-label(music,"Community-documented method (may be patched): save boat → move it outside plot render distance → load saved boat → bring original back → save again.")
-label(music,"Alternative reported method: load a saved boat, launch it, then repeat. This is not guaranteed and is not an automated exploit.")
-button(music,"PRINT DUPLICATION STEPS TO CONSOLE",function()
-    print("[DIAMOND DUPLICATION GUIDE] 1) Save the boat in a slot. 2) Move the existing boat outside your plot's render distance. 3) Load the saved boat. 4) Bring the original boat back into the building area. 5) Save again. Alternative reported by the community: load a saved boat, launch it, repeat. May be patched; protect your main save.")
+label(music,"DUPLICATION — CHOOSE TARGET SAVE SLOT")
+label(music,"Enter the slot number you are willing to overwrite. The hub does not press Save/Load for you.")
+local selectedSaveSlot=1
+local slotLabel=label(music,"Target slot: 1")
+local slotInput=create("TextBox",{
+    Size=UDim2.new(1,-8,0,38),
+    BackgroundColor3=DARK,
+    Text="1",
+    PlaceholderText="Save slot number (1–192)",
+    TextColor3=WHITE,
+    TextSize=14,
+    Font=Enum.Font.Gotham,
+    ClearTextOnFocus=false
+},music)
+round(slotInput,8)
+outline(slotInput)
+slotInput.FocusLost:Connect(function()
+    local n=tonumber(slotInput.Text)
+    if not n or n%1~=0 or n<1 or n>192 then
+        slotInput.Text=tostring(selectedSaveSlot)
+        warn("[DIAMOND DUPLICATION] Enter a whole slot number from 1 to 192")
+        return
+    end
+    selectedSaveSlot=n
+    slotLabel.Text="Target slot: "..n.." (THIS SLOT MAY BE OVERWRITTEN)"
+end)
+button(music,"CONFIRM TARGET SLOT",function()
+    print("[DIAMOND DUPLICATION] Selected target slot #"..selectedSaveSlot)
+    print("[DIAMOND DUPLICATION] In the game's Save menu, manually select slot #"..selectedSaveSlot.." before pressing Save. Do not choose a slot containing a boat you want to keep.")
+    slotLabel.Text="CONFIRMED: slot "..selectedSaveSlot.." — may be overwritten"
+end)
+label(music,"BABFT gives 3 free save slots; purchased slots can increase the total (up to 192). The in-game Save menu is authoritative.")
+label(music,"The selected number is a reminder only; slot order can be rearranged in-game. Verify the slot name before saving.")
+label(music,"Documented glitch (may be patched): save boat → move it outside plot render distance → load same saved boat → bring original back → save to the chosen slot.")
+label(music,"Make a backup in a DIFFERENT slot first. Load Old Versions can restore one of the previous four versions.")
+button(music,"PRINT TARGET SLOT + DUPLICATION STEPS",function()
+    print("[DIAMOND DUPLICATION GUIDE] TARGET SLOT:",selectedSaveSlot)
+    print("1) In the game Save menu, manually select slot #"..selectedSaveSlot..".")
+    print("2) Confirm it is the slot you intend to overwrite; make a backup elsewhere.")
+    print("3) Follow the documented glitch only if it still works on this server; the hub does not automate save/load.")
 end)
 
 -- AUTO FARM V10
@@ -1776,7 +1822,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V13",
+    Text="💎 DIAMOND BOAT HUB V20",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
@@ -1840,7 +1886,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V13"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V20"
     else
         for _,obj in ipairs(GUI:GetDescendants()) do
             if obj:IsA("TextButton") or obj:IsA("TextLabel") then
@@ -1849,7 +1895,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V13"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V20"
     end
     Intro.Visible=false
     Main.Visible=true
@@ -1860,4 +1906,4 @@ languageButton("🇷🇺 Русский",122,function() applyLanguage("ru") end)
 languageButton("🇬🇧 English",174,function() applyLanguage("en") end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V15 LOADED")
+print("DIAMOND BOAT HUB V20 LOADED")
