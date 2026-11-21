@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V16
+-- DIAMOND BOAT HUB V17
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -1059,11 +1059,54 @@ local function runFarm(runId)
         local char,root,hum=farmWaitAlive(runId,20)
         if not root then farmLog("No live character at stage",i); farmEnabled=false; return end
 
-        -- Place above the stage, trigger it, then allow the server/client to process it.
-        if not farmFlyTo(root,dark.CFrame*CFrame.new(0,3,0),runId) then return end
+        local progress=other:FindFirstChild("Stage"..(i-1))
+        local oldValue=progress and progress.Value or nil
+
+        -- Fly to the stage, then physically touch its trigger. A client-side
+        -- BindableEvent alone does not guarantee that the server records it.
+        if not farmFlyTo(root,dark.CFrame*CFrame.new(0,1.5,0),runId) then return end
         farmHold(root)
         pcall(function() event:Fire() end)
-        farmLog("Triggered stage",i,"; waiting 1s")
+        if typeof(firetouchinterest)=="function" then
+            pcall(function()
+                firetouchinterest(root,dark,0)
+                task.wait(0.12)
+                firetouchinterest(root,dark,1)
+            end)
+        end
+
+        local confirmed=false
+        if progress then
+            local deadline=os.clock()+6
+            while farmEnabled and runId==farmRunId and os.clock()<deadline do
+                if farmHasProgress(progress.Value) and
+                    (progress.Value~=oldValue or not farmHasProgress(oldValue)) then
+                    confirmed=true
+                    break
+                end
+                task.wait(0.1)
+            end
+        end
+        if not confirmed and typeof(firetouchinterest)=="function" then
+            farmLog("Stage",i,"not confirmed; retrying touch")
+            pcall(function()
+                firetouchinterest(root,dark,0)
+                task.wait(0.15)
+                firetouchinterest(root,dark,1)
+            end)
+            if progress then
+                local deadline=os.clock()+4
+                while farmEnabled and runId==farmRunId and os.clock()<deadline do
+                    if farmHasProgress(progress.Value) and
+                        (progress.Value~=oldValue or not farmHasProgress(oldValue)) then
+                        confirmed=true
+                        break
+                    end
+                    task.wait(0.1)
+                end
+            end
+        end
+        farmLog("Stage",i,confirmed and "CONFIRMED" or "progress not detected","; waiting 1s")
         task.wait(1)
     end
 
