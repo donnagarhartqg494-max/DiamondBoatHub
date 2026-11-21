@@ -1812,12 +1812,59 @@ button(music,"AUTO BUILD + WIRE MIDI",startMidiBuild)
 -- Online Sequencer stores each note as: cellTime pitch length instrument; sequence data starts with BPM.
 local HttpService = game:GetService("HttpService")
 local function loadOnlineSequencerSong(title, sequenceId)
-    local url = "https://onlinesequencer.net/ajax/load.php?id=" .. tostring(sequenceId)
-    local response = game:HttpGet(url)
-    local payload = HttpService:JSONDecode(response)
-    if type(payload) ~= "table" or type(payload.data) ~= "string" then
-        error("Online Sequencer returned no sequence data")
+    local id = tostring(sequenceId)
+    local urls = {
+        "https://onlinesequencer.net/ajax/load.php?id=" .. id,
+        "https://www.onlinesequencer.net/ajax/load.php?id=" .. id
+    }
+    local headers = {
+        ["Accept"] = "application/json, text/plain, */*",
+        ["Referer"] = "https://onlinesequencer.net/" .. id,
+        ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+    }
+    local response, lastError
+    for _, url in ipairs(urls) do
+        local attempts = {
+            function()
+                if type(request) == "function" then
+                    local r = request({Url=url, Method="GET", Headers=headers})
+                    if r and r.Body and (not r.StatusCode or r.StatusCode == 200) then return r.Body end
+                    error("HTTP status " .. tostring(r and r.StatusCode))
+                end
+            end,
+            function()
+                if type(http_request) == "function" then
+                    local r = http_request({Url=url, Method="GET", Headers=headers})
+                    if r and r.Body and (not r.StatusCode or r.StatusCode == 200) then return r.Body end
+                    error("HTTP status " .. tostring(r and r.StatusCode))
+                end
+            end,
+            function()
+                if syn and type(syn.request) == "function" then
+                    local r = syn.request({Url=url, Method="GET", Headers=headers})
+                    if r and r.Body and (not r.StatusCode or r.StatusCode == 200) then return r.Body end
+                    error("HTTP status " .. tostring(r and r.StatusCode))
+                end
+            end,
+            function() return game:HttpGet(url) end
+        }
+        for _, attempt in ipairs(attempts) do
+            local ok, body = pcall(attempt)
+            if ok and type(body) == "string" and #body > 0 then
+                local decodedOk, decoded = pcall(function() return HttpService:JSONDecode(body) end)
+                if decodedOk and type(decoded) == "table" and type(decoded.data) == "string" then
+                    response = decoded
+                    break
+                end
+                lastError = "Non-JSON response (" .. tostring(#body) .. " bytes): " .. body:sub(1,160):gsub("[%c]"," ")
+            elseif not ok then
+                lastError = tostring(body)
+            end
+        end
+        if response then break end
     end
+    if not response then error("Online Sequencer blocked the sequence-data request. " .. tostring(lastError)) end
+    local payload = response
     local bpmText, noteText = payload.data:match("^%s*(%d+)%s*:(.*)$")
     local bpm = tonumber(bpmText)
     if not bpm or bpm < 10 or bpm > 999 then
