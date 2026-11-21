@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V19
+-- DIAMOND BOAT HUB V24
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -1096,6 +1096,189 @@ button(build,"SCAN BUILD REMOTES",function()
 end)
 
 
+-- CROSS-PLATFORM MIDI IMPORT V1
+-- Same URL/base64 workflow on desktop Solara and Android Delta; no native file picker required.
+label(music,"CROSS-PLATFORM MIDI IMPORT")
+label(music,"Paste a DIRECT .mid/.midi download URL or Base64 MIDI data. OnlineSequencer page URLs are not direct MIDI files.")
+local midiInput=create("TextBox",{
+    Size=UDim2.new(1,-8,0,76), BackgroundColor3=DARK, Text="",
+    PlaceholderText="https://.../song.mid  OR  Base64 MIDI data",
+    TextColor3=WHITE, TextSize=12, Font=Enum.Font.Gotham,
+    ClearTextOnFocus=false, MultiLine=true, TextWrapped=true,
+    TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top
+},music)
+round(midiInput,8); outline(midiInput)
+local midiStatus=label(music,"MIDI: waiting for input")
+local parsedMidi=nil
+local function decodeBase64(data)
+    local chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    local map={}
+    for i=1,#chars do map[chars:sub(i,i)]=i-1 end
+    local out,buffer,bits={},0,0
+    data=data:gsub("%s",""):gsub("-","+"):gsub("_","/")
+    for i=1,#data do
+        local c=data:sub(i,i)
+        if c=="=" then break end
+        local v=map[c]
+        if v==nil then error("Invalid Base64 character: "..c) end
+        buffer=buffer*64+v; bits=bits+6
+        if bits>=8 then
+            bits=bits-8
+            local b=math.floor(buffer/2^bits)%256
+            out[#out+1]=string.char(b)
+            buffer=buffer%2^bits
+        end
+    end
+    return table.concat(out)
+end
+local function readMidi(data)
+    if #data<14 or data:sub(1,4)~="MThd" then error("Not a Standard MIDI file (missing MThd)") end
+    local function u16(p) local a,b=data:byte(p,p+1); if not b then error("Unexpected end of MIDI") end; return a*256+b end
+    local function u32(p) local a,b,c,d=data:byte(p,p+3); if not d then error("Unexpected end of MIDI") end; return ((a*256+b)*256+c)*256+d end
+    local headerLen=u32(5)
+    local format=u16(9); local trackCount=u16(11); local division=u16(13)
+    if format>1 then error("MIDI format 2 is not supported") end
+    if division>=32768 or division==0 then error("SMPTE/invalid MIDI timing is not supported") end
+    local pos=9+headerLen
+    local allNotes,tempos={},{}
+    for track=1,trackCount do
+        if data:sub(pos,pos+3)~="MTrk" then error("Missing MIDI track "..track) end
+        local length=u32(pos+4); local first=pos+8; local last=first+length-1
+        if last>#data then error("Truncated MIDI track") end
+        local p,tick,running=first,0,nil
+        local active={}
+        local function vlq()
+            local value=0
+            for _=1,4 do
+                if p>last then error("Truncated variable-length value") end
+                local b=data:byte(p); p=p+1
+                value=value*128+(b%128)
+                if b<128 then return value end
+            end
+            error("Invalid MIDI variable-length value")
+        end
+        while p<=last do
+            tick=tick+vlq()
+            if p>last then break end
+            local status=data:byte(p)
+            if status>=128 then p=p+1 else
+                if not running then error("Invalid MIDI running status") end
+                status=running
+            end
+            if status==255 then
+                running=nil
+                local meta=data:byte(p); p=p+1
+                local n=vlq()
+                if meta==81 and n==3 then
+                    local a,b,c=data:byte(p,p+2)
+                    tempos[#tempos+1]={tick=tick,us=a*65536+b*256+c}
+                end
+                p=p+n
+            elseif status==240 or status==247 then
+                running=nil; local n=vlq(); p=p+n
+            elseif status>=128 and status<240 then
+                running=status
+                local kind=math.floor(status/16)
+                local channel=status%16
+                local a=data:byte(p); p=p+1
+                local b=0
+                if kind~=12 and kind~=13 then b=data:byte(p); p=p+1 end
+                if kind==9 and b>0 then
+                    local key=channel..":"..a
+                    active[key]=active[key] or {}
+                    table.insert(active[key],{tick=tick,pitch=a,velocity=b})
+                elseif kind==8 or (kind==9 and b==0) then
+                    local key=channel..":"..a
+                    local queue=active[key]
+                    if queue and #queue>0 then
+                        local start=table.remove(queue,1)
+                        allNotes[#allNotes+1]={start=start.tick,finish=math.max(tick,start.tick+1),pitch=start.pitch,velocity=start.velocity,channel=channel}
+                    end
+                end
+            else
+                error("Unsupported MIDI event status")
+            end
+        end
+        pos=last+1
+    end
+    table.sort(tempos,function(a,b) return a.tick<b.tick end)
+    table.sort(allNotes,function(a,b) return a.start<b.start end)
+    local function secondsAt(target)
+        local currentTick,seconds,tempo=0,0,500000
+        for _,change in ipairs(tempos) do
+            if change.tick>target then break end
+            if change.tick>currentTick then seconds=seconds+(change.tick-currentTick)*tempo/(division*1000000); currentTick=change.tick end
+            tempo=change.us
+        end
+        return seconds+(target-currentTick)*tempo/(division*1000000)
+    end
+    for _,note in ipairs(allNotes) do
+        note.time=secondsAt(note.start)
+        note.duration=math.max(0.05,secondsAt(note.finish)-note.time)
+    end
+    return {format=format,tracks=trackCount,division=division,notes=allNotes}
+end
+local function getMidiBytes(input)
+    input=input:gsub("^%s+",""):gsub("%s+$","")
+    if input=="" then error("Paste a MIDI URL or Base64 data first") end
+    if input:match("^https?://") then
+        local methods={
+            function() return game:HttpGet(input) end,
+            function() if request then local r=request({Url=input,Method="GET"}); if r and r.Body then return r.Body end end end,
+            function() if http_request then local r=http_request({Url=input,Method="GET"}); if r and r.Body then return r.Body end end end,
+            function() if syn and syn.request then local r=syn.request({Url=input,Method="GET"}); if r and r.Body then return r.Body end end end
+        }
+        local errors={}
+        for _,method in ipairs(methods) do
+            local ok,result=pcall(method)
+            if ok and type(result)=="string" and #result>0 then return result end
+            if not ok then errors[#errors+1]=tostring(result) end
+        end
+        error("Download failed. Use a direct raw .mid URL; executor HTTP may be blocked. "..table.concat(errors," | "))
+    end
+    local raw=decodeBase64(input)
+    return raw
+end
+button(music,"IMPORT / PARSE MIDI",function()
+    parsedMidi=nil
+    midiStatus.Text="MIDI: importing..."
+    local ok,result=pcall(function()
+        local bytes=getMidiBytes(midiInput.Text)
+        if #bytes>12000000 then error("MIDI exceeds 12 MB safety limit") end
+        local parsed=readMidi(bytes)
+        if #parsed.notes==0 then error("No paired note-on/note-off events found") end
+        return parsed
+    end)
+    if not ok then
+        midiStatus.Text="MIDI ERROR: "..tostring(result)
+        warn("[DIAMOND MIDI] "..tostring(result))
+        return
+    end
+    parsedMidi=result
+    local totalDuration=0
+    for _,note in ipairs(result.notes) do totalDuration=math.max(totalDuration,note.time+note.duration) end
+    midiStatus.Text=string.format("READY: %d notes | %d tracks | %.1f sec | format %d",#result.notes,result.tracks,totalDuration,result.format)
+    print("========== DIAMOND MIDI IMPORT ==========")
+    print("[MIDI] Parsed notes:",#result.notes,"Tracks:",result.tracks,"Duration:",string.format("%.2f",totalDuration),"seconds")
+    print("[MIDI] First 30 events (seconds, MIDI pitch, duration):")
+    for i=1,math.min(30,#result.notes) do
+        local n=result.notes[i]
+        print(string.format("[MIDI %03d] t=%.3f pitch=%d duration=%.3f velocity=%d channel=%d",i,n.time,n.pitch,n.duration,n.velocity,n.channel))
+    end
+    print("[MIDI] Full parsed event table is stored in the running hub as parsedMidi.")
+    print("=========================================")
+end)
+button(music,"SHOW MIDI SUMMARY",function()
+    if not parsedMidi then warn("[DIAMOND MIDI] Import a MIDI file first"); return end
+    print("[MIDI SUMMARY] Notes:",#parsedMidi.notes,"Tracks:",parsedMidi.tracks,"Format:",parsedMidi.format)
+    for i,n in ipairs(parsedMidi.notes) do
+        if i>100 then print("[MIDI SUMMARY] Output capped at 100 events"); break end
+        print(i,string.format("%.3f",n.time),"pitch",n.pitch,"duration",string.format("%.3f",n.duration))
+    end
+end)
+label(music,"Import uses the same text box on Solara PC and Delta Android. For a local .mid file, convert it to Base64 first; a direct raw .mid URL is easier.")
+label(music,"This stage imports and parses the actual MIDI. Automatic placement, pitch configuration and wiring remain locked until the live PropertyTool/BindingTool remote arguments are verified; the hub will not fake a successful build.")
+
 -- MUSIC HELPER V1: inventory checks, verified sequence links and safe duplication notes.
 label(music,"ONE-CLICK MIDI CONVERTER")
 label(music,"Convert a local .mid file into a BABFT music blueprint with Note keys, Delay timing and wiring steps.")
@@ -1951,7 +2134,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V21",
+    Text="💎 DIAMOND BOAT HUB V24",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
