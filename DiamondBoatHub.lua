@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V18
+-- DIAMOND BOAT HUB V19
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -95,7 +95,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V18",
+    Text="💎 DIAMOND BOAT HUB V19",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -230,6 +230,7 @@ local movement=makePage("MOVEMENT")
 local visuals=makePage("VISUALS")
 local teleport=makePage("TELEPORTS")
 local build=makePage("AUTO BUILD")
+local music=makePage("MUSIC")
 local farm=makePage("AUTO FARM")
 local tools=makePage("TOOLS")
 local settings=makePage("SETTINGS")
@@ -241,7 +242,7 @@ local tabLayout=create("UIListLayout",{
 
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","AUTO FARM","TOOLS","SETTINGS"
+    "AUTO BUILD","MUSIC","AUTO FARM","TOOLS","SETTINGS"
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(1,-12,0,38),
@@ -1073,6 +1074,62 @@ button(build,"SCAN BUILD REMOTES",function()
     print("Remote matches:",count)
 end)
 
+
+-- MUSIC HELPER V1: inventory checks, verified sequence links and safe duplication notes.
+label(music,"MUSIC BUILDER — MIDI SOURCES")
+label(music,"Song charts are linked below. Property Tool settings and note bindings must be verified in-game before a full automatic arrangement can be generated.")
+local holyWarUrl="https://onlinesequencer.net/5314889"
+local rushEUrl="https://onlinesequencer.net/5775937"
+local function copyMusicUrl(url,title)
+    if setclipboard then
+        local ok=pcall(setclipboard,url)
+        if ok then print("[DIAMOND MUSIC] Copied "..title..": "..url); return end
+    end
+    print("[DIAMOND MUSIC] "..title.." MIDI source: "..url)
+end
+button(music,"COPY HOLY WAR — URAL GAYSIN MIDI LINK",function()
+    copyMusicUrl(holyWarUrl,"Holy War — Ural Gaysin")
+end)
+button(music,"COPY RUSH E MIDI LINK",function()
+    copyMusicUrl(rushEUrl,"Rush E")
+end)
+label(music,"BABFT BLOCK CHECK")
+local musicInventoryLabel=label(music,"Music Note / Delay Block: not scanned")
+button(music,"SCAN MUSIC BLOCK INVENTORY",function()
+    local data=Player:FindFirstChild("Data")
+    if not data then
+        musicInventoryLabel.Text="Player.Data not found — inventory unavailable"
+        warn("[DIAMOND MUSIC] Player.Data not found")
+        return
+    end
+    local names={"MusicNote","Music Note","MusicNoteBlock","DelayBlock","Delay Block"}
+    local found={}
+    for _,name in ipairs(names) do
+        local value=data:FindFirstChild(name)
+        if value and (value:IsA("IntValue") or value:IsA("NumberValue")) then
+            found[name]=value.Value
+        end
+    end
+    local noteCount=found.MusicNote or found["Music Note"] or found.MusicNoteBlock
+    local delayCount=found.DelayBlock or found["Delay Block"]
+    musicInventoryLabel.Text="Notes: "..tostring(noteCount or "not found").." | Delay: "..tostring(delayCount or "not found")
+    print("[DIAMOND MUSIC] Inventory scan:")
+    for name,count in pairs(found) do print("  "..name..": "..count) end
+    if not noteCount or not delayCount then
+        warn("[DIAMOND MUSIC] One or both block inventory values were not found. Use FULL GAME STRUCTURE SCAN in TOOLS to inspect exact names.")
+    end
+end)
+label(music,"KNOWN GAME LIMITS")
+label(music,"Music Note: 25 pitches from F#3 to F#5; note sustain is about 0.85 sec.")
+label(music,"Delay Block: 0.05–10 sec. Key and delay values are set with the in-game Property Tool.")
+label(music,"The current hub can place blocks, but the game's Property Tool remote schema is not verified. This build will not fake pitch or timing changes.")
+label(music,"DUPLICATION — MANUAL GLITCH NOTES")
+label(music,"Community-documented method (may be patched): save boat → move it outside plot render distance → load saved boat → bring original back → save again.")
+label(music,"Alternative reported method: load a saved boat, launch it, then repeat. This is not guaranteed and is not an automated exploit.")
+button(music,"PRINT DUPLICATION STEPS TO CONSOLE",function()
+    print("[DIAMOND DUPLICATION GUIDE] 1) Save the boat in a slot. 2) Move the existing boat outside your plot's render distance. 3) Load the saved boat. 4) Bring the original boat back into the building area. 5) Save again. Alternative reported by the community: load a saved boat, launch it, repeat. May be patched; protect your main save.")
+end)
+
 -- AUTO FARM V10
 label(farm,"AUTO FARM GOLD V10")
 label(farm,"Each cave stage is confirmed before moving on. Death/respawn is awaited.")
@@ -1755,7 +1812,7 @@ local function applyLanguage(lang)
     local ru=lang=="ru"
 
     local translations={
-        ["HOME"]="ГЛАВНАЯ",["MOVEMENT"]="ДВИЖЕНИЕ",["VISUALS"]="ГРАФИКА",["TELEPORTS"]="ТЕЛЕПОРТЫ",["AUTO BUILD"]="АВТОСТРОЙКА",["AUTO FARM"]="АВТОФАРМ",["TOOLS"]="ИНСТРУМЕНТЫ",["SETTINGS"]="НАСТРОЙКИ",
+        ["HOME"]="ГЛАВНАЯ",["MOVEMENT"]="ДВИЖЕНИЕ",["VISUALS"]="ГРАФИКА",["TELEPORTS"]="ТЕЛЕПОРТЫ",["AUTO BUILD"]="АВТОСТРОЙКА",["MUSIC"]="МУЗЫКА",["AUTO FARM"]="АВТОФАРМ",["TOOLS"]="ИНСТРУМЕНТЫ",["SETTINGS"]="НАСТРОЙКИ",
         ["Welcome to Diamond Boat Hub"]="Добро пожаловать в Diamond Boat Hub",["Player information"]="Информация об игроке",["Character information"]="Информация о персонаже",["Reset character"]="Перезапустить персонажа",["Movement controls"]="Управление движением",
         ["Speed boost"]="Ускорение",["High jump"]="Высокий прыжок",["Infinite jump"]="Бесконечный прыжок",["Fly"]="Полёт",["Reset movement"]="Сбросить движение",
         ["Visual settings"]="Настройки графики",["Wide FOV"]="Широкий угол обзора",["Fullbright"]="Полное освещение",["Hide GUI"]="Скрыть интерфейс",["Anti-AFK"]="Анти-AFK",["Low graphics / FPS boost"]="Низкая графика / повышение FPS",
@@ -1764,7 +1821,7 @@ local function applyLanguage(lang)
         ["SCAN BASES"]="СКАНИРОВАТЬ БАЗЫ",["SHOW SELECTED BASE INFO"]="ИНФОРМАЦИЯ О ВЫБРАННОЙ БАЗЕ",["LOCAL COPY PREVIEW"]="ЛОКАЛЬНОЕ ПРЕВЬЮ КОПИИ",["REMOVE LOCAL PREVIEW"]="УДАЛИТЬ ПРЕВЬЮ",
         ["COPY SELECTED PLAYER BASE"]="КОПИРОВАТЬ БАЗУ ИГРОКА",["AUTO BUILD TO MY BASE"]="СТРОИТЬ НА МОЕЙ БАЗЕ",["STOP AUTO BUILD"]="ОСТАНОВИТЬ СТРОЙКУ",["CLEAR BASE SELECTION"]="СБРОСИТЬ ВЫБОР БАЗЫ",["SCAN BUILD REMOTES"]="СКАНИРОВАТЬ REMOTE СТРОИТЕЛЬСТВА",
         ["AUTO FARM GOLD V14"]="АВТОФАРМ ЗОЛОТА V12",["Each cave stage is confirmed before moving on. Death/respawn is awaited."]="Каждый этап проверяется. После смерти скрипт ждёт возрождения.",["START AUTO FARM"]="ЗАПУСТИТЬ АВТОФАРМ",["STOP AUTO FARM"]="ОСТАНОВИТЬ АВТОФАРМ",["SCAN FARM ROUTE"]="СКАНИРОВАТЬ МАРШРУТ",
-        ["Game diagnostics"]="Диагностика игры",["DIAGNOSTICS V3: вывод в консоль F9"]="ДИАГНОСТИКА V3: вывод в консоль F9",["FULL GAME STRUCTURE SCAN"]="ПОЛНОЕ СКАНИРОВАНИЕ ИГРЫ",["SCAN REMOTES (BUILD + REWARDS)"]="СКАНИРОВАТЬ REMOTE (СТРОЙКА + НАГРАДЫ)",["SCAN INTERACTION OBJECTS"]="СКАНИРОВАТЬ ОБЪЕКТЫ ВЗАИМОДЕЙСТВИЯ",
+        ["MUSIC BUILDER — MIDI SOURCES"]="МУЗЫКАЛЬНЫЙ РЕДАКТОР — MIDI",["COPY HOLY WAR — URAL GAYSIN MIDI LINK"]="КОПИРОВАТЬ MIDI HOLY WAR — УРАЛ ГАЙСИН",["COPY RUSH E MIDI LINK"]="КОПИРОВАТЬ MIDI RUSH E",["SCAN MUSIC BLOCK INVENTORY"]="СКАНИРОВАТЬ МУЗЫКАЛЬНЫЕ БЛОКИ",["PRINT DUPLICATION STEPS TO CONSOLE"]="ВЫВЕСТИ ШАГИ ДЮПА В КОНСОЛЬ",["Game diagnostics"]="Диагностика игры",["DIAGNOSTICS V3: вывод в консоль F9"]="ДИАГНОСТИКА V3: вывод в консоль F9",["FULL GAME STRUCTURE SCAN"]="ПОЛНОЕ СКАНИРОВАНИЕ ИГРЫ",["SCAN REMOTES (BUILD + REWARDS)"]="СКАНИРОВАТЬ REMOTE (СТРОЙКА + НАГРАДЫ)",["SCAN INTERACTION OBJECTS"]="СКАНИРОВАТЬ ОБЪЕКТЫ ВЗАИМОДЕЙСТВИЯ",
         ["SCAN MY CHARACTER + PLAYER DATA"]="СКАНИРОВАТЬ ПЕРСОНАЖА И ДАННЫЕ",["COPY DIAGNOSTIC INSTRUCTIONS"]="КОПИРОВАТЬ ИНСТРУКЦИЮ ДИАГНОСТИКИ",["Scan Workspace roots"]="СКАНИРОВАТЬ ОБЪЕКТЫ WORKSPACE",["Scan ReplicatedStorage remotes"]="СКАНИРОВАТЬ REMOTE В REPLICATEDSTORAGE",["Scan player attributes"]="СКАНИРОВАТЬ АТРИБУТЫ ИГРОКА",["Print current position"]="ПОКАЗАТЬ ТЕКУЩУЮ ПОЗИЦИЮ",["Print game information"]="ПОКАЗАТЬ ИНФОРМАЦИЮ ОБ ИГРЕ",
         ["Hub settings"]="Настройки хаба",["Destroy local preview"]="Удалить локальное превью",["Restore lighting"]="Восстановить освещение",["Restore camera FOV"]="Восстановить угол обзора",["Appearance / Внешний вид"]="Внешний вид",["Reset appearance"]="Сбросить внешний вид",
         ["Theme: Purple"]="Тема: Фиолетовая",["Theme: Cyan"]="Тема: Голубая",["Theme: Red"]="Тема: Красная",["Theme: Green"]="Тема: Зелёная",["Theme: Gold"]="Тема: Золотая",
