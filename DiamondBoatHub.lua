@@ -1066,9 +1066,8 @@ local function runFarm(runId)
         -- BindableEvent alone does not guarantee that the server records it.
         if not farmFlyTo(root,dark.CFrame*CFrame.new(0,1.5,0),runId) then return end
         farmHold(root)
-        -- Pause at every location for one full second so the character settles
-        -- before the stage trigger is activated and the next flight begins.
-        local stopUntil=os.clock()+1
+        -- Pause at every location for half a second before activating the stage.
+        local stopUntil=os.clock()+0.5
         while farmEnabled and runId==farmRunId and os.clock()<stopUntil do
             RunService.Heartbeat:Wait()
         end
