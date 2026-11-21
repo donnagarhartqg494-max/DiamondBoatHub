@@ -1576,6 +1576,52 @@ button(music,"AUTO BUILD MUSIC ON MY BASE",function()
         print("[MIDI BUILD] Key and Delay property calls used SetPropertieRF; verify in-game before saving.")
     end)
 end)
+-- BINDING TOOL API SCAN V1
+local function dumpToolTree(root,tag)
+    if not root then print("[BIND SCAN]",tag,"MISSING"); return end
+    print("[BIND SCAN]",tag,root:GetFullName(),root.ClassName)
+    for _,obj in ipairs(root:GetDescendants()) do
+        if obj:IsA("RemoteFunction") or obj:IsA("RemoteEvent") or obj:IsA("BindableFunction") or obj:IsA("BindableEvent") then
+            print("[BIND SCAN] REMOTE",obj:GetFullName(),obj.ClassName)
+        elseif obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+            print("[BIND SCAN] SCRIPT",obj:GetFullName(),obj.ClassName)
+        elseif obj:IsA("Tool") then
+            print("[BIND SCAN] NESTED TOOL",obj:GetFullName())
+        end
+    end
+end
+button(music,"SCAN BINDING TOOL API",function()
+    local char=Player.Character
+    local backpack=Player:FindFirstChildOfClass("Backpack")
+    local tool=(char and (char:FindFirstChild("BindingTool") or char:FindFirstChild("BindTool")))
+        or (backpack and (backpack:FindFirstChild("BindingTool") or backpack:FindFirstChild("BindTool")))
+    dumpToolTree(tool,"BINDING TOOL")
+    local rs=game:GetService("ReplicatedStorage")
+    local matches=0
+    for _,obj in ipairs(rs:GetDescendants()) do
+        local low=obj.Name:lower()
+        if low:find("bind",1,true) and (obj:IsA("RemoteFunction") or obj:IsA("RemoteEvent") or obj:IsA("BindableFunction") or obj:IsA("BindableEvent")) then
+            matches+=1
+            print("[BIND SCAN] REPLICATED STORAGE",obj:GetFullName(),obj.ClassName)
+        end
+    end
+    print("[BIND SCAN] ReplicatedStorage bind remotes:",matches)
+    local folder=Workspace:FindFirstChild("Blocks")
+    local own=folder and folder:FindFirstChild(Player.Name)
+    local shown=0
+    if own then
+        for _,block in ipairs(own:GetChildren()) do
+            if block.Name=="Delay" or block.Name=="Note" or block.Name=="MusicNote" then
+                shown+=1
+                print("[BIND SCAN] MUSIC BLOCK",block:GetFullName(),"PPart",block:FindFirstChild("PPart"))
+                if shown>=12 then break end
+            end
+        end
+    end
+    print("[BIND SCAN] Own music blocks inspected:",shown)
+    print("[BIND SCAN] Send this F9 output to add the exact chain-binding call. No remote arguments are guessed.")
+end)
+
 button(music,"STOP MIDI AUTO BUILD",function()
     midiBuildRunning=false
     midiBuildStatus.Text="MIDI BUILD: stopping..."
