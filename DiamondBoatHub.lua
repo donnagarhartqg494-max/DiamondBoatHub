@@ -1098,11 +1098,11 @@ end)
 
 -- CROSS-PLATFORM MIDI IMPORT V1
 -- Same URL/base64 workflow on desktop Solara and Android Delta; no native file picker required.
-label(music,"CROSS-PLATFORM MIDI IMPORT")
-label(music,"Paste a DIRECT .mid/.midi download URL or Base64 MIDI data. OnlineSequencer page URLs are not direct MIDI files.")
+label(music,"EASY MIDI IMPORT")
+label(music,"Paste a .mid download link, an OnlineSequencer song link, or a local file path. No Base64 converter needed.")
 local midiInput=create("TextBox",{
     Size=UDim2.new(1,-8,0,76), BackgroundColor3=DARK, Text="",
-    PlaceholderText="https://.../song.mid  OR  Base64 MIDI data",
+    PlaceholderText="Paste .mid link or local file path...",
     TextColor3=WHITE, TextSize=12, Font=Enum.Font.Gotham,
     ClearTextOnFocus=false, MultiLine=true, TextWrapped=true,
     TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top
@@ -1220,24 +1220,48 @@ local function readMidi(data)
 end
 local function getMidiBytes(input)
     input=input:gsub("^%s+",""):gsub("%s+$","")
-    if input=="" then error("Paste a MIDI URL or Base64 data first") end
-    if input:match("^https?://") then
+    if input=="" then error("Paste a MIDI link or local .mid file path") end
+    if not input:match("^https?://") then
+        if readfile then
+            local ok,bytes=pcall(readfile,input)
+            if ok and type(bytes)=="string" and #bytes>0 then return bytes end
+        end
+        local ok,raw=pcall(decodeBase64,input)
+        if ok and type(raw)=="string" and raw:sub(1,4)=="MThd" then return raw end
+        error("Can't read this file path. Paste a direct .mid download link instead.")
+    end
+    local function httpGet(url)
         local methods={
-            function() return game:HttpGet(input) end,
-            function() if request then local r=request({Url=input,Method="GET"}); if r and r.Body then return r.Body end end end,
-            function() if http_request then local r=http_request({Url=input,Method="GET"}); if r and r.Body then return r.Body end end end,
-            function() if syn and syn.request then local r=syn.request({Url=input,Method="GET"}); if r and r.Body then return r.Body end end end
+            function() return game:HttpGet(url) end,
+            function() if request then local r=request({Url=url,Method="GET"}); if r and r.Body then return r.Body end end end,
+            function() if http_request then local r=http_request({Url=url,Method="GET"}); if r and r.Body then return r.Body end end end,
+            function() if syn and syn.request then local r=syn.request({Url=url,Method="GET"}); if r and r.Body then return r.Body end end end
         }
-        local errors={}
+        local lastError="HTTP request failed"
         for _,method in ipairs(methods) do
             local ok,result=pcall(method)
             if ok and type(result)=="string" and #result>0 then return result end
-            if not ok then errors[#errors+1]=tostring(result) end
+            if not ok then lastError=tostring(result) end
         end
-        error("Download failed. Use a direct raw .mid URL; executor HTTP may be blocked. "..table.concat(errors," | "))
+        error(lastError)
     end
-    local raw=decodeBase64(input)
-    return raw
+    local bytes=httpGet(input)
+    if bytes:sub(1,4)=="MThd" then return bytes end
+    local links={}
+    for href in bytes:gmatch('[Hh][Rr][Ee][Ff]%s*=%s*["\']([^"\']+)["\']') do
+        local low=href:lower()
+        if low:find("%.mid") or low:find("midi_export") or low:find("download") then
+            if href:sub(1,2)=="//" then href="https:"..href
+            elseif href:sub(1,1)=="/" then href="https://onlinesequencer.net"..href
+            elseif not href:match("^https?://") then href="https://onlinesequencer.net/"..href end
+            table.insert(links,href)
+        end
+    end
+    for _,url in ipairs(links) do
+        local ok,result=pcall(httpGet,url)
+        if ok and type(result)=="string" and result:sub(1,4)=="MThd" then return result end
+    end
+    error("This is a web page, not a MIDI download. Paste a direct .mid download link.")
 end
 button(music,"IMPORT / PARSE MIDI",function()
     parsedMidi=nil
@@ -1276,7 +1300,7 @@ button(music,"SHOW MIDI SUMMARY",function()
         print(i,string.format("%.3f",n.time),"pitch",n.pitch,"duration",string.format("%.3f",n.duration))
     end
 end)
-label(music,"Import uses the same text box on Solara PC and Delta Android. For a local .mid file, convert it to Base64 first; a direct raw .mid URL is easier.")
+label(music,"Tip: direct .mid links work best. Local file paths work only if your executor supports readfile().")
 label(music,"This stage imports and parses the actual MIDI. Automatic placement, pitch configuration and wiring remain locked until the live PropertyTool/BindingTool remote arguments are verified; the hub will not fake a successful build.")
 
 -- MUSIC HELPER V1: inventory checks, verified sequence links and safe duplication notes.
