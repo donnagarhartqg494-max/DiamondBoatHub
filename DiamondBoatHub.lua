@@ -832,8 +832,8 @@ end)
 
 -- AUTO FARM
 label(farm,"AUTO FARM GOLD")
-label(farm,"Route: Stage Entrance -> CaveStage 1-10 -> Golden Chest -> respawn -> repeat")
-label(farm,"Uses the game's normal stage touch/reward flow; no guessed reward RemoteEvent.")
+label(farm,"CaveStage 1-10 -> Golden Chest -> claim gold -> repeat")
+label(farm,"Based on public BABFT farm implementations; checks game objects before running.")
 
 local farmEnabled = false
 local farmRunId = 0
@@ -844,145 +844,127 @@ local function farmLog(...)
 end
 
 local function getFarmParts()
-    local boatStages = Workspace:FindFirstChild("BoatStages")
-    local normalStages = boatStages and boatStages:FindFirstChild("NormalStages")
-    if not normalStages then
-        return nil, nil, "Workspace.BoatStages.NormalStages not found (are you in the normal river run?)"
-    end
-    local ending = normalStages:FindFirstChild("TheEnd")
-    local chest = ending and ending:FindFirstChild("GoldenChest")
+    local stages = Workspace:FindFirstChild("BoatStages")
+    local normal = stages and stages:FindFirstChild("NormalStages")
+    if not normal then return nil,nil,nil,"BoatStages.NormalStages not found" end
+    local chest = normal:FindFirstChild("TheEnd")
+    chest = chest and chest:FindFirstChild("GoldenChest")
     local trigger = chest and chest:FindFirstChild("Trigger")
     if not trigger or not trigger:IsA("BasePart") then
-        return normalStages, nil, "GoldenChest.Trigger not found"
+        return normal,nil,nil,"TheEnd.GoldenChest.Trigger not found"
     end
-    return normalStages, trigger, nil
+    local claim = Workspace:FindFirstChild("ClaimRiverResultsGold")
+    if claim and not claim:IsA("RemoteEvent") then claim = nil end
+    return normal,trigger,claim,nil
 end
 
-local function farmTeleport(cf)
-    local character = LocalPlayer.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    if not root or not humanoid or humanoid.Health <= 0 then
-        return false
-    end
-    character:PivotTo(cf + Vector3.new(0, 3.5, 0))
+local function farmCharacter()
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local root = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart",10)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not root or not humanoid or humanoid.Health <= 0 then return nil,nil end
+    return character,root
+end
+
+local function farmTeleport(part)
+    local character,root = farmCharacter()
+    if not character or not part or not part:IsA("BasePart") then return false end
+    character:PivotTo(part.CFrame + Vector3.new(0,3.5,0))
     return true
 end
 
-local function runFarm(myRunId)
-    local normalStages, chestTrigger, err = getFarmParts()
-    if err then
-        farmLog("STOP:", err)
-        farmEnabled = false
-        return
-    end
+local function runFarm(runId)
+    local normal,chestTrigger,claimRemote,err = getFarmParts()
+    if err then farmLog("STOP:",err); farmEnabled=false; return end
 
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    if not character:FindFirstChild("HumanoidRootPart") then
-        character:WaitForChild("HumanoidRootPart", 8)
-    end
-
-    -- Touch the Stage Entrance when present, then each CaveStage darkness trigger.
-    local entrance = normalStages:FindFirstChild("StageEntrance", true)
-        or Workspace:FindFirstChild("StageEntrance", true)
-    if entrance and entrance:IsA("BasePart") then
-        if not farmEnabled or myRunId ~= farmRunId then return end
-        farmLog("Touching Stage Entrance")
-        farmTeleport(entrance.CFrame)
+    for i=1,10 do
+        if not farmEnabled or runId~=farmRunId then return end
+        local stage = normal:FindFirstChild("CaveStage"..i)
+        local target = stage and stage:FindFirstChild("DarknessPart")
+        if not target or not target:IsA("BasePart") then
+            farmLog("Missing stage target:", "CaveStage"..i..".DarknessPart")
+            farmEnabled=false
+            return
+        end
+        if not farmTeleport(target) then
+            farmLog("Character/root not ready at stage",i)
+            farmEnabled=false
+            return
+        end
+        farmLog("Reached CaveStage",i)
         task.wait(farmDelay)
     end
 
-    for i = 1, 10 do
-        if not farmEnabled or myRunId ~= farmRunId then return end
-        local stage = normalStages:FindFirstChild("CaveStage" .. i)
-        local target = stage and stage:FindFirstChild("DarknessPart", true)
-        if target and target:IsA("BasePart") then
-            farmLog("Stage", i, "->", target:GetFullName())
-            farmTeleport(target.CFrame)
-            task.wait(farmDelay)
-        else
-            farmLog("Stage target missing:", "CaveStage" .. i .. ".DarknessPart")
-        end
-    end
+    if not farmEnabled or runId~=farmRunId then return end
 
-    if not farmEnabled or myRunId ~= farmRunId then return end
-    local oldCharacter = LocalPlayer.Character
-    farmLog("Going to Golden Chest")
-    farmTeleport(chestTrigger.CFrame)
-
-    -- Chest normally awards gold and respawns the player. If the game doesn't
-    -- respawn automatically, stop safely instead of repeatedly firing remotes.
-    local respawned = false
-    local conn
-    conn = LocalPlayer.CharacterAdded:Connect(function()
-        respawned = true
-        if conn then conn:Disconnect() end
+    -- Connect BEFORE touching the chest so a fast respawn is not missed.
+    local respawned=false
+    local connection=LocalPlayer.CharacterAdded:Connect(function()
+        respawned=true
     end)
 
-    local deadline = os.clock() + 18
-    while farmEnabled and myRunId == farmRunId and not respawned and os.clock() < deadline do
-        task.wait(0.25)
-    end
-    if conn then conn:Disconnect() end
+    farmLog("Going to Golden Chest")
+    farmTeleport(chestTrigger)
 
-    if not farmEnabled or myRunId ~= farmRunId then return end
-    if not respawned and LocalPlayer.Character == oldCharacter then
-        farmLog("Chest did not trigger a respawn within 18s. Stopping; check stage access/reward conditions.")
-        farmEnabled = false
+    local deadline=os.clock()+20
+    while farmEnabled and runId==farmRunId and not respawned and os.clock()<deadline do
+        task.wait(0.2)
+    end
+    connection:Disconnect()
+
+    if not farmEnabled or runId~=farmRunId then return end
+    if not respawned then
+        farmLog("No respawn after chest. Stopping to avoid a stuck loop.")
+        farmEnabled=false
         return
     end
 
-    farmLog("Reward run finished; waiting for character")
+    task.wait(1)
+    if claimRemote then
+        local ok,errCall=pcall(function() claimRemote:FireServer() end)
+        if ok then farmLog("ClaimRiverResultsGold fired")
+        else farmLog("Claim gold failed:",errCall) end
+    else
+        farmLog("ClaimRiverResultsGold RemoteEvent not found; chest may have paid automatically")
+    end
     task.wait(5)
+    farmLog("Run complete")
 end
 
 button(farm,"START AUTO FARM",function()
-    if farmEnabled then
-        farmLog("Already running")
-        return
-    end
-    local _, _, err = getFarmParts()
-    if err then
-        farmLog("Cannot start:", err)
-        return
-    end
-    farmEnabled = true
-    farmRunId += 1
-    local myRunId = farmRunId
+    if farmEnabled then farmLog("Already running"); return end
+    local _,_,_,err=getFarmParts()
+    if err then farmLog("Cannot start:",err); return end
+    farmEnabled=true
+    farmRunId+=1
+    local runId=farmRunId
     farmLog("Started")
     task.spawn(function()
-        while farmEnabled and myRunId == farmRunId do
-            runFarm(myRunId)
-            if farmEnabled and myRunId == farmRunId then
-                task.wait(2)
-            end
+        while farmEnabled and runId==farmRunId do
+            runFarm(runId)
+            if farmEnabled and runId==farmRunId then task.wait(2) end
         end
         farmLog("Stopped")
     end)
 end)
 
 button(farm,"STOP AUTO FARM",function()
-    farmEnabled = false
-    farmRunId += 1
+    farmEnabled=false
+    farmRunId+=1
     farmLog("Stop requested")
 end)
 
 button(farm,"SCAN FARM ROUTE",function()
-    local normalStages, chestTrigger, err = getFarmParts()
-    if err then
-        farmLog("SCAN:", err)
-        return
+    local normal,chest,claim,err=getFarmParts()
+    if err then farmLog("SCAN:",err); return end
+    farmLog("NormalStages:",normal:GetFullName())
+    for i=1,10 do
+        local stage=normal:FindFirstChild("CaveStage"..i)
+        local target=stage and stage:FindFirstChild("DarknessPart")
+        farmLog("CaveStage"..i,target and target:GetFullName() or "MISSING")
     end
-    farmLog("NormalStages:", normalStages:GetFullName())
-    for i = 1, 10 do
-        local stage = normalStages:FindFirstChild("CaveStage" .. i)
-        local target = stage and stage:FindFirstChild("DarknessPart", true)
-        farmLog("CaveStage" .. i, target and target:GetFullName() or "MISSING")
-    end
-    farmLog("Chest:", chestTrigger:GetFullName())
-    local entrance = normalStages:FindFirstChild("StageEntrance", true)
-        or Workspace:FindFirstChild("StageEntrance", true)
-    farmLog("StageEntrance:", entrance and entrance:GetFullName() or "not found (cave stages will be used)")
+    farmLog("Chest:",chest:GetFullName())
+    farmLog("Claim remote:",claim and claim:GetFullName() or "MISSING")
 end)
 
 -- TOOLS
