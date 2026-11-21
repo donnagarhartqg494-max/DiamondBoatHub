@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V15
+-- DIAMOND BOAT HUB V16
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -14,6 +14,7 @@ local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Player = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -998,6 +999,28 @@ local function farmWaitReset(other,runId)
 end
 
 local farmHoldVelocity=nil
+local function farmFlyTo(root,targetCFrame,runId)
+    if farmHoldVelocity then pcall(function() farmHoldVelocity:Destroy() end) end
+    farmHoldVelocity=nil
+    if not root or not root.Parent then return false end
+    local distance=(root.Position-targetCFrame.Position).Magnitude
+    local duration=math.clamp(distance/55,0.35,1.25)
+    local tween=TweenService:Create(root,TweenInfo.new(duration,Enum.EasingStyle.Linear),{CFrame=targetCFrame})
+    tween:Play()
+    local finished=false
+    local connection=tween.Completed:Connect(function() finished=true end)
+    local deadline=os.clock()+duration+1
+    while not finished and os.clock()<deadline do
+        if not farmEnabled or runId~=farmRunId or not root.Parent then
+            pcall(function() tween:Cancel() end)
+            connection:Disconnect()
+            return false
+        end
+        RunService.Heartbeat:Wait()
+    end
+    connection:Disconnect()
+    return finished
+end
 local function farmHold(root)
     if farmHoldVelocity then pcall(function() farmHoldVelocity:Destroy() end) end
     farmHoldVelocity=nil
@@ -1037,7 +1060,7 @@ local function runFarm(runId)
         if not root then farmLog("No live character at stage",i); farmEnabled=false; return end
 
         -- Place above the stage, trigger it, then allow the server/client to process it.
-        char:PivotTo(dark.CFrame*CFrame.new(0,3,0))
+        if not farmFlyTo(root,dark.CFrame*CFrame.new(0,3,0),runId) then return end
         farmHold(root)
         pcall(function() event:Fire() end)
         farmLog("Triggered stage",i,"; waiting 1s")
@@ -1068,7 +1091,7 @@ local function runFarm(runId)
     end
 
     farmLog("Teleporting to Golden Chest trigger.")
-    char:PivotTo(chest.CFrame*CFrame.new(0,3,0))
+    if not farmFlyTo(root,chest.CFrame*CFrame.new(0,3,0),runId) then conn:Disconnect(); return end
     farmHold(root)
     task.wait(0.7)
     if not farmEnabled or runId~=farmRunId then conn:Disconnect(); return end
