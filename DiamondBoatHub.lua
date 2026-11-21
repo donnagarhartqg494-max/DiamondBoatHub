@@ -824,14 +824,22 @@ button(build,"AUTO BUILD TO MY BASE",function()
     task.spawn(function()
         local placed=0
         local failed=0
+        -- Cache the remote once; InvokeServer itself waits for the server response.
+        local currentBuildRF=buildRF
+        local scalingRF=nil
+        local char=Player.Character
+        local backpack=Player:FindFirstChildOfClass("Backpack")
+        local scalingTool=(char and char:FindFirstChild("ScalingTool")) or (backpack and backpack:FindFirstChild("ScalingTool"))
+        if scalingTool then
+            local candidate=scalingTool:FindFirstChild("RF")
+            if candidate and candidate:IsA("RemoteFunction") then scalingRF=candidate end
+        end
         for i,item in ipairs(snapshot) do
             if not buildRunning then break end
-            local currentBuildRF=getBuildTool()
-            if not currentBuildRF then
+            if not currentBuildRF or not currentBuildRF.Parent then
                 failed+=1
                 warn("BuildingTool недоступен для блока",i)
-                task.wait(0.2)
-                continue
+                break
             end
             local beforeSet={}
             for _,existing in ipairs(myBlocks:GetChildren()) do beforeSet[existing]=true end
@@ -851,9 +859,7 @@ button(build,"AUTO BUILD TO MY BASE",function()
                     task.wait(0.035)
                 end
                 if placedBlock and item.size then
-                    local scalingTool=equipScalingTool()
-                    local scalingRF=scalingTool and scalingTool:FindFirstChild("RF")
-                    if scalingRF and scalingRF:IsA("RemoteFunction") then
+                    if scalingRF and scalingRF.Parent then
                         local scaleOK,scaleResult=pcall(function()
                             return scalingRF:InvokeServer(placedBlock,item.size,item.cframe)
                         end)
@@ -873,7 +879,7 @@ button(build,"AUTO BUILD TO MY BASE",function()
                 end
             end
             buildProgressLabel.Text="Auto Build: "..i.."/"..#snapshot.." | errors: "..failed
-            if i%10==0 then task.wait(0.08) else task.wait(0.02) end
+            if i%25==0 then task.wait() end
         end
         buildRunning=false
         buildProgressLabel.Text="Auto Build: finished "..placed.."/"..#snapshot
@@ -887,6 +893,115 @@ button(build,"STOP AUTO BUILD",function()
     buildProgressLabel.Text="Auto Build: stopping..."
 end)
 
+-- Procedural shapes and ready-made starter builds.
+local function getMyBuildContext()
+    local zone=getPlayerZone(Player)
+    local remote=getBuildTool()
+    if not zone or not remote then
+        warn("[DIAMOND SHAPES] Не найдена твоя база или BuildingTool")
+        return nil
+    end
+    local blocks=Workspace:FindFirstChild("Blocks")
+    local myFolder=blocks and blocks:FindFirstChild(Player.Name)
+    if not myFolder then
+        warn("[DIAMOND SHAPES] Не найдена твоя папка блоков")
+        return nil
+    end
+    return zone,remote,myFolder
+end
+
+local function buildWoodPattern(name,offsets)
+    if buildRunning then warn("[DIAMOND SHAPES] Сначала останови текущую стройку"); return end
+    if #offsets>350 then warn("[DIAMOND SHAPES] Слишком много блоков"); return end
+    local zone,remote,myFolder=getMyBuildContext()
+    if not zone then return end
+    local blockId=getBlockTypeId("WoodBlock") or 9
+    buildRunning=true
+    buildProgressLabel.Text=name..": 0/"..#offsets
+    task.spawn(function()
+        local done,failed=0,0
+        for i,entry in ipairs(offsets) do
+            if not buildRunning then break end
+            local localCF=CFrame.new(entry.x,entry.y,entry.z)*CFrame.Angles(0,entry.yaw or 0,entry.roll or 0)
+            local worldCF=zone.CFrame*localCF
+            local ok,err=pcall(function()
+                remote:InvokeServer("WoodBlock",blockId,zone,localCF,true,worldCF,false)
+            end)
+            if ok then done+=1 else failed+=1; warn("[DIAMOND SHAPES] Block failed:",i,err) end
+            buildProgressLabel.Text=name..": "..i.."/"..#offsets.." | errors: "..failed
+            if i%20==0 then task.wait() end
+        end
+        buildRunning=false
+        buildProgressLabel.Text=name..": finished "..done.."/"..#offsets
+        print("[DIAMOND SHAPES]",name,"placed:",done,"errors:",failed)
+    end)
+end
+
+local function makeCircle(radius,segments,y)
+    local points={}
+    for i=0,segments-1 do
+        local a=math.pi*2*i/segments
+        points[#points+1]={x=math.cos(a)*radius,y=y,z=math.sin(a)*radius,yaw=-a}
+    end
+    return points
+end
+
+local function makeSphere(radius,latitudes,longitudes)
+    local points={}
+    for lat=0,latitudes do
+        local phi=-math.pi/2+math.pi*lat/latitudes
+        local ringRadius=math.cos(phi)*radius
+        local y=math.sin(phi)*radius+8
+        local count=math.max(6,math.floor(longitudes*math.max(0.25,math.cos(phi))))
+        for j=0,count-1 do
+            local a=math.pi*2*j/count
+            points[#points+1]={x=math.cos(a)*ringRadius,y=y,z=math.sin(a)*ringRadius,yaw=-a}
+        end
+    end
+    return points
+end
+
+label(build,"SHAPE BUILDER")
+label(build,"Shapes use WoodBlock on your own plot. Inventory and game limits apply.")
+button(build,"BUILD CIRCLE",function() buildWoodPattern("Circle",makeCircle(24,32,8)) end)
+button(build,"BUILD LARGE CIRCLE",function() buildWoodPattern("Large circle",makeCircle(40,48,8)) end)
+button(build,"BUILD SPHERE",function() buildWoodPattern("Sphere",makeSphere(18,10,28)) end)
+button(build,"BUILD SMALL SPHERE",function() buildWoodPattern("Small sphere",makeSphere(10,8,20)) end)
+
+label(build,"BUILD PRESETS")
+button(build,"PRESET: PLATFORM",function()
+    local p={}
+    for x=-5,5 do for z=-4,4 do p[#p+1]={x=x*4,y=8,z=z*4} end end
+    buildWoodPattern("Platform preset",p)
+end)
+button(build,"PRESET: TOWER",function()
+    local p={}
+    for y=0,11 do
+        for a=0,7 do
+            local angle=math.pi*2*a/8
+            p[#p+1]={x=math.cos(angle)*12,y=8+y*3,z=math.sin(angle)*12,yaw=-angle}
+        end
+    end
+    for x=-2,2 do for z=-2,2 do p[#p+1]={x=x*4,y=8,z=z*4} end end
+    buildWoodPattern("Tower preset",p)
+end)
+button(build,"PRESET: SMALL HOUSE",function()
+    local p={}
+    for x=-3,3 do
+        for y=0,3 do
+            p[#p+1]={x=x*4,y=8+y*3,z=-12}
+            p[#p+1]={x=x*4,y=8+y*3,z=12}
+        end
+    end
+    for z=-2,2 do
+        for y=0,3 do
+            p[#p+1]={x=-12,y=8+y*3,z=z*4}
+            p[#p+1]={x=12,y=8+y*3,z=z*4}
+        end
+    end
+    for x=-3,3 do for z=-3,3 do p[#p+1]={x=x*4,y=20,z=z*4} end end
+    buildWoodPattern("Small house preset",p)
+end)
 
 button(build,"CLEAR BASE SELECTION",function()
     selectedBase=nil
