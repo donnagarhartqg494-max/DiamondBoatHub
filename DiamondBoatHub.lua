@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V14
+-- DIAMOND BOAT HUB V15
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -997,6 +997,24 @@ local function farmWaitReset(other,runId)
     return false
 end
 
+local farmHoldVelocity=nil
+local function farmHold(root)
+    if farmHoldVelocity then pcall(function() farmHoldVelocity:Destroy() end) end
+    farmHoldVelocity=nil
+    if not root or not root:IsA("BasePart") then return end
+    local hold=Instance.new("BodyVelocity")
+    hold.Name="DiamondFarmHover"
+    hold.Velocity=Vector3.zero
+    hold.MaxForce=Vector3.new(1e9,1e9,1e9)
+    hold.P=1e5
+    hold.Parent=root
+    farmHoldVelocity=hold
+end
+local function farmRelease()
+    if farmHoldVelocity then pcall(function() farmHoldVelocity:Destroy() end) end
+    farmHoldVelocity=nil
+end
+
 local function runFarm(runId)
     local normal,chest,other,claim,err=farmGet()
     if err then farmLog("STOP:",err); farmEnabled=false; return end
@@ -1020,6 +1038,7 @@ local function runFarm(runId)
 
         -- Place above the stage, trigger it, then allow the server/client to process it.
         char:PivotTo(dark.CFrame*CFrame.new(0,3,0))
+        farmHold(root)
         pcall(function() event:Fire() end)
         farmLog("Triggered stage",i,"; waiting 1s")
         task.wait(1)
@@ -1050,6 +1069,7 @@ local function runFarm(runId)
 
     farmLog("Teleporting to Golden Chest trigger.")
     char:PivotTo(chest.CFrame*CFrame.new(0,3,0))
+    farmHold(root)
     task.wait(0.7)
     if not farmEnabled or runId~=farmRunId then conn:Disconnect(); return end
 
@@ -1083,6 +1103,7 @@ local function runFarm(runId)
     else
         farmLog("Chest trigger reached; no claim remote found")
     end
+    farmRelease()
     farmLog("Route finished. Chest response processed; checking reward before next cycle.")
 end
 
@@ -1106,6 +1127,7 @@ end)
 button(farm,"STOP AUTO FARM",function()
     farmEnabled=false
     farmRunId+=1
+    farmRelease()
     farmLog("Stop requested")
 end)
 
@@ -1482,4 +1504,4 @@ languageButton("🇷🇺 Русский",122,function() applyLanguage("ru") end)
 languageButton("🇬🇧 English",174,function() applyLanguage("en") end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V14 LOADED")
+print("DIAMOND BOAT HUB V15 LOADED")
