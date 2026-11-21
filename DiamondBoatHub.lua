@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V4
+-- DIAMOND BOAT HUB V5
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -83,7 +83,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V4",
+    Text="💎 DIAMOND BOAT HUB V5",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -677,6 +677,38 @@ button(build,"AUTO BUILD TO MY BASE",function()
     local buildRF=getBuildTool()
     if not buildRF then return end
 
+    local function equipScalingTool()
+        local char,hum=getCharacter()
+        if not char or not hum then return nil end
+        local tool=char:FindFirstChild("ScalingTool")
+        if tool then return tool end
+        local backpack=Player:FindFirstChildOfClass("Backpack")
+        local stored=backpack and backpack:FindFirstChild("ScalingTool")
+        if not stored then
+            warn("ScalingTool не найден в инвентаре")
+            return nil
+        end
+        hum:EquipTool(stored)
+        for _=1,30 do
+            task.wait(0.1)
+            tool=char:FindFirstChild("ScalingTool")
+            if tool then return tool end
+        end
+        return nil
+    end
+
+    local function findJustPlacedBlock(beforeSet, expectedName, expectedCFrame)
+        local best,bestDist=nil,math.huge
+        for _,candidate in ipairs(myBlocks:GetChildren()) do
+            if candidate:IsA("Model") and candidate.Name==expectedName
+                and candidate:FindFirstChild("PPart") and not beforeSet[candidate] then
+                local dist=(candidate.PPart.Position-expectedCFrame.Position).Magnitude
+                if dist<bestDist then best,bestDist=candidate,dist end
+            end
+        end
+        return best,bestDist
+    end
+
     local snapshot={}
     for _,block in ipairs(selectedBase:GetChildren()) do
         if block:IsA("Model") and block:FindFirstChild("PPart") then
@@ -687,7 +719,10 @@ button(build,"AUTO BUILD TO MY BASE",function()
                     name=block.Name,
                     id=blockId,
                     cframe=pos,
-                    anchored=block.PPart.Anchored
+                    anchored=block.PPart.Anchored,
+                    size=block.PPart.Size,
+                    color=block.PPart.Color,
+                    transparency=block.PPart.Transparency
                 })
             else
                 warn("Пропуск блока (нет ID или PPart):",block.Name)
@@ -706,27 +741,54 @@ button(build,"AUTO BUILD TO MY BASE",function()
         local failed=0
         for i,item in ipairs(snapshot) do
             if not buildRunning then break end
-            local localCF=targetZone.CFrame:ToObjectSpace(item.cframe)
-            local args={
-                item.name,
-                item.id,
-                targetZone,
-                localCF,
-                true,
-                item.cframe,
-                false
-            }
-            local ok,result=pcall(function()
-                return buildRF:InvokeServer(unpack(args))
-            end)
-            if ok then
-                placed+=1
-            else
+            local currentBuildRF=getBuildTool()
+            if not currentBuildRF then
                 failed+=1
-                warn("Не удалось поставить блок",i,item.name,result)
+                warn("BuildingTool недоступен для блока",i)
+                task.wait(0.2)
+                continue
+            end
+            local beforeSet={}
+            for _,existing in ipairs(myBlocks:GetChildren()) do beforeSet[existing]=true end
+            local localCF=targetZone.CFrame:ToObjectSpace(item.cframe)
+            local args={item.name,item.id,targetZone,localCF,true,item.cframe,false}
+            local ok,result=pcall(function()
+                return currentBuildRF:InvokeServer(unpack(args))
+            end)
+            if not ok then
+                failed+=1
+                warn("Ошибка размещения блока",i,item.name,result)
+            else
+                local placedBlock=nil
+                for attempt=1,25 do
+                    placedBlock=findJustPlacedBlock(beforeSet,item.name,item.cframe)
+                    if placedBlock then break end
+                    task.wait(0.1)
+                end
+                if placedBlock and item.size then
+                    local scalingTool=equipScalingTool()
+                    local scalingRF=scalingTool and scalingTool:FindFirstChild("RF")
+                    if scalingRF and scalingRF:IsA("RemoteFunction") then
+                        local scaleOK,scaleResult=pcall(function()
+                            return scalingRF:InvokeServer(placedBlock,item.size,item.cframe)
+                        end)
+                        if scaleOK then placed+=1 else
+                            failed+=1
+                            warn("Блок поставлен, но масштабирование не прошло:",item.name,scaleResult)
+                        end
+                    else
+                        failed+=1
+                        warn("ScalingTool.RF не найден. Блок поставлен без растяжения:",item.name)
+                    end
+                elseif placedBlock then
+                    placed+=1
+                else
+                    failed+=1
+                    warn("Новый блок не найден после размещения:",item.name)
+                end
             end
             buildProgressLabel.Text="Auto Build: "..i.."/"..#snapshot.." | errors: "..failed
-            if i%5==0 then task.wait(0.18) else task.wait(0.08) end
+            if i%3==0 then task.wait(0.2) else task.wait(0.12) end
         end
         buildRunning=false
         buildProgressLabel.Text="Auto Build: finished "..placed.."/"..#snapshot
@@ -1034,4 +1096,4 @@ Player.CharacterAdded:Connect(function()
 end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V4 LOADED")
+print("DIAMOND BOAT HUB V5 LOADED")
