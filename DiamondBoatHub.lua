@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V10
+-- DIAMOND BOAT HUB V11
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -9,6 +9,7 @@ repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
@@ -84,7 +85,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V10",
+    Text="💎 DIAMOND BOAT HUB V11",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -383,6 +384,50 @@ end)
 -- VISUALS
 
 label(visuals,"Visual settings")
+
+local antiAfkConnection
+toggle(visuals,"Anti-AFK",false,function(enabled)
+    if antiAfkConnection then antiAfkConnection:Disconnect(); antiAfkConnection=nil end
+    if enabled then
+        antiAfkConnection=Player.Idled:Connect(function()
+            pcall(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+        end)
+    end
+end)
+
+local savedEffects={}
+local lowGraphicsOn=false
+toggle(visuals,"Low graphics / FPS boost",false,function(enabled)
+    if enabled and not lowGraphicsOn then
+        lowGraphicsOn=true
+        savedEffects={}
+        for _,effect in ipairs(Lighting:GetChildren()) do
+            if effect:IsA("PostEffect") then
+                savedEffects[effect]={Enabled=effect.Enabled}
+                effect.Enabled=false
+            end
+        end
+        Lighting.GlobalShadows=false
+        pcall(function() Workspace.Terrain.Decoration=false end)
+        for _,obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                savedEffects[obj]={Enabled=obj.Enabled}
+                obj.Enabled=false
+            end
+        end
+    elseif not enabled and lowGraphicsOn then
+        lowGraphicsOn=false
+        for obj,props in pairs(savedEffects) do
+            if obj and obj.Parent then pcall(function() obj.Enabled=props.Enabled end) end
+        end
+        savedEffects={}
+        pcall(function() Workspace.Terrain.Decoration=true end)
+        Lighting.GlobalShadows=oldLighting.GlobalShadows
+    end
+end)
 
 local originalFov=Camera.FieldOfView
 toggle(visuals,"Wide FOV",false,function(v)
@@ -1232,6 +1277,37 @@ end)
 button(settings,"Restore camera FOV",function()
     Camera.FieldOfView=originalFov
 end)
+label(settings,"Appearance / Внешний вид")
+local themes={
+    Purple={main=Color3.fromRGB(130,90,255),panel=Color3.fromRGB(27,27,40),dark=Color3.fromRGB(17,17,25)},
+    Cyan={main=Color3.fromRGB(0,190,220),panel=Color3.fromRGB(20,38,48),dark=Color3.fromRGB(10,20,28)},
+    Red={main=Color3.fromRGB(235,75,90),panel=Color3.fromRGB(48,27,34),dark=Color3.fromRGB(24,14,19)},
+    Green={main=Color3.fromRGB(65,190,125),panel=Color3.fromRGB(24,43,36),dark=Color3.fromRGB(13,24,19)},
+    Gold={main=Color3.fromRGB(220,170,55),panel=Color3.fromRGB(48,40,25),dark=Color3.fromRGB(25,21,14)}
+}
+local function applyTheme(name)
+    local t=themes[name]
+    if not t then return end
+    PURPLE=t.main; PANEL=t.panel; DARK=t.dark
+    Main.BackgroundColor3=DARK; Top.BackgroundColor3=PANEL
+    Sidebar.BackgroundColor3=PANEL; Content.BackgroundColor3=PANEL
+    for _,obj in ipairs(GUI:GetDescendants()) do
+        if obj:IsA("UIStroke") then
+            obj.Color=PURPLE
+        elseif obj:IsA("TextButton") and obj~=Close and obj~=Min then
+            obj.BackgroundColor3=DARK
+        end
+    end
+    Min.BackgroundColor3=PURPLE
+    print("[DIAMOND] Theme:",name)
+end
+button(settings,"Theme: Purple",function() applyTheme("Purple") end)
+button(settings,"Theme: Cyan",function() applyTheme("Cyan") end)
+button(settings,"Theme: Red",function() applyTheme("Red") end)
+button(settings,"Theme: Green",function() applyTheme("Green") end)
+button(settings,"Theme: Gold",function() applyTheme("Gold") end)
+button(settings,"Reset appearance",function() applyTheme("Purple") end)
+
 
 -- DRAG
 
@@ -1326,7 +1402,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V10",
+    Text="💎 DIAMOND BOAT HUB V11",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
@@ -1360,32 +1436,37 @@ end
 
 local function applyLanguage(lang)
     local ru=lang=="ru"
+
     local translations={
-        ["HOME"]="ГЛАВНАЯ",["MOVEMENT"]="ДВИЖЕНИЕ",["VISUALS"]="ГРАФИКА",
-        ["TELEPORTS"]="ТЕЛЕПОРТЫ",["AUTO BUILD"]="АВТОСТРОЙКА",
-        ["AUTO FARM"]="АВТОФАРМ",["TOOLS"]="ИНСТРУМЕНТЫ",["SETTINGS"]="НАСТРОЙКИ",
-        ["START AUTO FARM"]="ЗАПУСТИТЬ АВТОФАРМ",["STOP AUTO FARM"]="ОСТАНОВИТЬ АВТОФАРМ",
-        ["SCAN FARM ROUTE"]="СКАНИРОВАТЬ МАРШРУТ",
-        ["AUTO BUILD TO MY BASE"]="СТРОИТЬ НА МОЕЙ БАЗЕ",
-        ["STOP AUTO BUILD"]="ОСТАНОВИТЬ СТРОЙКУ",
-        ["COPY SELECTED PLAYER BASE"]="КОПИРОВАТЬ БАЗУ ИГРОКА",
-        ["CLEAR BASE SELECTION"]="СБРОСИТЬ ВЫБОР БАЗЫ",
-        ["Welcome to Diamond Boat Hub"]="Добро пожаловать в Diamond Boat Hub",
-        ["Build A Boat For Treasure"]="Build A Boat For Treasure",
-        ["Player information"]="Информация об игроке",
-        ["Character information"]="Информация о персонаже",
-        ["Reset character"]="Перезапустить персонажа",
-        ["Movement controls"]="Управление движением",
-        ["AUTO FARM GOLD V10"]="АВТОФАРМ ЗОЛОТА V10"
+        ["HOME"]="ГЛАВНАЯ",["MOVEMENT"]="ДВИЖЕНИЕ",["VISUALS"]="ГРАФИКА",["TELEPORTS"]="ТЕЛЕПОРТЫ",["AUTO BUILD"]="АВТОСТРОЙКА",["AUTO FARM"]="АВТОФАРМ",["TOOLS"]="ИНСТРУМЕНТЫ",["SETTINGS"]="НАСТРОЙКИ",
+        ["Welcome to Diamond Boat Hub"]="Добро пожаловать в Diamond Boat Hub",["Player information"]="Информация об игроке",["Character information"]="Информация о персонаже",["Reset character"]="Перезапустить персонажа",["Movement controls"]="Управление движением",
+        ["Speed boost"]="Ускорение",["High jump"]="Высокий прыжок",["Infinite jump"]="Бесконечный прыжок",["Fly"]="Полёт",["Reset movement"]="Сбросить движение",
+        ["Visual settings"]="Настройки графики",["Wide FOV"]="Широкий угол обзора",["Fullbright"]="Полное освещение",["Hide GUI"]="Скрыть интерфейс",["Anti-AFK"]="Анти-AFK",["Low graphics / FPS boost"]="Низкая графика / повышение FPS",
+        ["Position manager"]="Управление позицией",["Save current position"]="Сохранить позицию",["Return to saved position"]="Вернуться к сохранённой позиции",["Move 20 studs upward"]="Переместиться вверх на 20",["Move 20 studs downward"]="Переместиться вниз на 20",
+        ["Base scanner"]="Сканер баз",["Select a candidate and inspect it. Preview is local only."]="Выбери базу для просмотра. Превью видно только тебе.",["Selected base: none"]="Выбранная база: нет",
+        ["SCAN BASES"]="СКАНИРОВАТЬ БАЗЫ",["SHOW SELECTED BASE INFO"]="ИНФОРМАЦИЯ О ВЫБРАННОЙ БАЗЕ",["LOCAL COPY PREVIEW"]="ЛОКАЛЬНОЕ ПРЕВЬЮ КОПИИ",["REMOVE LOCAL PREVIEW"]="УДАЛИТЬ ПРЕВЬЮ",
+        ["COPY SELECTED PLAYER BASE"]="КОПИРОВАТЬ БАЗУ ИГРОКА",["AUTO BUILD TO MY BASE"]="СТРОИТЬ НА МОЕЙ БАЗЕ",["STOP AUTO BUILD"]="ОСТАНОВИТЬ СТРОЙКУ",["CLEAR BASE SELECTION"]="СБРОСИТЬ ВЫБОР БАЗЫ",["SCAN BUILD REMOTES"]="СКАНИРОВАТЬ REMOTE СТРОИТЕЛЬСТВА",
+        ["AUTO FARM GOLD V11"]="АВТОФАРМ ЗОЛОТА V11",["Each cave stage is confirmed before moving on. Death/respawn is awaited."]="Каждый этап проверяется. После смерти скрипт ждёт возрождения.",["START AUTO FARM"]="ЗАПУСТИТЬ АВТОФАРМ",["STOP AUTO FARM"]="ОСТАНОВИТЬ АВТОФАРМ",["SCAN FARM ROUTE"]="СКАНИРОВАТЬ МАРШРУТ",
+        ["Game diagnostics"]="Диагностика игры",["DIAGNOSTICS V3: вывод в консоль F9"]="ДИАГНОСТИКА V3: вывод в консоль F9",["FULL GAME STRUCTURE SCAN"]="ПОЛНОЕ СКАНИРОВАНИЕ ИГРЫ",["SCAN REMOTES (BUILD + REWARDS)"]="СКАНИРОВАТЬ REMOTE (СТРОЙКА + НАГРАДЫ)",["SCAN INTERACTION OBJECTS"]="СКАНИРОВАТЬ ОБЪЕКТЫ ВЗАИМОДЕЙСТВИЯ",
+        ["SCAN MY CHARACTER + PLAYER DATA"]="СКАНИРОВАТЬ ПЕРСОНАЖА И ДАННЫЕ",["COPY DIAGNOSTIC INSTRUCTIONS"]="КОПИРОВАТЬ ИНСТРУКЦИЮ ДИАГНОСТИКИ",["Scan Workspace roots"]="СКАНИРОВАТЬ ОБЪЕКТЫ WORKSPACE",["Scan ReplicatedStorage remotes"]="СКАНИРОВАТЬ REMOTE В REPLICATEDSTORAGE",["Scan player attributes"]="СКАНИРОВАТЬ АТРИБУТЫ ИГРОКА",["Print current position"]="ПОКАЗАТЬ ТЕКУЩУЮ ПОЗИЦИЮ",["Print game information"]="ПОКАЗАТЬ ИНФОРМАЦИЮ ОБ ИГРЕ",
+        ["Hub settings"]="Настройки хаба",["Destroy local preview"]="Удалить локальное превью",["Restore lighting"]="Восстановить освещение",["Restore camera FOV"]="Восстановить угол обзора",["Appearance / Внешний вид"]="Внешний вид",["Reset appearance"]="Сбросить внешний вид",
+        ["Theme: Purple"]="Тема: Фиолетовая",["Theme: Cyan"]="Тема: Голубая",["Theme: Red"]="Тема: Красная",["Theme: Green"]="Тема: Зелёная",["Theme: Gold"]="Тема: Золотая",
+        ["Choose your language / Выбери язык"]="Выбери язык / Choose your language"
     }
     if ru then
         for _,obj in ipairs(GUI:GetDescendants()) do
             if obj:IsA("TextButton") or obj:IsA("TextLabel") then
                 local translated=translations[obj.Text]
-                if translated then obj.Text=translated end
+                if translated then
+                    obj.Text=translated
+                elseif obj.Text:match("^Selected base:") then
+                    obj.Text="Выбранная база:"..obj.Text:sub(14)
+                elseif obj.Text:match("^Auto Build:") then
+                    obj.Text="Автостройка:"..obj.Text:sub(12)
+                end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V10"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V11"
     else
         for _,obj in ipairs(GUI:GetDescendants()) do
             if obj:IsA("TextButton") or obj:IsA("TextLabel") then
@@ -1394,7 +1475,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V10"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V11"
     end
     Intro.Visible=false
     Main.Visible=true
@@ -1405,4 +1486,4 @@ languageButton("🇷🇺 Русский",122,function() applyLanguage("ru") end)
 languageButton("🇬🇧 English",174,function() applyLanguage("en") end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V10 LOADED")
+print("DIAMOND BOAT HUB V11 LOADED")
