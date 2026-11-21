@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V2
+-- DIAMOND BOAT HUB V3
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -451,7 +451,7 @@ end)
 -- AUTO BUILD
 
 label(build,"Base scanner")
-label(build,"Scan candidate bases, then select one")
+label(build,"Select a candidate and inspect it. Preview is local only.")
 
 local selectedBase=nil
 local baseButtons={}
@@ -625,8 +625,8 @@ end)
 
 -- AUTO FARM
 
-label(farm,"Stage and treasure scanner")
-label(farm,"Find stage, finish and chest candidates")
+label(farm,"Auto Farm diagnostics")
+label(farm,"Scanner only: farm automation needs the real chest/reward remotes")
 
 local farmMatches={}
 
@@ -663,6 +663,97 @@ end)
 -- TOOLS
 
 label(tools,"Game diagnostics")
+label(tools,"DIAGNOSTICS V3: вывод в консоль F9")
+
+local function printInstanceDetails(obj, prefix)
+    print(prefix, obj:GetFullName(), obj.ClassName)
+    local attrs = obj:GetAttributes()
+    for k,v in pairs(attrs) do
+        print("  [ATTRIBUTE]", k, v)
+    end
+    for _,v in ipairs(obj:GetChildren()) do
+        if v:IsA("StringValue") or v:IsA("IntValue") or v:IsA("NumberValue")
+        or v:IsA("BoolValue") or v:IsA("ObjectValue") then
+            local value = v.Value
+            if typeof(value) == "Instance" then value = value:GetFullName() end
+            print("  [VALUE]", v.Name, value)
+        end
+    end
+end
+
+button(tools,"FULL GAME STRUCTURE SCAN",function()
+    local roots = {Workspace, ReplicatedStorage, game:GetService("ReplicatedFirst")}
+    local count = 0
+    local keywords = {"boat","plot","base","ship","stage","chest","treasure","finish","gold","build","block","place","claim","reward"}
+    for _,rootFolder in ipairs(roots) do
+        print("\\n========== ROOT:",rootFolder.Name,"==========")
+        for _,obj in ipairs(rootFolder:GetDescendants()) do
+            local name = obj.Name:lower()
+            local match = false
+            for _,word in ipairs(keywords) do
+                if name:find(word,1,true) then match = true break end
+            end
+            if match and count < 250 then
+                count += 1
+                printInstanceDetails(obj,"[MATCH]")
+            end
+        end
+    end
+    print("[DIAGNOSTIC] Matching objects printed:",count,"(limit 250)")
+    print("[DIAGNOSTIC] Open Developer Console with F9 and copy output.")
+end)
+
+button(tools,"SCAN REMOTES (BUILD + REWARDS)",function()
+    local count = 0
+    local words = {"build","place","block","boat","plot","chest","treasure","gold","claim","reward","stage","unlock"}
+    for _,rootFolder in ipairs({ReplicatedStorage,game:GetService("ReplicatedFirst")}) do
+        for _,obj in ipairs(rootFolder:GetDescendants()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") or obj:IsA("BindableEvent") or obj:IsA("BindableFunction") then
+                local name = obj.Name:lower()
+                for _,word in ipairs(words) do
+                    if name:find(word,1,true) then
+                        count += 1
+                        print("[REMOTE]",obj:GetFullName(),obj.ClassName)
+                        break
+                    end
+                end
+            end
+        end
+    end
+    print("[REMOTE SCAN] Matches:",count)
+end)
+
+button(tools,"SCAN INTERACTION OBJECTS",function()
+    local count = 0
+    for _,obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+            count += 1
+            if count <= 150 then
+                print("[INTERACTION]",obj:GetFullName(),obj.ClassName)
+                if obj:IsA("ProximityPrompt") then
+                    print("  ActionText:",obj.ActionText,"ObjectText:",obj.ObjectText,"HoldDuration:",obj.HoldDuration)
+                end
+            end
+        end
+    end
+    print("[INTERACTION SCAN] Matches:",count,"(limit 150)")
+end)
+
+button(tools,"SCAN MY CHARACTER + PLAYER DATA",function()
+    local char,hum,root = getCharacter()
+    print("[PLAYER]",Player.Name,"UserId:",Player.UserId)
+    for k,v in pairs(Player:GetAttributes()) do print("[PLAYER ATTRIBUTE]",k,v) end
+    if char then
+        printInstanceDetails(char,"[CHARACTER]")
+        if hum then print("[HUMANOID] Health:",hum.Health,"WalkSpeed:",hum.WalkSpeed,"JumpPower:",hum.JumpPower) end
+        if root then print("[ROOT POSITION]",root.Position) end
+    end
+end)
+
+button(tools,"COPY DIAGNOSTIC INSTRUCTIONS",function()
+    print("DIAMOND BOAT HUB: press F9, open Client log, run FULL GAME STRUCTURE SCAN, SCAN REMOTES and SCAN INTERACTION OBJECTS. Copy the output.")
+end)
+
 
 button(tools,"Scan Workspace roots",function()
     for _,obj in ipairs(Workspace:GetChildren()) do
@@ -798,4 +889,4 @@ Player.CharacterAdded:Connect(function()
 end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V2 LOADED")
+print("DIAMOND BOAT HUB V3 LOADED")
