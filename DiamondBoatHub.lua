@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V12
+-- DIAMOND BOAT HUB V13
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -85,7 +85,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V12",
+    Text="💎 DIAMOND BOAT HUB V13",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -1002,8 +1002,7 @@ local function runFarm(runId)
     if err then farmLog("STOP:",err); farmEnabled=false; return end
     if not farmWaitAlive(runId,25) then farmLog("Character unavailable"); farmEnabled=false; return end
 
-    -- FAST CHAIN: trigger a stage and immediately move to the next one.
-    -- No progress wait, no nudge, no idle pause while the avatar is falling.
+    -- Controlled pacing: allow the game to register each stage before moving on.
     for i=1,10 do
         if not farmEnabled or runId~=farmRunId then return end
         local stage=normal:FindFirstChild("CaveStage"..i)
@@ -1019,41 +1018,56 @@ local function runFarm(runId)
         local char,root,hum=farmWaitAlive(runId,20)
         if not root then farmLog("No live character at stage",i); farmEnabled=false; return end
 
-        -- Place slightly above each stage trigger, fire it, then continue instantly.
+        -- Place above the stage, trigger it, then allow the server/client to process it.
         char:PivotTo(dark.CFrame*CFrame.new(0,3,0))
         pcall(function() event:Fire() end)
-        farmLog("Triggered stage",i)
-
-        -- Yield one frame so the game can process the stage, not long enough to fall.
-        task.wait()
+        farmLog("Triggered stage",i,"; waiting 0.3s")
+        task.wait(0.3)
     end
 
     if not farmEnabled or runId~=farmRunId then return end
     local char,root,hum=farmWaitAlive(runId,20)
     if not root then farmLog("No live character before chest"); farmEnabled=false; return end
 
-    farmLog("All stage triggers sent; teleporting directly to Golden Chest.")
-    -- Teleport directly above the actual chest trigger and touch it immediately.
-    char:PivotTo(chest.CFrame*CFrame.new(0,3,0))
-    task.wait()
-    char,root,hum=farmCharacter()
-    if root and hum and hum.Health>0 then
-        if typeof(firetouchinterest)=="function" then
-            pcall(function()
-                firetouchinterest(root,chest,0)
-                firetouchinterest(root,chest,1)
-                task.wait()
-                firetouchinterest(root,chest,0)
-            end)
-        end
-    end
+    farmLog("All stage triggers sent; waiting 0.7s before Golden Chest.")
+    task.wait(0.7)
+    if not farmEnabled or runId~=farmRunId then return end
 
-    -- If the chest kills/resets the avatar, wait for the respawn before claiming.
+    -- Connect the respawn listener BEFORE touching the chest so a fast reset is not missed.
     local oldCharacter=Player.Character
     local respawned=false
     local conn=Player.CharacterAdded:Connect(function(newChar)
         if newChar~=oldCharacter then respawned=true end
     end)
+
+    char,root,hum=farmCharacter()
+    if not char or not root or not hum or hum.Health<=0 then
+        conn:Disconnect()
+        farmLog("No live character at chest")
+        farmEnabled=false
+        return
+    end
+
+    farmLog("Teleporting to Golden Chest trigger.")
+    char:PivotTo(chest.CFrame*CFrame.new(0,3,0))
+    task.wait(0.7)
+    if not farmEnabled or runId~=farmRunId then conn:Disconnect(); return end
+
+    char,root,hum=farmCharacter()
+    if root and hum and hum.Health>0 and typeof(firetouchinterest)=="function" then
+        pcall(function()
+            firetouchinterest(root,chest,0)
+            task.wait(0.15)
+            firetouchinterest(root,chest,1)
+        end)
+        farmLog("Chest touch sent; waiting 1.5s for game response.")
+        task.wait(1.5)
+    elseif root and hum and hum.Health>0 then
+        farmLog("firetouchinterest unavailable; waiting for natural chest contact.")
+        task.wait(1.5)
+    end
+
+    -- If the chest kills/resets the avatar, wait for the respawn before claiming.
     local deadline=os.clock()+20
     while farmEnabled and runId==farmRunId and not respawned and os.clock()<deadline do
         local c=Player.Character
@@ -1069,7 +1083,7 @@ local function runFarm(runId)
     else
         farmLog("Chest trigger reached; no claim remote found")
     end
-    farmLog("Fast route finished. Check gold and stage values before another cycle.")
+    farmLog("Route finished. Chest response processed; checking reward before next cycle.")
 end
 
 button(farm,"START AUTO FARM",function()
@@ -1384,7 +1398,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V12",
+    Text="💎 DIAMOND BOAT HUB V13",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
@@ -1448,7 +1462,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V12"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V13"
     else
         for _,obj in ipairs(GUI:GetDescendants()) do
             if obj:IsA("TextButton") or obj:IsA("TextLabel") then
@@ -1457,7 +1471,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V12"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V13"
     end
     Intro.Visible=false
     Main.Visible=true
@@ -1468,4 +1482,4 @@ languageButton("🇷🇺 Русский",122,function() applyLanguage("ru") end)
 languageButton("🇬🇧 English",174,function() applyLanguage("en") end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V12 LOADED")
+print("DIAMOND BOAT HUB V13 LOADED")
