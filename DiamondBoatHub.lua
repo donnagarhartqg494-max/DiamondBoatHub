@@ -1822,7 +1822,7 @@ local function loadOnlineSequencerSong(title, sequenceId)
         ["Referer"] = "https://onlinesequencer.net/" .. id,
         ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
     }
-    local response, lastError
+    local response, rawPage, lastError
     for _, url in ipairs(urls) do
         local attempts = {
             function()
@@ -1856,6 +1856,7 @@ local function loadOnlineSequencerSong(title, sequenceId)
                     response = decoded
                     break
                 end
+                if not rawPage and #body > 100 then rawPage = body end
                 lastError = "Non-JSON response (" .. tostring(#body) .. " bytes): " .. body:sub(1,160):gsub("[%c]"," ")
             elseif not ok then
                 lastError = tostring(body)
@@ -1863,9 +1864,23 @@ local function loadOnlineSequencerSong(title, sequenceId)
         end
         if response then break end
     end
-    if not response then error("Online Sequencer blocked the sequence-data request. " .. tostring(lastError)) end
-    local payload = response
-    local bpmText, noteText = payload.data:match("^%s*(%d+)%s*:(.*)$")
+    local sequenceData
+    if response then
+        sequenceData = response.data
+    elseif rawPage then
+        -- Some Online Sequencer deployments return the saved sequence embedded in HTML
+        -- rather than JSON. Extract the server-rendered note string without JSON decoding.
+        sequenceData = rawPage:match('var%s+data%s*=%s*"([^"]*)"')
+            or rawPage:match("var%s+data%s*=%s*'([^']*)'")
+        if not sequenceData then
+            local escaped = rawPage:match('data\\?"%s*:%s*\\?"([^"]+)')
+            if escaped then sequenceData = escaped:gsub('\\\\n',''):gsub('\\\\"','"') end
+        end
+    end
+    if type(sequenceData) ~= "string" or #sequenceData == 0 then
+        error("Online Sequencer returned neither readable JSON nor embedded note data. " .. tostring(lastError))
+    end
+    local bpmText, noteText = sequenceData:match("^%s*(%d+)%s*:(.*)$")
     local bpm = tonumber(bpmText)
     if not bpm or bpm < 10 or bpm > 999 then
         error("Could not read song BPM from sequence data")
