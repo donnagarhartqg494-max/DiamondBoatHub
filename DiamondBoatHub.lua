@@ -1414,7 +1414,7 @@ button(music,"SCAN MUSIC BUILDER API",function()
     print("[MUSIC API] Inventory Note:",stock("Note"),"Delay:",stock("Delay"))
     local backpack=Player:FindFirstChildOfClass("Backpack")
     local char=Player.Character
-    for _,toolName in ipairs({"BuildingTool","PropertyTool","BindingTool"}) do
+    for _,toolName in ipairs({"BuildingTool","PropertiesTool","PropertyTool","BindingTool"}) do
         local tool=(char and char:FindFirstChild(toolName)) or (backpack and backpack:FindFirstChild(toolName))
         print("[MUSIC API] TOOL",toolName,tool and "FOUND" or "NOT FOUND")
         if tool then
@@ -1446,6 +1446,142 @@ label(music,"KNOWN GAME LIMITS")
 label(music,"Music Note: 25 pitches from F#3 to F#5; note sustain is about 0.85 sec.")
 label(music,"Delay Block: 0.05–10 sec. Key and delay values are set with the in-game Property Tool.")
 label(music,"MIDI conversion is available from the linked converter. Direct in-game import is not enabled yet: the live Property Tool and BindingTool APIs must be confirmed before the hub can safely set pitch, delay and wiring automatically.")
+-- MIDI AUTO BUILD V1: places actual Note/Delay blocks and applies pitch/timing properties.
+-- BindingTool wire protocol is deliberately not guessed; blocks are laid out in an easy-to-bind row.
+local midiBuildRunning=false
+local midiBuildStatus=label(music,"MIDI BUILD: waiting for parsed MIDI")
+local function findTool(names)
+    local char=Player.Character
+    local backpack=Player:FindFirstChildOfClass("Backpack")
+    for _,name in ipairs(names) do
+        local tool=(char and char:FindFirstChild(name)) or (backpack and backpack:FindFirstChild(name))
+        if tool then
+            if char and tool.Parent==backpack then
+                local hum=char:FindFirstChildOfClass("Humanoid")
+                if hum then pcall(function() hum:EquipTool(tool) end); task.wait(0.25) end
+            end
+            return (Player.Character and Player.Character:FindFirstChild(name)) or tool
+        end
+    end
+end
+local function findPropertyRemote()
+    local tool=findTool({"PropertiesTool","PropertyTool"})
+    if not tool then return nil end
+    local rf=tool:FindFirstChild("SetPropertieRF",true) or tool:FindFirstChild("SetPropertyRF",true)
+    return rf and rf:IsA("RemoteFunction") and rf or nil
+end
+local function getMusicBlockId(name)
+    local data=Player:FindFirstChild("Data")
+    local v=data and data:FindFirstChild(name)
+    if v and v.Value>0 then return v.Value end
+    return nil
+end
+local function setMusicProperty(remote,property,block,value)
+    local ok,result=pcall(function()
+        return remote:InvokeServer(property,{block},value)
+    end)
+    if not ok then return false,tostring(result) end
+    return true,result
+end
+button(music,"AUTO BUILD MUSIC ON MY BASE",function()
+    if midiBuildRunning then warn("[MIDI BUILD] Already running"); return end
+    if not parsedMidi or #parsedMidi.notes==0 then warn("[MIDI BUILD] Import a MIDI first"); return end
+    local noteId=getMusicBlockId("Note")
+    local delayId=getMusicBlockId("Delay")
+    if not noteId or not delayId then
+        warn("[MIDI BUILD] Inventory missing Note or Delay blocks")
+        midiBuildStatus.Text="MIDI BUILD: missing Note/Delay inventory"
+        return
+    end
+    local data=Player:FindFirstChild("Data")
+    local noteCount=data.Note.Value
+    local delayCount=data.Delay.Value
+    local required=#parsedMidi.notes
+    if noteCount<required or delayCount<required then
+        warn("[MIDI BUILD] Need",required,"Notes +",required,"Delays. Have",noteCount,"+",delayCount)
+        midiBuildStatus.Text=string.format("Need %d Notes + %d Delays; have %d + %d",required,required,noteCount,delayCount)
+        return
+    end
+    local zone=getPlayerZone(Player)
+    local buildRF=getBuildTool()
+    if not zone or not buildRF then
+        midiBuildStatus.Text="MIDI BUILD: plot or BuildingTool unavailable"
+        return
+    end
+    local propertyRF=findPropertyRemote()
+    if not propertyRF then
+        warn("[MIDI BUILD] PropertiesTool.SetPropertieRF not found; blocks will not be configured.")
+        midiBuildStatus.Text="MIDI BUILD: equip Properties Tool first"
+        return
+    end
+    local folder=Workspace:FindFirstChild("Blocks")
+    local myFolder=folder and folder:FindFirstChild(Player.Name)
+    if not myFolder then warn("[MIDI BUILD] Own block folder missing"); return end
+    local char,hum,root=getCharacter()
+    local origin=root and (root.CFrame*CFrame.new(0,8,-18))
+    if not origin then warn("[MIDI BUILD] Character root missing"); return end
+    local keyNames={"F#3","G3","G#3","A3","A#3","B3","C4","C#4","D4","D#4","E4","F4","F#4","G4","G#4","A4","A#4","B4","C5","C#5","D5","D#5","E5","F5","F#5"}
+    local prepared={}
+    for i,n in ipairs(parsedMidi.notes) do
+        local key=n.pitch-54
+        if key<0 or key>24 then
+            warn("[MIDI BUILD] Pitch outside Music Note range F#3-F#5:",n.pitch,"event",i)
+            midiBuildStatus.Text="MIDI BUILD: pitch outside F#3–F#5 (see F9)"
+            return
+        end
+        local delta=i>1 and (n.time-parsedMidi.notes[i-1].time) or n.time
+        prepared[i]={key=keyNames[key+1],delay=math.clamp(delta,0.05,10),time=n.time}
+    end
+    midiBuildRunning=true
+    midiBuildStatus.Text="MIDI BUILD: placing "..required.." note/delay pairs..."
+    task.spawn(function()
+        local madeNotes,madeDelays,errors={}, {},0
+        local function place(name,id,cf)
+            local before={}
+            for _,obj in ipairs(myFolder:GetChildren()) do before[obj]=true end
+            local localCF=zone.CFrame:ToObjectSpace(cf)
+            local ok,err=pcall(function()
+                buildRF:InvokeServer(name,id,zone,localCF,true,cf,false)
+            end)
+            if not ok then return nil,tostring(err) end
+            for _=1,20 do
+                for _,obj in ipairs(myFolder:GetChildren()) do
+                    if not before[obj] and obj.Name==name and obj:FindFirstChild("PPart") then return obj end
+                end
+                task.wait(0.05)
+            end
+            return nil,"server did not replicate placed "..name
+        end
+        for i,item in ipairs(prepared) do
+            if not midiBuildRunning then break end
+            local delayCF=origin*CFrame.new((i-1)*7,0,0)
+            local noteCF=delayCF*CFrame.new(0,0,-3)
+            local delayBlock,delayErr=place("Delay",delayId,delayCF)
+            local noteBlock,noteErr=place("Note",noteId,noteCF)
+            if delayBlock then
+                local ok,err=setMusicProperty(propertyRF,"Delay",delayBlock,item.delay)
+                if ok then table.insert(madeDelays,delayBlock) else errors+=1; warn("[MIDI BUILD] Delay property failed",i,err) end
+            else errors+=1; warn("[MIDI BUILD] Delay placement failed",i,delayErr) end
+            if noteBlock then
+                local ok,err=setMusicProperty(propertyRF,"Key",noteBlock,item.key)
+                if ok then table.insert(madeNotes,noteBlock) else errors+=1; warn("[MIDI BUILD] Note key failed",i,err) end
+            else errors+=1; warn("[MIDI BUILD] Note placement failed",i,noteErr) end
+            midiBuildStatus.Text=string.format("MIDI BUILD: %d/%d pairs | errors %d",i,required,errors)
+            if i%4==0 then task.wait(0.1) end
+        end
+        midiBuildRunning=false
+        midiBuildStatus.Text=string.format("Placed %d Notes + %d Delays | errors %d | wiring not done",#madeNotes,#madeDelays,errors)
+        print("[MIDI BUILD] Finished. Notes:",#madeNotes,"Delays:",#madeDelays,"Errors:",errors)
+        print("[MIDI BUILD] Blocks are arranged in pairs along a straight row. BindingTool connections are NOT automated in this version.")
+        print("[MIDI BUILD] Key and Delay property calls used SetPropertieRF; verify in-game before saving.")
+    end)
+end)
+button(music,"STOP MIDI AUTO BUILD",function()
+    midiBuildRunning=false
+    midiBuildStatus.Text="MIDI BUILD: stopping..."
+end)
+label(music,"AUTO BUILD places Note + Delay pairs in a row and applies pitch/timing properties. BindingTool wiring is not automated yet; do not expect playback until the chain is connected in-game.")
+
 label(music,"DUPLICATION — CHOOSE TARGET SAVE SLOT")
 label(music,"Enter the slot number you are willing to overwrite. The hub does not press Save/Load for you.")
 local selectedSaveSlot=1
