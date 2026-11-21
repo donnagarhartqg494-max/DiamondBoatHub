@@ -1095,40 +1095,71 @@ button(music,"COPY RUSH E MIDI LINK",function()
 end)
 label(music,"BABFT BLOCK CHECK")
 local musicInventoryLabel=label(music,"Inventory: not scanned")
-button(music,"SCAN MUSIC BLOCK INVENTORY",function()
-    local data=Player:FindFirstChild("Data")
-    if not data then
-        musicInventoryLabel.Text="Player.Data not found"
-        warn("[DIAMOND MUSIC] Player.Data missing; scan Player + Backpack in F9")
-        return
-    end
+button(music,"DEEP SCAN PLAYER INVENTORY",function()
+    local totalValues=0
+    local printed=0
     local matches={}
-    for _,obj in ipairs(data:GetDescendants()) do
-        if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-            local n=obj.Name:lower():gsub("[%s_%-]","")
-            if n:find("music",1,true) or n:find("note",1,true) or n:find("delay",1,true) then
-                table.insert(matches,{name=obj:GetFullName(),value=obj.Value})
+    local function inspect(root,tag)
+        if not root then return end
+        for _,obj in ipairs(root:GetDescendants()) do
+            local nm=obj.Name:lower()
+            local relevant=nm:find("music",1,true) or nm:find("note",1,true) or nm:find("delay",1,true)
+            if obj:IsA("ValueBase") then
+                totalValues+=1
+                local value=obj.Value
+                if typeof(value)=="Instance" then value=value:GetFullName() end
+                if relevant or tag=="PLAYER_DATA" then
+                    printed+=1
+                    local row=tag.." | "..obj:GetFullName().." ["..obj.ClassName.."] = "..tostring(value)
+                    if #matches<300 then table.insert(matches,row) end
+                end
+            elseif relevant then
+                printed+=1
+                if #matches<300 then table.insert(matches,tag.." | "..obj:GetFullName().." ["..obj.ClassName.."]") end
             end
         end
     end
-    table.sort(matches,function(a,b) return a.name<b.name end)
-    print("[DIAMOND MUSIC] Matching inventory values:",#matches)
-    for _,item in ipairs(matches) do print("[MUSIC ITEM]",item.name,"=",item.value) end
+    local data=Player:FindFirstChild("Data")
+    if data then inspect(data,"PLAYER_DATA") else warn("[MUSIC SCAN] Player.Data missing") end
+    inspect(Player:FindFirstChildOfClass("Backpack"),"BACKPACK")
+    inspect(Player.Character,"CHARACTER")
+    inspect(Player:FindFirstChild("PlayerGui"),"PLAYER_GUI")
+    table.sort(matches)
+    print("========== DIAMOND MUSIC DEEP SCAN ==========")
+    print("[MUSIC SCAN] Player.Data found:",data~=nil,"ValueBase count in Data:",data and #data:GetDescendants() or 0)
+    print("[MUSIC SCAN] Matching/diagnostic rows:",#matches,"Total Player.Data values:",totalValues)
+    for _,row in ipairs(matches) do print("[MUSIC SCAN]",row) end
     if #matches==0 then
-        musicInventoryLabel.Text="No matching values in Player.Data"
-        warn("[DIAMOND MUSIC] No name match. Printing all numeric Data values:")
-        for _,obj in ipairs(data:GetDescendants()) do
-            if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-                print("[DATA VALUE]",obj:GetFullName(),"=",obj.Value)
+        musicInventoryLabel.Text="No matching names; check F9 output"
+        warn("[MUSIC SCAN] Nothing matched. Run SCAN MY CHARACTER + PLAYER DATA and send the F9 output.")
+    else
+        musicInventoryLabel.Text="Scan complete: "..#matches.." rows — see F9"
+    end
+    print("========== END MUSIC SCAN ==========")
+end)
+button(music,"SCAN BUILDING TOOL INVENTORY UI",function()
+    local found=0
+    local function scan(root,tag)
+        if not root then return end
+        for _,obj in ipairs(root:GetDescendants()) do
+            if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+                local txt=tostring(obj.Text)
+                local low=txt:lower()
+                if low:find("music",1,true) or low:find("note",1,true) or low:find("delay",1,true) then
+                    found+=1
+                    print("[BUILD INVENTORY UI]",tag,obj:GetFullName(),"TEXT=",txt)
+                end
             end
         end
-    else
-        local parts={}
-        for i,item in ipairs(matches) do
-            if i<=4 then table.insert(parts,item.name:split(".")[#item.name:split(".")].."="..tostring(item.value)) end
-        end
-        musicInventoryLabel.Text="Found "..#matches.." values: "..table.concat(parts," | ")
     end
+    scan(Player:FindFirstChild("PlayerGui"),"PLAYER_GUI")
+    scan(getParent(),"EXECUTOR_GUI")
+    local char=Player.Character
+    local backpack=Player:FindFirstChildOfClass("Backpack")
+    scan(char and char:FindFirstChild("BuildingTool"),"EQUIPPED_BUILDING_TOOL")
+    scan(backpack and backpack:FindFirstChild("BuildingTool"),"BACKPACK_BUILDING_TOOL")
+    print("[BUILD INVENTORY UI] Matches:",found)
+    musicInventoryLabel.Text="UI scan complete: "..found.." matches — see F9"
 end)
 label(music,"KNOWN GAME LIMITS")
 label(music,"Music Note: 25 pitches from F#3 to F#5; note sustain is about 0.85 sec.")
@@ -1822,7 +1853,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V20",
+    Text="💎 DIAMOND BOAT HUB V21",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
@@ -1886,7 +1917,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V20"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V21"
     else
         for _,obj in ipairs(GUI:GetDescendants()) do
             if obj:IsA("TextButton") or obj:IsA("TextLabel") then
@@ -1895,7 +1926,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V20"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V21"
     end
     Intro.Visible=false
     Main.Visible=true
@@ -1906,4 +1937,4 @@ languageButton("🇷🇺 Русский",122,function() applyLanguage("ru") end)
 languageButton("🇬🇧 English",174,function() applyLanguage("en") end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V20 LOADED")
+print("DIAMOND BOAT HUB V21 LOADED")
