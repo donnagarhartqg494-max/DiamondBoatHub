@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V17
+-- DIAMOND BOAT HUB V18
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -74,6 +74,14 @@ local Main = create("Frame",{
 },GUI)
 round(Main,12)
 outline(Main)
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(31,24,55),Color3.fromRGB(12,13,22)),Rotation=35},Main)
+local MainScale=create("UIScale",{Scale=1},Main)
+local function fitToScreen()
+    local cam=Workspace.CurrentCamera
+    if cam then MainScale.Scale=math.clamp(math.min(cam.ViewportSize.X/760,cam.ViewportSize.Y/540),0.68,1) end
+end
+fitToScreen()
+if Workspace.CurrentCamera then Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitToScreen) end
 
 local Top = create("Frame",{
     Size=UDim2.new(1,0,0,48),
@@ -81,12 +89,13 @@ local Top = create("Frame",{
     BorderSizePixel=0
 },Main)
 round(Top,12)
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(82,54,150),Color3.fromRGB(30,32,55)),Rotation=0},Top)
 
 create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V13",
+    Text="💎 DIAMOND BOAT HUB V18",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -185,8 +194,11 @@ local function button(page,text,callback)
         TextSize=13,
         Font=Enum.Font.Gotham
     },page)
-    round(b,7)
+    round(b,9)
     outline(b)
+    b.AutoButtonColor=false
+    b.MouseEnter:Connect(function() TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=Color3.fromRGB(55,43,86)}):Play() end)
+    b.MouseLeave:Connect(function() TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=DARK}):Play() end)
     b.Activated:Connect(callback)
     return b
 end
@@ -490,9 +502,35 @@ end)
 
 button(teleport,"Move 20 studs downward",function()
     local _,_,root=getCharacter()
-    if root then
-        root.CFrame=root.CFrame-Vector3.new(0,20,0)
+    if root then root.CFrame=root.CFrame-Vector3.new(0,20,0) end
+end)
+
+button(teleport,"Teleport to nearest spawn",function()
+    local _,_,root=getCharacter()
+    if not root then return end
+    local nearest,dist=nil,math.huge
+    for _,obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("SpawnLocation") then
+            local d=(obj.Position-root.Position).Magnitude
+            if d<dist then nearest,dist=obj,d end
+        end
     end
+    if nearest then root.CFrame=nearest.CFrame*CFrame.new(0,4,0) else warn("[DIAMOND] No SpawnLocation found") end
+end)
+
+button(teleport,"Copy coordinates",function()
+    local _,_,root=getCharacter()
+    if root then
+        local p=root.Position
+        local value=string.format("Vector3.new(%.2f, %.2f, %.2f)",p.X,p.Y,p.Z)
+        if setclipboard then pcall(setclipboard,value) end
+        print("[DIAMOND] Coordinates:",value)
+    end
+end)
+
+button(teleport,"Stop current movement",function()
+    local _,_,root=getCharacter()
+    if root then root.AssemblyLinearVelocity=Vector3.zero; root.AssemblyAngularVelocity=Vector3.zero end
 end)
 
 -- AUTO BUILD
@@ -1450,6 +1488,37 @@ local reopen=create("TextButton",{
     Visible=false
 },GUI)
 round(reopen,50)
+outline(reopen)
+reopen.AutoButtonColor=false
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(175,130,255),Color3.fromRGB(70,50,175)),Rotation=45},reopen)
+
+-- Drag the floating reopen button with mouse or touch.
+local reopenDragging=false
+local reopenDragStart
+local reopenStartPosition
+reopen.InputBegan:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        reopenDragging=true
+        reopenDragStart=input.Position
+        reopenStartPosition=reopen.Position
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if reopenDragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+        local delta=input.Position-reopenDragStart
+        local x=reopenStartPosition.X.Offset+delta.X
+        local y=reopenStartPosition.Y.Offset+delta.Y
+        local cam=Workspace.CurrentCamera
+        if cam then
+            x=math.clamp(x,0,math.max(0,cam.ViewportSize.X-reopen.AbsoluteSize.X))
+            y=math.clamp(y,0,math.max(0,cam.ViewportSize.Y-reopen.AbsoluteSize.Y))
+        end
+        reopen.Position=UDim2.new(reopenStartPosition.X.Scale,x,reopenStartPosition.Y.Scale,y)
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then reopenDragging=false end
+end)
 
 Min.Activated:Connect(function()
     minimized=not minimized
