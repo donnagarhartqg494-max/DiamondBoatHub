@@ -1097,6 +1097,26 @@ end)
 
 
 -- MUSIC HELPER V1: inventory checks, verified sequence links and safe duplication notes.
+label(music,"ONE-CLICK MIDI CONVERTER")
+label(music,"Convert a local .mid file into a BABFT music blueprint with Note keys, Delay timing and wiring steps.")
+local midiConverterUrl="https://babft-music-note.vercel.app/"
+button(music,"COPY / OPEN MIDI → BABFT CONVERTER",function()
+    local copied=false
+    if setclipboard then copied=pcall(setclipboard,midiConverterUrl) end
+    print("[DIAMOND MUSIC] MIDI converter:",midiConverterUrl)
+    if copied then
+        print("[DIAMOND MUSIC] Link copied. Open it, choose your .mid file, then follow its BABFT build plan.")
+    else
+        warn("[DIAMOND MUSIC] Open this URL manually:",midiConverterUrl)
+    end
+end)
+button(music,"COPY MIDI CONVERTER LINK",function()
+    if setclipboard then
+        local ok=pcall(setclipboard,midiConverterUrl)
+        if ok then print("[DIAMOND MUSIC] Converter link copied") return end
+    end
+    print("[DIAMOND MUSIC] Converter URL:",midiConverterUrl)
+end)
 label(music,"MUSIC BUILDER — MIDI SOURCES")
 label(music,"Song charts are linked below. Property Tool settings and note bindings must be verified in-game before a full automatic arrangement can be generated.")
 local holyWarUrl="https://onlinesequencer.net/5314889"
@@ -1242,7 +1262,7 @@ end)
 label(music,"KNOWN GAME LIMITS")
 label(music,"Music Note: 25 pitches from F#3 to F#5; note sustain is about 0.85 sec.")
 label(music,"Delay Block: 0.05–10 sec. Key and delay values are set with the in-game Property Tool.")
-label(music,"The current hub can place blocks, but the game's Property Tool remote schema is not verified. This build will not fake pitch or timing changes.")
+label(music,"MIDI conversion is available from the linked converter. Direct in-game import is not enabled yet: the live Property Tool and BindingTool APIs must be confirmed before the hub can safely set pitch, delay and wiring automatically.")
 label(music,"DUPLICATION — CHOOSE TARGET SAVE SLOT")
 label(music,"Enter the slot number you are willing to overwrite. The hub does not press Save/Load for you.")
 local selectedSaveSlot=1
