@@ -1620,6 +1620,31 @@ button(music,"SCAN BINDING TOOL API",function()
     end
     print("[BIND SCAN] Own music blocks inspected:",shown)
     print("[BIND SCAN] Send this F9 output to add the exact chain-binding call. No remote arguments are guessed.")
+    local localScript=tool and tool:FindFirstChild("BindLocalScript",true)
+    if localScript then
+        local decompiler=decompile or (syn and syn.decompile)
+        if type(decompiler)=="function" then
+            local ok,source=pcall(decompiler,localScript)
+            if ok and type(source)=="string" then
+                print("[BIND SCAN] ===== BindLocalScript DECOMPILED SOURCE BEGIN =====")
+                for line in source:gmatch("[^\\r\\n]+") do
+                    if line:lower():find("invoke",1,true) or line:lower():find("rf",1,true)
+                        or line:lower():find("mouse",1,true) or line:lower():find("bind",1,true)
+                        or line:lower():find("input",1,true) or line:lower():find("output",1,true) then
+                        print("[BIND SOURCE]",line)
+                    end
+                end
+                print("[BIND SCAN] ===== SOURCE FILTER END =====")
+            else
+                warn("[BIND SCAN] Decompile failed:",tostring(source))
+            end
+        else
+            print("[BIND SCAN] Executor has no decompile/syn.decompile API")
+        end
+    else
+        print("[BIND SCAN] BindLocalScript not found under tool")
+    end
+
 end)
 
 button(music,"STOP MIDI AUTO BUILD",function()
