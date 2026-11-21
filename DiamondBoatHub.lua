@@ -1620,7 +1620,7 @@ local function bindMusicTarget(remote,target,controller)
     if not ok then return false,tostring(result) end
     return true
 end
-button(music,"AUTO BUILD + WIRE MIDI",function()
+local function startMidiBuild()
     if midiBuildRunning then warn("[MIDI BUILD] Already running"); return end
     if not parsedMidi or #parsedMidi.notes==0 then warn("[MIDI BUILD] Import a MIDI first"); return end
 
@@ -1806,7 +1806,57 @@ button(music,"AUTO BUILD + WIRE MIDI",function()
         print("[MIDI BUILD] Note sustain in BABFT is limited to about 0.85 seconds; longer MIDI durations cannot be reproduced exactly.")
         print("[MIDI BUILD] Long gaps over 10 seconds are clamped to 10 seconds by the Delay block limit.")
     end)
+end
+button(music,"AUTO BUILD + WIRE MIDI",startMidiBuild)
+-- ONE-CLICK SONG BUILDER: fetch a hosted MIDI directly, parse it in-memory, then build.
+-- No local file, Base64 paste, or manual import step is required.
+local function loadAndBuildSong(title,urls)
+    if midiBuildRunning then warn("[DIAMOND MUSIC] Builder is already running"); return end
+    midiBuildStatus.Text="Loading "..title.." directly..."
+    task.spawn(function()
+        local parsed,usedUrl,lastError
+        for _,url in ipairs(urls) do
+            local ok,result=pcall(function()
+                local bytes=getMidiBytes(url)
+                if #bytes>12000000 then error("MIDI exceeds 12 MB") end
+                local midi=readMidi(bytes)
+                if not midi or #midi.notes==0 then error("No notes found in downloaded MIDI") end
+                return midi
+            end)
+            if ok then parsed=result; usedUrl=url; break else lastError=result end
+        end
+        if not parsed then
+            midiBuildStatus.Text=title.." download failed — see F9"
+            warn("[DIAMOND MUSIC] "..title.." could not be fetched as a direct MIDI. Last error:",lastError)
+            return
+        end
+        parsedMidi=parsed
+        local duration=0
+        for _,note in ipairs(parsed.notes) do duration=math.max(duration,note.time+note.duration) end
+        midiStatus.Text=string.format("%s loaded: %d notes | %.1f sec",title,#parsed.notes,duration)
+        print("[DIAMOND MUSIC] Loaded",title,"from",usedUrl,"notes",#parsed.notes)
+        startMidiBuild()
+    end)
+end
+label(music,"READY SONGS — CLICK TO BUILD ON YOUR BASE")
+button(music,"BUILD HOLY WAR — URAL GAYSIN",function()
+    loadAndBuildSong("Holy War",{
+        "https://onlinesequencer.net/midi/5314889",
+        "https://onlinesequencer.net/5314889.mid",
+        "https://onlinesequencer.net/midi_export/5314889",
+        "https://onlinesequencer.net/download/5314889.mid"
+    })
 end)
+button(music,"BUILD RUSH E",function()
+    loadAndBuildSong("Rush E",{
+        "https://onlinesequencer.net/midi/5775937",
+        "https://onlinesequencer.net/5775937.mid",
+        "https://onlinesequencer.net/midi_export/5775937",
+        "https://onlinesequencer.net/download/5775937.mid",
+        "https://www.fullpartituras.com/en/midis/midi/sin-artista-indicado-rush-e-converted-white-midi-e9728bef2c6e"
+    })
+end)
+
 -- BINDING TOOL API SCAN V1
 local function dumpToolTree(root,tag)
     if not root then print("[BIND SCAN]",tag,"MISSING"); return end
