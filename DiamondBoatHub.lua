@@ -1476,7 +1476,28 @@ local function getMusicBlockId(name)
     if v and (v:IsA("IntValue") or v:IsA("NumberValue")) and v.Value>0 then return v.Value end
     return nil
 end
+local function equipMusicTool(tool)
+    if not tool then return false end
+    local char=Player.Character
+    if not char then return false end
+    if tool.Parent==char then return true end
+    local backpack=Player:FindFirstChildOfClass("Backpack")
+    if tool.Parent~=backpack then return false end
+    local hum=char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    local ok=pcall(function() hum:EquipTool(tool) end)
+    if not ok then return false end
+    for _=1,20 do
+        if tool.Parent==Player.Character then return true end
+        task.wait(0.05)
+    end
+    return tool.Parent==Player.Character
+end
 local function setMusicProperty(remote,property,block,value)
+    local tool=remote and remote:FindFirstAncestorOfClass("Tool")
+    if not tool or not equipMusicTool(tool) then
+        return false,"PropertiesTool could not be equipped"
+    end
     local ok,result=pcall(function()
         return remote:InvokeServer(property,{block},value)
     end)
@@ -1503,7 +1524,11 @@ local function findMusicInput(folder)
 end
 local function bindMusicTarget(remote,target,controller)
     local bindValue=findBindValue(target)
-    if not bindValue then return false,"No BindFire IntValue in "..target.Name end
+    if not bindValue then return false,"No Bind IntValue in "..target.Name end
+    local tool=remote and remote:FindFirstAncestorOfClass("Tool")
+    if not tool or not equipMusicTool(tool) then
+        return false,"BindingTool could not be equipped"
+    end
     local ok,result=pcall(function()
         return remote:InvokeServer({bindValue},controller,bindValue.Value or -1,false)
     end)
@@ -1598,8 +1623,17 @@ button(music,"AUTO BUILD + WIRE MIDI",function()
             local before={}
             for _,obj in ipairs(myFolder:GetChildren()) do before[obj]=true end
             local localCF=zone.CFrame:ToObjectSpace(cf)
+            local activeBuildRF
             local ok,err=pcall(function()
-                buildRF:InvokeServer(name,id,zone,localCF,true,cf,false)
+                local buildTool=findTool({"BuildingTool"})
+                if not buildTool or not equipMusicTool(buildTool) then
+                    error("BuildingTool could not be equipped")
+                end
+                activeBuildRF=buildTool:FindFirstChild("RF")
+                if not activeBuildRF or not activeBuildRF:IsA("RemoteFunction") then
+                    error("BuildingTool.RF unavailable")
+                end
+                activeBuildRF:InvokeServer(name,id,zone,localCF,true,cf,false)
             end)
             if not ok then return nil,tostring(err) end
             for _=1,30 do
@@ -1660,13 +1694,8 @@ button(music,"AUTO BUILD + WIRE MIDI",function()
                 end
             end
 
-            -- Every Delay triggers its Notes; then it triggers the next Delay.
+            -- Every Delay triggers only the Notes in its own timestamp group.
             local controller=delayBlock
-            for _,noteBlock in ipairs(madeNotes) do
-                -- Only bind notes belonging to this timestamp group.
-                local noteTimeIndex=#madeNotes
-                if noteTimeIndex>0 then break end
-            end
             local firstNoteIndex=#madeNotes-#item.notes+1
             for ni=firstNoteIndex,#madeNotes do
                 local ok,err=bindMusicTarget(bindRF,madeNotes[ni],controller)
