@@ -1473,7 +1473,7 @@ end
 local function getMusicBlockId(name)
     local data=Player:FindFirstChild("Data")
     local v=data and data:FindFirstChild(name)
-    if v and v.Value>0 then return v.Value end
+    if v and (v:IsA("IntValue") or v:IsA("NumberValue")) and v.Value>0 then return v.Value end
     return nil
 end
 local function setMusicProperty(remote,property,block,value)
@@ -1483,9 +1483,38 @@ local function setMusicProperty(remote,property,block,value)
     if not ok then return false,tostring(result) end
     return true,result
 end
-button(music,"AUTO BUILD MUSIC ON MY BASE",function()
+local function findBindValue(block)
+    if not block then return nil end
+    local direct=block:FindFirstChild("BindFire")
+    if direct and direct:IsA("IntValue") then return direct end
+    for _,obj in ipairs(block:GetDescendants()) do
+        if obj:IsA("IntValue") and obj.Name:sub(1,4)=="Bind" then return obj end
+    end
+    return nil
+end
+local function findMusicInput(folder)
+    local names={Button=true,Switch=true,SwitchBig=true,BigSwitch=true,Lever=true}
+    for _,obj in ipairs(folder:GetChildren()) do
+        if obj:IsA("Model") and names[obj.Name] and obj:FindFirstChild("PPart") then
+            return obj
+        end
+    end
+    return nil
+end
+local function bindMusicTarget(remote,target,controller)
+    local bindValue=findBindValue(target)
+    if not bindValue then return false,"No BindFire IntValue in "..target.Name end
+    local ok,result=pcall(function()
+        return remote:InvokeServer({bindValue},controller,bindValue.Value or -1,false)
+    end)
+    if not ok then return false,tostring(result) end
+    return true
+end
+button(music,"AUTO BUILD + WIRE MIDI",function()
     if midiBuildRunning then warn("[MIDI BUILD] Already running"); return end
     if not parsedMidi or #parsedMidi.notes==0 then warn("[MIDI BUILD] Import a MIDI first"); return end
+
+    local data=Player:FindFirstChild("Data")
     local noteId=getMusicBlockId("Note")
     local delayId=getMusicBlockId("Delay")
     if not noteId or not delayId then
@@ -1493,15 +1522,27 @@ button(music,"AUTO BUILD MUSIC ON MY BASE",function()
         midiBuildStatus.Text="MIDI BUILD: missing Note/Delay inventory"
         return
     end
-    local data=Player:FindFirstChild("Data")
-    local noteCount=data.Note.Value
-    local delayCount=data.Delay.Value
-    local required=#parsedMidi.notes
-    if noteCount<required or delayCount<required then
-        warn("[MIDI BUILD] Need",required,"Notes +",required,"Delays. Have",noteCount,"+",delayCount)
-        midiBuildStatus.Text=string.format("Need %d Notes + %d Delays; have %d + %d",required,required,noteCount,delayCount)
+
+    -- Group simultaneous MIDI notes so chords fire from the same Delay.
+    local groups={}
+    for _,n in ipairs(parsedMidi.notes) do
+        local g=groups[#groups]
+        if not g or math.abs(g.time-n.time)>0.012 then
+            g={time=n.time,notes={}}
+            table.insert(groups,g)
+        end
+        table.insert(g.notes,n)
+    end
+    local requiredNotes=0
+    for _,g in ipairs(groups) do requiredNotes+=#g.notes end
+    local noteCount=data:FindFirstChild("Note") and data.Note.Value or 0
+    local delayCount=data:FindFirstChild("Delay") and data.Delay.Value or 0
+    if noteCount<requiredNotes or delayCount<#groups then
+        midiBuildStatus.Text=string.format("Need %d Notes + %d Delays; have %d + %d",requiredNotes,#groups,noteCount,delayCount)
+        warn("[MIDI BUILD] Not enough inventory. Need",requiredNotes,"Notes and",#groups,"Delays; have",noteCount,delayCount)
         return
     end
+
     local zone=getPlayerZone(Player)
     local buildRF=getBuildTool()
     if not zone or not buildRF then
@@ -1510,32 +1551,49 @@ button(music,"AUTO BUILD MUSIC ON MY BASE",function()
     end
     local propertyRF=findPropertyRemote()
     if not propertyRF then
-        warn("[MIDI BUILD] PropertiesTool.SetPropertieRF not found; blocks will not be configured.")
-        midiBuildStatus.Text="MIDI BUILD: equip Properties Tool first"
+        midiBuildStatus.Text="MIDI BUILD: equip PropertiesTool first"
         return
     end
     local folder=Workspace:FindFirstChild("Blocks")
     local myFolder=folder and folder:FindFirstChild(Player.Name)
     if not myFolder then warn("[MIDI BUILD] Own block folder missing"); return end
+
+    local input=findMusicInput(myFolder)
+    local buttonId=getMusicBlockId("Button")
+    local needsButton=not input
+    if needsButton and not buttonId then
+        midiBuildStatus.Text="MIDI BUILD: add a Button or Switch to your base"
+        warn("[MIDI BUILD] No existing Button/Switch/Lever found. Add one input block, then retry.")
+        return
+    end
+
     local char,hum,root=getCharacter()
     local origin=root and (root.CFrame*CFrame.new(0,8,-18))
     if not origin then warn("[MIDI BUILD] Character root missing"); return end
+
     local keyNames={"F#3","G3","G#3","A3","A#3","B3","C4","C#4","D4","D#4","E4","F4","F#4","G4","G#4","A4","A#4","B4","C5","C#5","D5","D#5","E5","F5","F#5"}
     local prepared={}
-    for i,n in ipairs(parsedMidi.notes) do
-        local key=n.pitch-54
-        if key<0 or key>24 then
-            warn("[MIDI BUILD] Pitch outside Music Note range F#3-F#5:",n.pitch,"event",i)
-            midiBuildStatus.Text="MIDI BUILD: pitch outside F#3–F#5 (see F9)"
-            return
+    for i,g in ipairs(groups) do
+        local groupData={time=g.time,notes={}}
+        for _,n in ipairs(g.notes) do
+            local key=n.pitch-54
+            if key<0 or key>24 then
+                midiBuildStatus.Text="MIDI BUILD: pitch outside F#3–F#5 (see F9)"
+                warn("[MIDI BUILD] Pitch outside Music Note range F#3-F#5:",n.pitch)
+                return
+            end
+            table.insert(groupData.notes,{key=keyNames[key+1],pitch=n.pitch,duration=n.duration})
         end
-        local delta=i>1 and (n.time-parsedMidi.notes[i-1].time) or n.time
-        prepared[i]={key=keyNames[key+1],delay=math.clamp(delta,0.05,10),time=n.time}
+        local delta=i>1 and (g.time-groups[i-1].time) or g.time
+        groupData.delay=math.clamp(delta,0.05,10)
+        table.insert(prepared,groupData)
     end
+
     midiBuildRunning=true
-    midiBuildStatus.Text="MIDI BUILD: placing "..required.." note/delay pairs..."
+    midiBuildStatus.Text="MIDI BUILD: placing "..requiredNotes.." Notes + "..#groups.." Delays..."
     task.spawn(function()
-        local madeNotes,madeDelays,errors={}, {},0
+        local madeNotes,madeDelays={},{}
+        local errors,placedNotes,placedDelays,binds=0,0,0,0
         local function place(name,id,cf)
             local before={}
             for _,obj in ipairs(myFolder:GetChildren()) do before[obj]=true end
@@ -1544,7 +1602,7 @@ button(music,"AUTO BUILD MUSIC ON MY BASE",function()
                 buildRF:InvokeServer(name,id,zone,localCF,true,cf,false)
             end)
             if not ok then return nil,tostring(err) end
-            for _=1,20 do
+            for _=1,30 do
                 for _,obj in ipairs(myFolder:GetChildren()) do
                     if not before[obj] and obj.Name==name and obj:FindFirstChild("PPart") then return obj end
                 end
@@ -1552,28 +1610,87 @@ button(music,"AUTO BUILD MUSIC ON MY BASE",function()
             end
             return nil,"server did not replicate placed "..name
         end
+
+        -- Create a starter input only if the base has no existing input block.
+        if needsButton then
+            input=place("Button",buttonId,origin*CFrame.new(-7,0,0))
+            if not input then
+                midiBuildRunning=false
+                midiBuildStatus.Text="MIDI BUILD: could not place starter Button"
+                warn("[MIDI BUILD] Failed to create starter Button")
+                return
+            end
+        end
+
+        local bindingTool=findTool({"BindingTool"})
+        local bindRF=bindingTool and bindingTool:FindFirstChild("RF",true)
+        if not bindRF or not bindRF:IsA("RemoteFunction") then
+            midiBuildRunning=false
+            midiBuildStatus.Text="MIDI BUILD: BindingTool.RF unavailable"
+            warn("[MIDI BUILD] BindingTool.RF not found")
+            return
+        end
+
         for i,item in ipairs(prepared) do
             if not midiBuildRunning then break end
             local delayCF=origin*CFrame.new((i-1)*7,0,0)
-            local noteCF=delayCF*CFrame.new(0,0,-3)
             local delayBlock,delayErr=place("Delay",delayId,delayCF)
-            local noteBlock,noteErr=place("Note",noteId,noteCF)
-            if delayBlock then
-                local ok,err=setMusicProperty(propertyRF,"Delay",delayBlock,item.delay)
-                if ok then table.insert(madeDelays,delayBlock) else errors+=1; warn("[MIDI BUILD] Delay property failed",i,err) end
-            else errors+=1; warn("[MIDI BUILD] Delay placement failed",i,delayErr) end
-            if noteBlock then
-                local ok,err=setMusicProperty(propertyRF,"Key",noteBlock,item.key)
-                if ok then table.insert(madeNotes,noteBlock) else errors+=1; warn("[MIDI BUILD] Note key failed",i,err) end
-            else errors+=1; warn("[MIDI BUILD] Note placement failed",i,noteErr) end
-            midiBuildStatus.Text=string.format("MIDI BUILD: %d/%d pairs | errors %d",i,required,errors)
-            if i%4==0 then task.wait(0.1) end
+            if not delayBlock then
+                errors+=1
+                warn("[MIDI BUILD] Delay placement failed",i,delayErr)
+                break
+            end
+            table.insert(madeDelays,delayBlock)
+            placedDelays+=1
+            local propOK,propErr=setMusicProperty(propertyRF,"Delay",delayBlock,item.delay)
+            if not propOK then errors+=1; warn("[MIDI BUILD] Delay property failed",i,propErr) end
+
+            for j,noteData in ipairs(item.notes) do
+                if not midiBuildRunning then break end
+                local noteCF=delayCF*CFrame.new(0,0,-3-(j-1)*3)
+                local noteBlock,noteErr=place("Note",noteId,noteCF)
+                if noteBlock then
+                    table.insert(madeNotes,noteBlock)
+                    placedNotes+=1
+                    local keyOK,keyErr=setMusicProperty(propertyRF,"Key",noteBlock,noteData.key)
+                    if not keyOK then errors+=1; warn("[MIDI BUILD] Note key failed",i,j,keyErr) end
+                else
+                    errors+=1
+                    warn("[MIDI BUILD] Note placement failed",i,j,noteErr)
+                end
+            end
+
+            -- Every Delay triggers its Notes; then it triggers the next Delay.
+            local controller=delayBlock
+            for _,noteBlock in ipairs(madeNotes) do
+                -- Only bind notes belonging to this timestamp group.
+                local noteTimeIndex=#madeNotes
+                if noteTimeIndex>0 then break end
+            end
+            local firstNoteIndex=#madeNotes-#item.notes+1
+            for ni=firstNoteIndex,#madeNotes do
+                local ok,err=bindMusicTarget(bindRF,madeNotes[ni],controller)
+                if ok then binds+=1 else errors+=1; warn("[MIDI BUILD] Note bind failed",i,err) end
+            end
+
+            if i==1 then
+                local ok,err=bindMusicTarget(bindRF,delayBlock,input)
+                if ok then binds+=1 else errors+=1; warn("[MIDI BUILD] Starter bind failed",err) end
+            else
+                local ok,err=bindMusicTarget(bindRF,delayBlock,madeDelays[i-1])
+                if ok then binds+=1 else errors+=1; warn("[MIDI BUILD] Delay chain bind failed",i,err) end
+            end
+
+            midiBuildStatus.Text=string.format("MIDI BUILD: %d/%d groups | Notes %d/%d | links %d | errors %d",i,#prepared,placedNotes,requiredNotes,binds,errors)
+            if i%3==0 then task.wait(0.1) end
         end
+
         midiBuildRunning=false
-        midiBuildStatus.Text=string.format("Placed %d Notes + %d Delays | errors %d | wiring not done",#madeNotes,#madeDelays,errors)
-        print("[MIDI BUILD] Finished. Notes:",#madeNotes,"Delays:",#madeDelays,"Errors:",errors)
-        print("[MIDI BUILD] Blocks are arranged in pairs along a straight row. BindingTool connections are NOT automated in this version.")
-        print("[MIDI BUILD] Key and Delay property calls used SetPropertieRF; verify in-game before saving.")
+        midiBuildStatus.Text=string.format("Built %d/%d Notes, %d/%d Delays, %d links, %d errors",placedNotes,requiredNotes,placedDelays,#prepared,binds,errors)
+        print("[MIDI BUILD] Finished. Notes:",placedNotes,"Delays:",placedDelays,"Links:",binds,"Errors:",errors)
+        print("[MIDI BUILD] Simultaneous notes were grouped into chords. Existing input:",input and input.Name or "none")
+        print("[MIDI BUILD] Note sustain in BABFT is limited to about 0.85 seconds; longer MIDI durations cannot be reproduced exactly.")
+        print("[MIDI BUILD] Long gaps over 10 seconds are clamped to 10 seconds by the Delay block limit.")
     end)
 end)
 -- BINDING TOOL API SCAN V1
@@ -2340,7 +2457,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V24",
+    Text="💎 DIAMOND BOAT HUB V29",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
@@ -2404,7 +2521,7 @@ local function applyLanguage(lang)
                 end
             end
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V21"
+        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V29"
     else
         for _,obj in ipairs(GUI:GetDescendants()) do
             if obj:IsA("TextButton") or obj:IsA("TextLabel") then
