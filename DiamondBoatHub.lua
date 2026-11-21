@@ -1808,46 +1808,73 @@ local function startMidiBuild()
     end)
 end
 button(music,"AUTO BUILD + WIRE MIDI",startMidiBuild)
--- ONE-CLICK SONG BUILDER: fetch a hosted MIDI directly, parse it in-memory, then build.
--- No local file, Base64 paste, or manual import step is required.
-local function loadAndBuildSong(title,urls)
-    if midiBuildRunning then warn("[DIAMOND MUSIC] Builder is already running"); return end
-    midiBuildStatus.Text="Loading "..title.." directly..."
-    task.spawn(function()
-        local parsed,usedUrl,lastError
-        for _,url in ipairs(urls) do
-            local ok,result=pcall(function()
-                local bytes=getMidiBytes(url)
-                if #bytes>12000000 then error("MIDI exceeds 12 MB") end
-                local midi=readMidi(bytes)
-                if not midi or #midi.notes==0 then error("No notes found in downloaded MIDI") end
-                return midi
-            end)
-            if ok then parsed=result; usedUrl=url; break else lastError=result end
+-- ONE-CLICK SONG BUILDER V2: fetch Online Sequencer's saved note data (no MIDI file).
+-- Online Sequencer stores each note as: cellTime pitch length instrument; sequence data starts with BPM.
+local HttpService = game:GetService("HttpService")
+local function loadOnlineSequencerSong(title, sequenceId)
+    local url = "https://onlinesequencer.net/ajax/load.php?id=" .. tostring(sequenceId)
+    local response = game:HttpGet(url)
+    local payload = HttpService:JSONDecode(response)
+    if type(payload) ~= "table" or type(payload.data) ~= "string" then
+        error("Online Sequencer returned no sequence data")
+    end
+    local bpmText, noteText = payload.data:match("^%s*(%d+)%s*:(.*)$")
+    local bpm = tonumber(bpmText)
+    if not bpm or bpm < 10 or bpm > 999 then
+        error("Could not read song BPM from sequence data")
+    end
+    local notes = {}
+    for entry in noteText:gmatch("[^;]+") do
+        local cellTime, pitchName, cellLength, instrument = entry:match("^%s*([%d%.]+)%s+([A-Ga-g][#b]?%-?%d+)%s+([%d%.]+)%s*(%d*)")
+        if cellTime and pitchName and cellLength then
+            local letter, accidental, octave = pitchName:match("^([A-Ga-g])([#b]?)(%-?%d+)$")
+            local semitones = ({C=0,D=2,E=4,F=5,G=7,A=9,B=11})[letter:upper()]
+            if accidental == "#" then semitones = semitones + 1 elseif accidental == "b" then semitones = semitones - 1 end
+            local midiPitch = (tonumber(octave) + 1) * 12 + semitones
+            -- Online Sequencer uses four cells per quarter note.
+            local secondsPerCell = 60 / bpm / 4
+            notes[#notes+1] = {
+                time = tonumber(cellTime) * secondsPerCell,
+                duration = math.max(0.04, tonumber(cellLength) * secondsPerCell),
+                pitch = midiPitch,
+                velocity = 100,
+                channel = tonumber(instrument) or 0
+            }
         end
-        if not parsed then
-            midiBuildStatus.Text=title.." download failed — see F9"
-            warn("[DIAMOND MUSIC] "..title.." could not be fetched as a direct MIDI. Last error:",lastError)
+    end
+    if #notes == 0 then
+        error("Sequence loaded, but no notes could be parsed")
+    end
+    table.sort(notes, function(a,b) return a.time < b.time end)
+    return {notes=notes, bpm=bpm, tracks=1, source="Online Sequencer"}
+end
+
+local function loadAndBuildSong(title, sequenceId)
+    if midiBuildRunning then warn("[DIAMOND MUSIC] Builder is already running"); return end
+    midiBuildStatus.Text = "Loading " .. title .. " sequence..."
+    task.spawn(function()
+        local ok, parsed = pcall(loadOnlineSequencerSong, title, sequenceId)
+        if not ok then
+            midiBuildStatus.Text = title .. " load failed — see F9"
+            warn("[DIAMOND MUSIC] " .. title .. " sequence fetch failed:", parsed)
             return
         end
-        parsedMidi=parsed
-        local duration=0
-        for _,note in ipairs(parsed.notes) do duration=math.max(duration,note.time+note.duration) end
-        midiStatus.Text=string.format("%s loaded: %d notes | %.1f sec",title,#parsed.notes,duration)
-        print("[DIAMOND MUSIC] Loaded",title,"from",usedUrl,"notes",#parsed.notes)
+        parsedMidi = parsed
+        local duration = 0
+        for _, note in ipairs(parsed.notes) do
+            duration = math.max(duration, note.time + note.duration)
+        end
+        midiStatus.Text = string.format("%s loaded: %d notes | %.1f sec | %d BPM", title, #parsed.notes, duration, parsed.bpm)
+        print("[DIAMOND MUSIC] Loaded", title, "from Online Sequencer sequence", sequenceId, "notes", #parsed.notes, "BPM", parsed.bpm)
         startMidiBuild()
     end)
 end
 label(music,"READY SONGS — CLICK TO BUILD ON YOUR BASE")
 button(music,"BUILD HOLY WAR — URAL GAYSIN",function()
-    loadAndBuildSong("Holy War",{
-        "https://onlinesequencer.net/app/midi.php?id=5314889"
-    })
+    loadAndBuildSong("Holy War — Ural Gaysin", 5314889)
 end)
 button(music,"BUILD RUSH E",function()
-    loadAndBuildSong("Rush E",{
-        "https://onlinesequencer.net/app/midi.php?id=5775937"
-    })
+    loadAndBuildSong("Rush E", 5775937)
 end)
 
 -- BINDING TOOL API SCAN V1
