@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V13
+-- DIAMOND BOAT HUB V14
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -1021,8 +1021,8 @@ local function runFarm(runId)
         -- Place above the stage, trigger it, then allow the server/client to process it.
         char:PivotTo(dark.CFrame*CFrame.new(0,3,0))
         pcall(function() event:Fire() end)
-        farmLog("Triggered stage",i,"; waiting 0.3s")
-        task.wait(0.3)
+        farmLog("Triggered stage",i,"; waiting 1s")
+        task.wait(1)
     end
 
     if not farmEnabled or runId~=farmRunId then return end
@@ -1442,7 +1442,7 @@ local function applyLanguage(lang)
         ["Base scanner"]="Сканер баз",["Select a candidate and inspect it. Preview is local only."]="Выбери базу для просмотра. Превью видно только тебе.",["Selected base: none"]="Выбранная база: нет",
         ["SCAN BASES"]="СКАНИРОВАТЬ БАЗЫ",["SHOW SELECTED BASE INFO"]="ИНФОРМАЦИЯ О ВЫБРАННОЙ БАЗЕ",["LOCAL COPY PREVIEW"]="ЛОКАЛЬНОЕ ПРЕВЬЮ КОПИИ",["REMOVE LOCAL PREVIEW"]="УДАЛИТЬ ПРЕВЬЮ",
         ["COPY SELECTED PLAYER BASE"]="КОПИРОВАТЬ БАЗУ ИГРОКА",["AUTO BUILD TO MY BASE"]="СТРОИТЬ НА МОЕЙ БАЗЕ",["STOP AUTO BUILD"]="ОСТАНОВИТЬ СТРОЙКУ",["CLEAR BASE SELECTION"]="СБРОСИТЬ ВЫБОР БАЗЫ",["SCAN BUILD REMOTES"]="СКАНИРОВАТЬ REMOTE СТРОИТЕЛЬСТВА",
-        ["AUTO FARM GOLD V12"]="АВТОФАРМ ЗОЛОТА V12",["Each cave stage is confirmed before moving on. Death/respawn is awaited."]="Каждый этап проверяется. После смерти скрипт ждёт возрождения.",["START AUTO FARM"]="ЗАПУСТИТЬ АВТОФАРМ",["STOP AUTO FARM"]="ОСТАНОВИТЬ АВТОФАРМ",["SCAN FARM ROUTE"]="СКАНИРОВАТЬ МАРШРУТ",
+        ["AUTO FARM GOLD V14"]="АВТОФАРМ ЗОЛОТА V12",["Each cave stage is confirmed before moving on. Death/respawn is awaited."]="Каждый этап проверяется. После смерти скрипт ждёт возрождения.",["START AUTO FARM"]="ЗАПУСТИТЬ АВТОФАРМ",["STOP AUTO FARM"]="ОСТАНОВИТЬ АВТОФАРМ",["SCAN FARM ROUTE"]="СКАНИРОВАТЬ МАРШРУТ",
         ["Game diagnostics"]="Диагностика игры",["DIAGNOSTICS V3: вывод в консоль F9"]="ДИАГНОСТИКА V3: вывод в консоль F9",["FULL GAME STRUCTURE SCAN"]="ПОЛНОЕ СКАНИРОВАНИЕ ИГРЫ",["SCAN REMOTES (BUILD + REWARDS)"]="СКАНИРОВАТЬ REMOTE (СТРОЙКА + НАГРАДЫ)",["SCAN INTERACTION OBJECTS"]="СКАНИРОВАТЬ ОБЪЕКТЫ ВЗАИМОДЕЙСТВИЯ",
         ["SCAN MY CHARACTER + PLAYER DATA"]="СКАНИРОВАТЬ ПЕРСОНАЖА И ДАННЫЕ",["COPY DIAGNOSTIC INSTRUCTIONS"]="КОПИРОВАТЬ ИНСТРУКЦИЮ ДИАГНОСТИКИ",["Scan Workspace roots"]="СКАНИРОВАТЬ ОБЪЕКТЫ WORKSPACE",["Scan ReplicatedStorage remotes"]="СКАНИРОВАТЬ REMOTE В REPLICATEDSTORAGE",["Scan player attributes"]="СКАНИРОВАТЬ АТРИБУТЫ ИГРОКА",["Print current position"]="ПОКАЗАТЬ ТЕКУЩУЮ ПОЗИЦИЮ",["Print game information"]="ПОКАЗАТЬ ИНФОРМАЦИЮ ОБ ИГРЕ",
         ["Hub settings"]="Настройки хаба",["Destroy local preview"]="Удалить локальное превью",["Restore lighting"]="Восстановить освещение",["Restore camera FOV"]="Восстановить угол обзора",["Appearance / Внешний вид"]="Внешний вид",["Reset appearance"]="Сбросить внешний вид",
@@ -1482,4 +1482,4 @@ languageButton("🇷🇺 Русский",122,function() applyLanguage("ru") end)
 languageButton("🇬🇧 English",174,function() applyLanguage("en") end)
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V13 LOADED")
+print("DIAMOND BOAT HUB V14 LOADED")
