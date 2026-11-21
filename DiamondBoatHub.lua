@@ -1841,19 +1841,12 @@ end
 label(music,"READY SONGS — CLICK TO BUILD ON YOUR BASE")
 button(music,"BUILD HOLY WAR — URAL GAYSIN",function()
     loadAndBuildSong("Holy War",{
-        "https://onlinesequencer.net/midi/5314889",
-        "https://onlinesequencer.net/5314889.mid",
-        "https://onlinesequencer.net/midi_export/5314889",
-        "https://onlinesequencer.net/download/5314889.mid"
+        "https://onlinesequencer.net/app/midi.php?id=5314889"
     })
 end)
 button(music,"BUILD RUSH E",function()
     loadAndBuildSong("Rush E",{
-        "https://onlinesequencer.net/midi/5775937",
-        "https://onlinesequencer.net/5775937.mid",
-        "https://onlinesequencer.net/midi_export/5775937",
-        "https://onlinesequencer.net/download/5775937.mid",
-        "https://www.fullpartituras.com/en/midis/midi/sin-artista-indicado-rush-e-converted-white-midi-e9728bef2c6e"
+        "https://onlinesequencer.net/app/midi.php?id=5775937"
     })
 end)
 
