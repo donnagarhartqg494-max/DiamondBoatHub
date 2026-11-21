@@ -1303,6 +1303,27 @@ local function getMidiBytes(input)
     if validMidi(bytes) then return bytes end
     error("This link did not return a MIDI file. Use a direct .mid download link.")
 end
+button(music,"AUTO FIND + LOAD MIDI",function()
+    parsedMidi=nil
+    midiStatus.Text="MIDI: searching Solara workspace..."
+    local ok,result=pcall(function()
+        local bytes=getMidiBytes("")
+        if #bytes>12000000 then error("MIDI exceeds 12 MB safety limit") end
+        local parsed=readMidi(bytes)
+        if #parsed.notes==0 then error("No paired note-on/note-off events found") end
+        return parsed
+    end)
+    if not ok then
+        midiStatus.Text="AUTO FIND ERROR: "..tostring(result)
+        warn("[DIAMOND MIDI] "..tostring(result))
+        return
+    end
+    parsedMidi=result
+    local totalDuration=0
+    for _,note in ipairs(result.notes) do totalDuration=math.max(totalDuration,note.time+note.duration) end
+    midiStatus.Text=string.format("READY: %d notes | %d tracks | %.1f sec | format %d",#result.notes,result.tracks,totalDuration,result.format)
+    print("[DIAMOND MIDI] Auto-loaded:",#result.notes,"notes")
+end)
 button(music,"IMPORT / PARSE MIDI",function()
     parsedMidi=nil
     midiStatus.Text="MIDI: importing..."
@@ -1340,7 +1361,7 @@ button(music,"SHOW MIDI SUMMARY",function()
         print(i,string.format("%.3f",n.time),"pitch",n.pitch,"duration",string.format("%.3f",n.duration))
     end
 end)
-label(music,"Solara: put .mid in workspace and enter its filename. The importer searches workspace subfolders automatically.")
+label(music,"Solara: put your .mid file in workspace, then press AUTO FIND + LOAD MIDI. No filename needed.")
 label(music,"This stage imports and parses the actual MIDI. Automatic placement, pitch configuration and wiring remain locked until the live PropertyTool/BindingTool remote arguments are verified; the hub will not fake a successful build.")
 
 -- MUSIC HELPER V1: inventory checks, verified sequence links and safe duplication notes.
