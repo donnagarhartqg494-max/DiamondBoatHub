@@ -912,95 +912,138 @@ end
 
 local function buildWoodPattern(name,offsets)
     if buildRunning then warn("[DIAMOND SHAPES] Сначала останови текущую стройку"); return end
-    if #offsets>350 then warn("[DIAMOND SHAPES] Слишком много блоков"); return end
+    if #offsets>350 then warn("[DIAMOND SHAPES] Пресет превышает лимит 350 блоков"); return end
     local zone,remote,myFolder=getMyBuildContext()
     if not zone then return end
     local blockId=getBlockTypeId("WoodBlock") or 9
+    local blockTemplate=nil
+    for _,obj in ipairs(myFolder:GetChildren()) do
+        if obj:IsA("Model") and obj.Name=="WoodBlock" and obj:FindFirstChild("PPart") then blockTemplate=obj; break end
+    end
+    local baseSize=(blockTemplate and blockTemplate.PPart.Size) or Vector3.new(4,1,2)
+    local char,hum=getCharacter()
+    local backpack=Player:FindFirstChildOfClass("Backpack")
+    local scalingTool=(char and char:FindFirstChild("ScalingTool")) or (backpack and backpack:FindFirstChild("ScalingTool"))
+    local scalingRF=scalingTool and scalingTool:FindFirstChild("RF")
+    local useScaling=scalingRF and scalingRF:IsA("RemoteFunction")
     buildRunning=true
-    buildProgressLabel.Text=name..": 0/"..#offsets
+    buildProgressLabel.Text=name..": 0/"..#offsets..(useScaling and " | Scaling ON" or " | block mode")
     task.spawn(function()
         local done,failed=0,0
         for i,entry in ipairs(offsets) do
             if not buildRunning then break end
             local localCF=CFrame.new(entry.x,entry.y,entry.z)*CFrame.Angles(0,entry.yaw or 0,entry.roll or 0)
             local worldCF=zone.CFrame*localCF
+            local before={}
+            for _,obj in ipairs(myFolder:GetChildren()) do before[obj]=true end
             local ok,err=pcall(function()
                 remote:InvokeServer("WoodBlock",blockId,zone,localCF,true,worldCF,false)
             end)
-            if ok then done+=1 else failed+=1; warn("[DIAMOND SHAPES] Block failed:",i,err) end
+            if ok then
+                local newBlock=nil
+                for attempt=1,8 do
+                    for _,obj in ipairs(myFolder:GetChildren()) do
+                        if not before[obj] and obj:IsA("Model") and obj.Name=="WoodBlock" and obj:FindFirstChild("PPart") then newBlock=obj; break end
+                    end
+                    if newBlock then break end
+                    task.wait(0.025)
+                end
+                if newBlock and useScaling and entry.size then
+                    local scaleOK,scaleErr=pcall(function()
+                        scalingRF:InvokeServer(newBlock,entry.size,worldCF)
+                    end)
+                    if scaleOK then done+=1 else failed+=1; warn("[DIAMOND SHAPES] Scaling failed; fallback block:",scaleErr) end
+                elseif newBlock then
+                    done+=1
+                else
+                    failed+=1
+                end
+            else
+                failed+=1
+                warn("[DIAMOND SHAPES] Placement failed:",i,err)
+            end
             buildProgressLabel.Text=name..": "..i.."/"..#offsets.." | errors: "..failed
-            if i%20==0 then task.wait() end
+            if i%15==0 then task.wait() end
         end
         buildRunning=false
-        buildProgressLabel.Text=name..": finished "..done.."/"..#offsets
-        print("[DIAMOND SHAPES]",name,"placed:",done,"errors:",failed)
+        buildProgressLabel.Text=name..": "..done.."/"..#offsets.." | errors: "..failed
+        print("[DIAMOND SHAPES]",name,"placed:",done,"errors:",failed,"ScalingTool:",useScaling and "available" or "not found; standard blocks used")
     end)
 end
 
-local function makeCircle(radius,segments,y)
+-- Filled disk: rows of adjacent blocks, not just an outline ring.
+local function makeCircle(radius,step,y)
     local points={}
-    for i=0,segments-1 do
-        local a=math.pi*2*i/segments
-        points[#points+1]={x=math.cos(a)*radius,y=y,z=math.sin(a)*radius,yaw=-a}
-    end
-    return points
-end
-
-local function makeSphere(radius,latitudes,longitudes)
-    local points={}
-    for lat=0,latitudes do
-        local phi=-math.pi/2+math.pi*lat/latitudes
-        local ringRadius=math.cos(phi)*radius
-        local y=math.sin(phi)*radius+8
-        local count=math.max(6,math.floor(longitudes*math.max(0.25,math.cos(phi))))
-        for j=0,count-1 do
-            local a=math.pi*2*j/count
-            points[#points+1]={x=math.cos(a)*ringRadius,y=y,z=math.sin(a)*ringRadius,yaw=-a}
+    for x=-radius,radius,step do
+        for z=-radius,radius,step do
+            if x*x+z*z<=radius*radius then
+                points[#points+1]={x=x,y=y,z=z,size=Vector3.new(step,baseSize and 1 or 1,step)}
+            end
         end
     end
     return points
 end
 
-label(build,"SHAPE BUILDER")
-label(build,"Shapes use WoodBlock on your own plot. Inventory and game limits apply.")
-button(build,"BUILD CIRCLE",function() buildWoodPattern("Circle",makeCircle(24,32,8)) end)
-button(build,"BUILD LARGE CIRCLE",function() buildWoodPattern("Large circle",makeCircle(40,48,8)) end)
-button(build,"BUILD SPHERE",function() buildWoodPattern("Sphere",makeSphere(18,10,28)) end)
-button(build,"BUILD SMALL SPHERE",function() buildWoodPattern("Small sphere",makeSphere(10,8,20)) end)
+-- Dense spherical shell with a smaller grid spacing to avoid visible gaps.
+local function makeSphere(radius,step)
+    local points={}
+    for y=-radius,radius,step do
+        for x=-radius,radius,step do
+            for z=-radius,radius,step do
+                local d=x*x+y*y+z*z
+                if d<=radius*radius and d>=(radius-step*1.25)^2 then
+                    points[#points+1]={x=x,y=y+radius+8,z=z,size=Vector3.new(step,step,step)}
+                end
+            end
+        end
+    end
+    return points
+end
 
-label(build,"BUILD PRESETS")
-button(build,"PRESET: PLATFORM",function()
+label(build,"SHAPE BUILDER — FILLED")
+label(build,"ScalingTool found = stretch blocks. No ScalingTool = dense standard blocks.")
+button(build,"FILLED CIRCLE",function() buildWoodPattern("Filled circle",makeCircle(24,4,8)) end)
+button(build,"LARGE FILLED CIRCLE",function() buildWoodPattern("Large filled circle",makeCircle(36,4,8)) end)
+button(build,"SPHERE — DENSE",function() buildWoodPattern("Dense sphere",makeSphere(16,4)) end)
+button(build,"SMALL SPHERE",function() buildWoodPattern("Small sphere",makeSphere(10,4)) end)
+
+label(build,"IMPROVED BUILD PRESETS")
+button(build,"PRESET: WIDE PLATFORM",function()
     local p={}
-    for x=-5,5 do for z=-4,4 do p[#p+1]={x=x*4,y=8,z=z*4} end end
-    buildWoodPattern("Platform preset",p)
+    for x=-6,6 do for z=-5,5 do p[#p+1]={x=x*4,y=8,z=z*4,size=Vector3.new(4,1,4)} end end
+    buildWoodPattern("Wide platform",p)
 end)
-button(build,"PRESET: TOWER",function()
+button(build,"PRESET: FORTRESS",function()
     local p={}
-    for y=0,11 do
-        for a=0,7 do
-            local angle=math.pi*2*a/8
-            p[#p+1]={x=math.cos(angle)*12,y=8+y*3,z=math.sin(angle)*12,yaw=-angle}
+    for x=-5,5 do for z=-5,5 do p[#p+1]={x=x*4,y=8,z=z*4} end end
+    for y=0,5 do
+        for a=0,15 do
+            local angle=math.pi*2*a/16
+            p[#p+1]={x=math.cos(angle)*24,y=10+y*3,z=math.sin(angle)*24,yaw=-angle}
         end
     end
-    for x=-2,2 do for z=-2,2 do p[#p+1]={x=x*4,y=8,z=z*4} end end
-    buildWoodPattern("Tower preset",p)
+    for x=-5,5 do p[#p+1]={x=x*4,y=28,z=-24}; p[#p+1]={x=x*4,y=28,z=24} end
+    buildWoodPattern("Fortress",p)
 end)
-button(build,"PRESET: SMALL HOUSE",function()
+button(build,"PRESET: BRIDGE",function()
     local p={}
-    for x=-3,3 do
-        for y=0,3 do
-            p[#p+1]={x=x*4,y=8+y*3,z=-12}
-            p[#p+1]={x=x*4,y=8+y*3,z=12}
-        end
+    for x=0,24 do
+        for z=-2,2 do p[#p+1]={x=x*4,y=8,z=z*4} end
     end
-    for z=-2,2 do
-        for y=0,3 do
-            p[#p+1]={x=-12,y=8+y*3,z=z*4}
-            p[#p+1]={x=12,y=8+y*3,z=z*4}
-        end
+    for side=-1,1,2 do
+        for x=0,24 do p[#p+1]={x=x*4,y=12,z=side*12} end
     end
-    for x=-3,3 do for z=-3,3 do p[#p+1]={x=x*4,y=20,z=z*4} end end
-    buildWoodPattern("Small house preset",p)
+    buildWoodPattern("Bridge",p)
+end)
+button(build,"PRESET: HOUSE PLUS",function()
+    local p={}
+    for x=-4,4 do for z=-4,4 do p[#p+1]={x=x*4,y=8,z=z*4} end end
+    for y=0,4 do
+        for x=-4,4 do p[#p+1]={x=x*4,y=10+y*3,z=-16}; p[#p+1]={x=x*4,y=10+y*3,z=16} end
+        for z=-3,3 do p[#p+1]={x=-16,y=10+y*3,z=z*4}; p[#p+1]={x=16,y=10+y*3,z=z*4} end
+    end
+    for x=-4,4 do for z=-4,4 do p[#p+1]={x=x*4,y=25,z=z*4} end end
+    buildWoodPattern("House Plus",p)
 end)
 
 button(build,"CLEAR BASE SELECTION",function()
