@@ -1102,7 +1102,7 @@ label(music,"EASY MIDI IMPORT")
 label(music,"Paste a .mid download link, an OnlineSequencer song link, or a local file path. No Base64 converter needed.")
 local midiInput=create("TextBox",{
     Size=UDim2.new(1,-8,0,76), BackgroundColor3=DARK, Text="",
-    PlaceholderText="Paste .mid link or local file path...",
+    PlaceholderText="song.mid (in Solara workspace) or direct .mid URL...",
     TextColor3=WHITE, TextSize=12, Font=Enum.Font.Gotham,
     ClearTextOnFocus=false, MultiLine=true, TextWrapped=true,
     TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top
@@ -1220,16 +1220,70 @@ local function readMidi(data)
 end
 local function getMidiBytes(input)
     input=input:gsub("^%s+",""):gsub("%s+$","")
-    if input=="" then error("Paste a MIDI link or local .mid file path") end
-    if not input:match("^https?://") then
-        if readfile then
-            local ok,bytes=pcall(readfile,input)
-            if ok and type(bytes)=="string" and #bytes>0 then return bytes end
+    local function validMidi(data)
+        return type(data)=="string" and #data>=14 and data:sub(1,4)=="MThd"
+    end
+    local function tryRead(path)
+        if type(readfile)~="function" then return nil end
+        local ok,data=pcall(readfile,path)
+        if ok and type(data)=="string" and #data>0 then return data end
+        return nil
+    end
+    if input=="" or not input:match("^https?://") then
+        if input~="" then
+            local candidates={input,"workspace/"..input}
+            for _,path in ipairs(candidates) do
+                local data=tryRead(path)
+                if data then
+                    if validMidi(data) then return data end
+                    error("File was read, but it is not a MIDI file: "..path)
+                end
+            end
+        end
+        -- Solara stores executor files in its workspace. Search subfolders too.
+        local found={}
+        if type(listfiles)=="function" then
+            local visited={}
+            local function scan(folder,depth)
+                if depth>4 or visited[folder] then return end
+                visited[folder]=true
+                local ok,items=pcall(listfiles,folder)
+                if not ok or type(items)~="table" then return end
+                for _,path in ipairs(items) do
+                    if type(path)=="string" then
+                        local clean=path:gsub("\\","/")
+                        if clean:lower():match("%.midi?$") then
+                            table.insert(found,clean)
+                            local base=clean:match("([^/]+)$")
+                            if input=="" or (base and base:lower()==input:match("([^/]+)$"):lower()) then
+                                local data=tryRead(path)
+                                if validMidi(data) then return data end
+                            end
+                        elseif depth<4 then
+                            local isDir=false
+                            if type(isfolder)=="function" then
+                                local okDir,result=pcall(isfolder,path)
+                                isDir=okDir and result
+                            elseif not clean:match("%.[^/]+$") then
+                                isDir=true
+                            end
+                            if isDir then
+                                local data=scan(path,depth+1)
+                                if data then return data end
+                            end
+                        end
+                    end
+                end
+            end
+            local data=scan("",0)
+            if data then return data end
         end
         local ok,raw=pcall(decodeBase64,input)
-        if ok and type(raw)=="string" and raw:sub(1,4)=="MThd" then return raw end
-        error("Can't read this file path. Paste a direct .mid download link instead.")
+        if ok and validMidi(raw) then return raw end
+        local list=#found>0 and table.concat(found,", ") or "no .mid files found"
+        error("Can't find/read the MIDI file. Put it in Solara workspace and enter its filename (example: song.mid). Found: "..list)
     end
+
     local function httpGet(url)
         local methods={
             function() return game:HttpGet(url) end,
@@ -1246,22 +1300,8 @@ local function getMidiBytes(input)
         error(lastError)
     end
     local bytes=httpGet(input)
-    if bytes:sub(1,4)=="MThd" then return bytes end
-    local links={}
-    for href in bytes:gmatch('[Hh][Rr][Ee][Ff]%s*=%s*["\']([^"\']+)["\']') do
-        local low=href:lower()
-        if low:find("%.mid") or low:find("midi_export") or low:find("download") then
-            if href:sub(1,2)=="//" then href="https:"..href
-            elseif href:sub(1,1)=="/" then href="https://onlinesequencer.net"..href
-            elseif not href:match("^https?://") then href="https://onlinesequencer.net/"..href end
-            table.insert(links,href)
-        end
-    end
-    for _,url in ipairs(links) do
-        local ok,result=pcall(httpGet,url)
-        if ok and type(result)=="string" and result:sub(1,4)=="MThd" then return result end
-    end
-    error("This is a web page, not a MIDI download. Paste a direct .mid download link.")
+    if validMidi(bytes) then return bytes end
+    error("This link did not return a MIDI file. Use a direct .mid download link.")
 end
 button(music,"IMPORT / PARSE MIDI",function()
     parsedMidi=nil
@@ -1300,7 +1340,7 @@ button(music,"SHOW MIDI SUMMARY",function()
         print(i,string.format("%.3f",n.time),"pitch",n.pitch,"duration",string.format("%.3f",n.duration))
     end
 end)
-label(music,"Tip: direct .mid links work best. Local file paths work only if your executor supports readfile().")
+label(music,"Solara: put .mid in workspace and enter its filename. The importer searches workspace subfolders automatically.")
 label(music,"This stage imports and parses the actual MIDI. Automatic placement, pitch configuration and wiring remain locked until the live PropertyTool/BindingTool remote arguments are verified; the hub will not fake a successful build.")
 
 -- MUSIC HELPER V1: inventory checks, verified sequence links and safe duplication notes.
