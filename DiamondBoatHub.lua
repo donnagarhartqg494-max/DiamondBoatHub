@@ -15,6 +15,7 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
 
 local Player = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -262,6 +263,26 @@ end
 
 label(home,"Welcome to Diamond Boat Hub")
 label(home,"Build A Boat For Treasure")
+local rejoinBusy=false
+button(home,"⚡ INSTANT REJOIN",function()
+    if rejoinBusy then return end
+    rejoinBusy=true
+    print("[DIAMOND] Rejoining current server...")
+    local ok,err=pcall(function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,Player)
+    end)
+    if not ok then
+        warn("[DIAMOND] Same-server rejoin failed:",err,"Trying a fresh server...")
+        local fallbackOk,fallbackErr=pcall(function()
+            TeleportService:Teleport(game.PlaceId,Player)
+        end)
+        if not fallbackOk then
+            rejoinBusy=false
+            warn("[DIAMOND] Rejoin failed:",fallbackErr)
+        end
+    end
+end)
+
 button(home,"Player information",function()
     print("Player:",Player.Name)
     print("UserId:",Player.UserId)
