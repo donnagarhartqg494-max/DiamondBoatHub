@@ -1097,7 +1097,6 @@ label(music,"BABFT BLOCK CHECK")
 local musicInventoryLabel=label(music,"Inventory: not scanned")
 button(music,"DEEP SCAN PLAYER INVENTORY",function()
     local totalValues=0
-    local printed=0
     local matches={}
     local function inspect(root,tag)
         if not root then return end
@@ -1106,16 +1105,13 @@ button(music,"DEEP SCAN PLAYER INVENTORY",function()
             local relevant=nm:find("music",1,true) or nm:find("note",1,true) or nm:find("delay",1,true)
             if obj:IsA("ValueBase") then
                 totalValues+=1
-                local value=obj.Value
-                if typeof(value)=="Instance" then value=value:GetFullName() end
-                if relevant or tag=="PLAYER_DATA" then
-                    printed+=1
-                    local row=tag.." | "..obj:GetFullName().." ["..obj.ClassName.."] = "..tostring(value)
-                    if #matches<300 then table.insert(matches,row) end
+                if relevant then
+                    local value=obj.Value
+                    if typeof(value)=="Instance" then value=value:GetFullName() end
+                    table.insert(matches,tag.." | "..obj:GetFullName().." ["..obj.ClassName.."] = "..tostring(value))
                 end
             elseif relevant then
-                printed+=1
-                if #matches<300 then table.insert(matches,tag.." | "..obj:GetFullName().." ["..obj.ClassName.."]") end
+                table.insert(matches,tag.." | "..obj:GetFullName().." ["..obj.ClassName.."]")
             end
         end
     end
@@ -1126,14 +1122,14 @@ button(music,"DEEP SCAN PLAYER INVENTORY",function()
     inspect(Player:FindFirstChild("PlayerGui"),"PLAYER_GUI")
     table.sort(matches)
     print("========== DIAMOND MUSIC DEEP SCAN ==========")
-    print("[MUSIC SCAN] Player.Data found:",data~=nil,"ValueBase count in Data:",data and #data:GetDescendants() or 0)
-    print("[MUSIC SCAN] Matching/diagnostic rows:",#matches,"Total Player.Data values:",totalValues)
+    print("[MUSIC SCAN] Player.Data found:",data~=nil,"Descendants in Data:",data and #data:GetDescendants() or 0)
+    print("[MUSIC SCAN] ValueBase objects scanned:",totalValues,"Actual name matches:",#matches)
     for _,row in ipairs(matches) do print("[MUSIC SCAN]",row) end
     if #matches==0 then
-        musicInventoryLabel.Text="No matching names; check F9 output"
-        warn("[MUSIC SCAN] Nothing matched. Run SCAN MY CHARACTER + PLAYER DATA and send the F9 output.")
+        musicInventoryLabel.Text="No Music/Note/Delay names found — see F9"
+        warn("[MUSIC SCAN] No matching object names in Data, Backpack, Character or PlayerGui.")
     else
-        musicInventoryLabel.Text="Scan complete: "..#matches.." rows — see F9"
+        musicInventoryLabel.Text="Found "..#matches.." Music/Note/Delay rows — see F9"
     end
     print("========== END MUSIC SCAN ==========")
 end)
