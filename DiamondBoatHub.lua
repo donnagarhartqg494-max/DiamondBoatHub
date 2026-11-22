@@ -79,6 +79,7 @@ mainStroke.Thickness=1.4
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(8,8,8)),Rotation=90},Main)
 local MainScale=create("UIScale",{Scale=1},Main)
 local isTouchDevice=UIS.TouchEnabled
+local deviceMode=isTouchDevice and "phone" or "pc"
 local windowMode="medium"
 local desktopSizes={small=Vector2.new(560,390),medium=Vector2.new(680,470),large=Vector2.new(800,560)}
 local function fitToScreen()
@@ -86,9 +87,9 @@ local function fitToScreen()
     if not cam then return end
     local viewport=cam.ViewportSize
     MainScale.Scale=1
-    if windowMode=="fullscreen" then
+    if windowMode=="fullscreen" or deviceMode=="phone" then
         Main.Size=UDim2.new(1,0,1,0)
-    elseif isTouchDevice or viewport.X<620 then
+    elseif viewport.X<620 then
         local w=math.clamp(math.floor(viewport.X*0.92),300,900)
         local h=math.clamp(math.floor(viewport.Y*0.86),360,1000)
         Main.Size=UDim2.fromOffset(w,h)
@@ -187,7 +188,7 @@ local buttonStyle="Modern"
 local animatedBackground=true
 local playerPrefix="Player"
 local backgroundGradient
-local credits=makePage("CREDITS")
+local credits
 
 local function makePage(name)
     local page=create("ScrollingFrame",{
@@ -213,6 +214,8 @@ local function makePage(name)
     Pages[name]=page
     return page
 end
+
+credits=makePage("CREDITS")
 
 local TabButtons={}
 local function showPage(name)
@@ -3189,7 +3192,7 @@ Min.Activated:Connect(function()
     minimized=not minimized
     Sidebar.Visible=not minimized
     Content.Visible=not minimized
-    local target=minimized and UDim2.fromOffset(680,48) or UDim2.fromOffset(680,470)
+    local target=minimized and UDim2.fromOffset(680,48) or (deviceMode=="phone" and UDim2.new(1,0,1,0) or UDim2.fromOffset(680,470))
     TweenService:Create(Main,TweenInfo.new(0.2,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=target}):Play()
     Min.Text=minimized and "+" or "—"
 end)
@@ -3232,8 +3235,8 @@ local function fitIntro()
         Intro.Position=UDim2.fromOffset(0,0)
         IntroScale.Scale=1
     else
-        Intro.Size=UDim2.fromOffset(390,440)
-        Intro.Position=UDim2.new(0.5,-195,0.5,-220)
+        Intro.Size=UDim2.fromOffset(390,540)
+        Intro.Position=UDim2.new(0.5,-195,0.5,-270)
         IntroScale.Scale=math.clamp(math.min(cam.ViewportSize.X/430,cam.ViewportSize.Y/480),0.75,1)
     end
 end
@@ -3264,12 +3267,38 @@ create("TextLabel",{
     Size=UDim2.new(1,-30,0,20),
     Position=UDim2.fromOffset(15,91),
     BackgroundTransparency=1,
-    Text="Select language to translate the hub interface",
+    Text="1. Choose device  2. Choose language",
     TextColor3=Color3.fromRGB(145,145,145),
     TextSize=11,
     Font=Enum.Font.Gotham,
     ZIndex=51
 },Intro)
+
+local function deviceButton(caption,y,mode)
+    local b=create("TextButton",{
+        Size=UDim2.new(1,-44,0,34),Position=UDim2.fromOffset(22,y),
+        BackgroundColor3=Color3.fromRGB(35,35,48),Text=caption,
+        TextColor3=WHITE,TextSize=13,Font=Enum.Font.GothamBold,
+        AutoButtonColor=false,ZIndex=52
+    },Intro)
+    round(b,9)
+    local st=outline(b)
+    b.Activated:Connect(function()
+        deviceMode=mode
+        isTouchDevice=(mode=="phone")
+        fitToScreen()
+        fitIntro()
+        for _,child in ipairs(Intro:GetChildren()) do
+            if child:IsA("TextButton") and child~=b and (child.Name=="DevicePC" or child.Name=="DevicePhone") then
+                child.BackgroundColor3=Color3.fromRGB(35,35,48)
+            end
+        end
+        b.BackgroundColor3=PURPLE
+        print("[DIAMOND] Device layout selected:",mode)
+    end)
+    b.Name=(mode=="phone" and "DevicePhone" or "DevicePC")
+    return b
+end
 
 local function languageButton(caption,y,callback)
     local b=create("TextButton",{
@@ -3345,9 +3374,13 @@ local function applyLanguage(lang)
     showPage("HOME")
 end
 
+local deviceTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,112),BackgroundTransparency=1,Text="DEVICE / УСТРОЙСТВО",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
+deviceButton("🖥  PC / КОМПЬЮТЕР",136,"pc")
+deviceButton("📱  PHONE / ТЕЛЕФОН",174,"phone")
+local languageTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,213),BackgroundTransparency=1,Text="LANGUAGE / ЯЗЫК",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
 for i,item in ipairs(languageNames) do
     local caption,code=item[1],item[2]
-    languageButton(caption,116+(i-1)*36,function() applyLanguage(code) end)
+    languageButton(caption,239+(i-1)*32,function() applyLanguage(code) end)
 end
 
 Intro.Visible=true
