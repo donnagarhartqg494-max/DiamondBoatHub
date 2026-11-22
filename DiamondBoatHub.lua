@@ -346,6 +346,7 @@ farm=makePage("AUTO FARM")
 shop=makePage("SHOP")
 tools=makePage("TOOLS")
 settings=makePage("SETTINGS")
+chatPage=makePage("CHAT")
 
 tabLayout=create("UIListLayout",{
     FillDirection=Enum.FillDirection.Horizontal,
@@ -373,7 +374,7 @@ tabIcons={
 }
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","CREDITS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","CHAT","SETTINGS","CREDITS"
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(0,58,0,56),
@@ -1356,6 +1357,51 @@ button(build,"PRESET: HOUSE PLUS",function()
     end
     for x=-4,4 do for z=-4,4 do p[#p+1]={x=x*4,y=25,z=z*4} end end
     buildWoodPattern("House Plus",p)
+end)
+button(build,"PRESET: ROCKET SHIP",function()
+    local p={}
+    for y=0,12 do
+        local radius=math.max(1,math.floor((12-y)*0.55))
+        for x=-radius,radius do for z=-radius,radius do
+            if x*x+z*z<=radius*radius then p[#p+1]={x=x*3,y=8+y*3,z=z*3} end
+        end end
+    end
+    for side=-1,1,2 do
+        for y=0,4 do for x=-2,2 do p[#p+1]={x=side*9+x*2,y=5+y*3,z=0} end end
+    end
+    buildWoodPattern("Rocket Ship",p)
+end)
+button(build,"PRESET: AIRCRAFT",function()
+    local p={}
+    for x=-2,2 do for y=0,1 do p[#p+1]={x=x*3,y=8+y*2,z=0} end end
+    for z=-9,9 do
+        for x=-5,5 do if math.abs(x)<=math.max(1,math.floor((10-math.abs(z))*0.7)) then p[#p+1]={x=x*3,y=9,z=z*3} end end
+    end
+    for y=0,5 do p[#p+1]={x=0,y=9+y*2,z=-30}; p[#p+1]={x=-6,y=9+y*2,z=-27}; p[#p+1]={x=6,y=9+y*2,z=-27} end
+    buildWoodPattern("Aircraft",p)
+end)
+button(build,"PRESET: PYRAMID",function()
+    local p={}
+    for y=0,10 do
+        local radius=10-y
+        for x=-radius,radius do for z=-radius,radius do
+            if math.abs(x)==radius or math.abs(z)==radius or y==0 then
+                p[#p+1]={x=x*3,y=8+y*3,z=z*3}
+            end
+        end end
+    end
+    buildWoodPattern("Pyramid",p)
+end)
+button(build,"PRESET: CHRISTMAS TREE",function()
+    local p={}
+    for y=0,10 do
+        local radius=math.max(1,10-y)
+        for x=-radius,radius do for z=-radius,radius do
+            if math.abs(x)+math.abs(z)<=radius then p[#p+1]={x=x*2,y=8+y*3,z=z*2} end
+        end end
+    end
+    for y=0,4 do p[#p+1]={x=0,y=38+y*3,z=0} end
+    buildWoodPattern("Christmas Tree",p)
 end)
 
 button(build,"CLEAR BASE SELECTION",function()
@@ -3297,6 +3343,56 @@ for _,plr in ipairs(Players:GetPlayers()) do addDiamondPlayerTag(plr) end
 Players.PlayerAdded:Connect(addDiamondPlayerTag)
 Players.PlayerRemoving:Connect(function(plr)
     if playerTagConnections[plr] then playerTagConnections[plr]:Disconnect(); playerTagConnections[plr]=nil end
+end)
+
+-- CHAT PAGE: uses Roblox's official TextChatService channel.
+-- Roblox applies its own server-side text filtering to messages sent through SendAsync.
+label(chatPage,"DIAMOND HUB CHAT")
+label(chatPage,"Сообщения отправляются в обычный чат Roblox и проходят встроенную модерацию Roblox.")
+local chatLog=create("ScrollingFrame",{
+    Size=UDim2.new(1,-8,0,230),BackgroundColor3=Color3.fromRGB(16,18,27),
+    BorderSizePixel=0,ScrollBarThickness=4,CanvasSize=UDim2.new(0,0,0,0)
+},chatPage)
+round(chatLog,9)
+local chatLayout=create("UIListLayout",{Padding=UDim.new(0,4),SortOrder=Enum.SortOrder.LayoutOrder},chatLog)
+chatLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    chatLog.CanvasSize=UDim2.new(0,0,0,chatLayout.AbsoluteContentSize.Y+10)
+    chatLog.CanvasPosition=Vector2.new(0,math.max(0,chatLog.AbsoluteCanvasSize.Y-chatLog.AbsoluteSize.Y))
+end)
+local chatInput=create("TextBox",{
+    Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(25,27,38),
+    TextColor3=WHITE,PlaceholderText="Напиши сообщение...",Text="",ClearTextOnFocus=false,
+    Font=Enum.Font.Gotham,TextSize=13
+},chatPage)
+round(chatInput,8)
+local function addChatLine(message)
+    local line=create("TextLabel",{
+        Size=UDim2.new(1,-12,0,0),AutomaticSize=Enum.AutomaticSize.Y,
+        BackgroundTransparency=1,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,
+        TextColor3=Color3.fromRGB(225,230,245),TextSize=12,Font=Enum.Font.Gotham,
+        Text=string.sub(tostring(message),1,240)
+    },chatLog)
+    line.LayoutOrder=#chatLog:GetChildren()
+end
+local function sendHubChat()
+    local message=string.sub(chatInput.Text or "",1,180)
+    if message:gsub("%s","")=="" then return end
+    local channels=TextChatService:FindFirstChild("TextChannels")
+    local channel=channels and (channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildWhichIsA("TextChannel"))
+    if not channel then
+        addChatLine("[CHAT] Канал Roblox недоступен в этой игре.")
+        return
+    end
+    local ok,err=pcall(function() channel:SendAsync(message) end)
+    if ok then chatInput.Text="" else addChatLine("[CHAT] Не удалось отправить: "..tostring(err)) end
+end
+button(chatPage,"SEND MESSAGE / ОТПРАВИТЬ",sendHubChat)
+TextChatService.MessageReceived:Connect(function(message)
+    if not message or not message.Text then return end
+    local source=message.TextSource
+    local speaker=source and Players:GetPlayerByUserId(source.UserId)
+    local name=speaker and speaker.DisplayName or "Roblox"
+    addChatLine(name..": "..message.Text)
 end)
 
 -- CREDITS PAGE
