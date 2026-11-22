@@ -85,7 +85,7 @@ local function fitToScreen()
     local cam=Workspace.CurrentCamera
     if not cam then return end
     local viewport=cam.ViewportSize
-    if isTouchDevice or viewport.X<620 then
+    if windowMode=="fullscreen" or isTouchDevice or viewport.X<620 then
         Main.Size=UDim2.new(1,0,1,0)
         Main.Position=UDim2.fromOffset(0,0)
         MainScale.Scale=1
@@ -2535,14 +2535,14 @@ local function runFarm(runId)
                     confirmed=true
                     break
                 end
-                task.wait(0.1)
+                task.wait(0.03)
             end
         end
         if not confirmed and typeof(firetouchinterest)=="function" then
             farmLog("Stage",i,"not confirmed; retrying touch")
             pcall(function()
                 firetouchinterest(root,dark,0)
-                task.wait(0.15)
+                task.wait(0.03)
                 firetouchinterest(root,dark,1)
             end)
             if progress then
@@ -2553,12 +2553,11 @@ local function runFarm(runId)
                         confirmed=true
                         break
                     end
-                    task.wait(0.1)
+                    task.wait(0.03)
                 end
             end
         end
-        farmLog("Stage",i,confirmed and "CONFIRMED" or "progress not detected","; waiting 1s")
-        task.wait(1)
+        farmLog("Stage",i,confirmed and "CONFIRMED" or "progress not detected","; continuing immediately")
     end
 
     if not farmEnabled or runId~=farmRunId then return end
@@ -2595,11 +2594,11 @@ local function runFarm(runId)
             task.wait(0.15)
             firetouchinterest(root,chest,1)
         end)
-        farmLog("Chest touch sent; waiting 1.5s for game response.")
-        task.wait(0.25)
+        farmLog("Chest touch sent; checking game response immediately.")
+        RunService.Heartbeat:Wait()
     elseif root and hum and hum.Health>0 then
-        farmLog("firetouchinterest unavailable; waiting for natural chest contact.")
-        task.wait(1.5)
+        farmLog("firetouchinterest unavailable; allowing natural chest contact.")
+        RunService.Heartbeat:Wait()
     end
 
     -- If the chest kills/resets the avatar, wait for the respawn before claiming.
@@ -2607,7 +2606,7 @@ local function runFarm(runId)
     while farmEnabled and runId==farmRunId and not respawned and os.clock()<deadline do
         local c=Player.Character
         if c and c~=oldCharacter then respawned=true break end
-        task.wait(0.1)
+        task.wait(0.03)
     end
     conn:Disconnect()
     if not farmEnabled or runId~=farmRunId then return end
@@ -2633,7 +2632,7 @@ button(farm,"START AUTO FARM",function()
     task.spawn(function()
         while farmEnabled and id==farmRunId do
             runFarm(id)
-            if farmEnabled and id==farmRunId then task.wait(0.1) end
+            if farmEnabled and id==farmRunId then RunService.Heartbeat:Wait() end
         end
         farmLog("Stopped")
     end)
@@ -2837,9 +2836,11 @@ local themes={
     Green={main=Color3.fromRGB(65,190,125),panel=Color3.fromRGB(24,43,36),dark=Color3.fromRGB(13,24,19)},
     Gold={main=Color3.fromRGB(220,170,55),panel=Color3.fromRGB(48,40,25),dark=Color3.fromRGB(25,21,14)}
 }
+local currentTheme="Purple"
 local function applyTheme(name)
     local t=themes[name]
     if not t then return end
+    currentTheme=name
     PURPLE=t.main; PANEL=t.panel; DARK=t.dark
     Main.BackgroundColor3=DARK; Top.BackgroundColor3=PANEL
     Sidebar.BackgroundColor3=PANEL; Content.BackgroundColor3=PANEL
@@ -3145,4 +3146,60 @@ Main.Visible=false
 TweenService:Create(IntroScale,TweenInfo.new(0.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Scale=1}):Play()
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V31 LOADED")
+-- DELTA-FRIENDLY CONFIGURATION + RELOAD
+local HttpService=game:GetService("HttpService")
+local CONFIG_FILE="DiamondBoatHub_Config.json"
+local function saveHubConfig()
+    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",theme=currentTheme or "Purple"}
+    if type(writefile)~="function" then
+        warn("[DIAMOND CONFIG] writefile is unavailable in this executor.")
+        return false
+    end
+    local ok,err=pcall(function() writefile(CONFIG_FILE,HttpService:JSONEncode(data)) end)
+    if not ok then warn("[DIAMOND CONFIG] Save failed:",tostring(err)); return false end
+    print("[DIAMOND CONFIG] Saved:",CONFIG_FILE)
+    return true
+end
+local function loadHubConfig()
+    if type(readfile)~="function" or type(isfile)~="function" then
+        warn("[DIAMOND CONFIG] readfile/isfile is unavailable in this executor.")
+        return false
+    end
+    local ok,data=pcall(function()
+        if not isfile(CONFIG_FILE) then error("No saved config found") end
+        return HttpService:JSONDecode(readfile(CONFIG_FILE))
+    end)
+    if not ok or type(data)~="table" then warn("[DIAMOND CONFIG] Load failed:",tostring(data)); return false end
+    if type(data.language)=="string" and (data.language=="en" or translations[data.language]) then applyLanguage(data.language) end
+    if type(data.windowMode)=="string" then
+        if data.windowMode=="fullscreen" then
+            windowMode="fullscreen"
+            fitToScreen()
+        elseif desktopSizes[data.windowMode] then
+            setWindowMode(data.windowMode)
+        end
+    end
+    if type(data.theme)=="string" and themes[data.theme] then applyTheme(data.theme) end
+    print("[DIAMOND CONFIG] Loaded:",CONFIG_FILE)
+    return true
+end
+
+button(settings,"SAVE CONFIG",function() saveHubConfig() end)
+button(settings,"LOAD CONFIG",function() loadHubConfig() end)
+button(settings,"RELOAD SCRIPT",function()
+    farmEnabled=false
+    farmRunId+=1
+    farmRelease()
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua"
+    local ok,err=pcall(function()
+        assert(type(loadstring)=="function","loadstring unavailable")
+        local source=game:HttpGet(url)
+        assert(type(source)=="string" and #source>1000,"download returned invalid script")
+        local chunk=loadstring(source)
+        assert(type(chunk)=="function","script compilation failed")
+        chunk()
+    end)
+    if not ok then warn("[DIAMOND RELOAD] Failed:",tostring(err)) end
+end)
+
+print("DIAMOND BOAT HUB V32 LOADED")
