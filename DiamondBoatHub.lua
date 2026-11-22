@@ -250,6 +250,7 @@ local function button(page,text,callback)
         Text="   "..text,TextColor3=Color3.fromRGB(242,242,248),TextSize=13,Font=Enum.Font.GothamSemibold,
         TextXAlignment=Enum.TextXAlignment.Left,AutoButtonColor=false,BorderSizePixel=0
     },page)
+    b:SetAttribute("HubStyledButton",true)
     round(b,11)
     local stroke=outline(b)
     stroke.Color=Color3.fromRGB(75,75,94)
@@ -280,6 +281,31 @@ local function button(page,text,callback)
     end)
     b.Activated:Connect(callback)
     return b
+end
+
+local function setButtonStyle(style)
+    if style~="Modern" and style~="Liquid Glass" and style~="Neon" then return end
+    buttonStyle=style
+    for _,obj in ipairs(GUI:GetDescendants()) do
+        if obj:IsA("TextButton") and obj:GetAttribute("HubStyledButton") then
+            local stroke=obj:FindFirstChildOfClass("UIStroke")
+            local grad=obj:FindFirstChildOfClass("UIGradient")
+            if grad then grad:Destroy() end
+            obj.BackgroundTransparency=0
+            if style=="Liquid Glass" then
+                obj.BackgroundColor3=Color3.fromRGB(75,82,100)
+                obj.BackgroundTransparency=0.34
+                if stroke then stroke.Color=Color3.fromRGB(210,225,255); stroke.Transparency=0.18 end
+                create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(220,235,255),Color3.fromRGB(75,90,125)),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(1,0.58)}),Rotation=90},obj)
+            elseif style=="Neon" then
+                obj.BackgroundColor3=Color3.fromRGB(15,18,28)
+                if stroke then stroke.Color=PURPLE; stroke.Transparency=0.02; stroke.Thickness=1.5 end
+            else
+                obj.BackgroundColor3=Color3.fromRGB(24,24,31)
+                if stroke then stroke.Color=Color3.fromRGB(75,75,94); stroke.Transparency=0.55; stroke.Thickness=1 end
+            end
+        end
+    end
 end
 
 local function toggle(page,text,default,callback)
@@ -326,6 +352,19 @@ tabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Sidebar.CanvasSize=UDim2.new(0,tabLayout.AbsoluteContentSize.X+16,0,0)
 end)
 
+local tabIcons={
+    HOME="rbxassetid://10723407389",
+    MOVEMENT="rbxassetid://10734906744",
+    VISUALS="rbxassetid://10723346959",
+    TELEPORTS="rbxassetid://10734886004",
+    ["AUTO BUILD"]="rbxassetid://10723405360",
+    MUSIC="rbxassetid://10734905958",
+    ["AUTO FARM"]="rbxassetid://10723395708",
+    SHOP="rbxassetid://10734952479",
+    TOOLS="rbxassetid://10723405749",
+    SETTINGS="rbxassetid://10734950309",
+    CREDITS="rbxassetid://10709819149"
+}
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
     "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","CREDITS"
@@ -333,7 +372,7 @@ for _,name in ipairs({
     local b=create("TextButton",{
         Size=UDim2.new(0,58,1,-6),
         BackgroundColor3=BUTTON_WHITE,
-        Text=({HOME="🏠 HOME",MOVEMENT="🏃 MOVE",VISUALS="👁 VISUAL",TELEPORTS="📍 TELEPORT",["AUTO BUILD"]="🧱 BUILD",MUSIC="🎵 MUSIC",["AUTO FARM"]="⚡ FARM",SHOP="🛒 SHOP",TOOLS="🛠 TOOLS",SETTINGS="⚙ SET",CREDITS="💎 CREDITS"})[name] or name,
+        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",CREDITS="CREDITS"})[name] or name,
         TextColor3=TEXT_DARK,
         TextSize=9,
         Font=Enum.Font.GothamBold,
@@ -341,6 +380,13 @@ for _,name in ipairs({
         AutoButtonColor=false
     },Sidebar)
     round(b,8)
+    local tabIcon=Instance.new("ImageLabel")
+    tabIcon.Name="TabIcon"; tabIcon.BackgroundTransparency=1
+    tabIcon.Size=UDim2.fromOffset(17,17); tabIcon.Position=UDim2.fromOffset(5,7)
+    tabIcon.Image=tabIcons[name] or ""; tabIcon.ImageColor3=TEXT_DARK
+    tabIcon.Parent=b
+    b.Text="      "..b.Text
+    b.TextXAlignment=Enum.TextXAlignment.Left
     local tabStroke=outline(b)
     tabStroke.Color=Color3.fromRGB(90,90,90)
     tabStroke.Transparency=0.35
@@ -406,6 +452,11 @@ label(movement,"Movement controls")
 local speedOn=false
 local jumpOn=false
 local infiniteJump=false
+local noclipOn=false
+local noclipConnection
+local noclipOriginal={}
+local configuredSpeed=45
+local configuredJump=100
 local flyOn=false
 local flyConnection
 local flyVelocity
@@ -413,16 +464,42 @@ local flyGyro
 
 local function updateSpeed()
     local _,hum=getCharacter()
-    if hum then hum.WalkSpeed=speedOn and 45 or 16 end
+    if hum then hum.WalkSpeed=speedOn and configuredSpeed or 16 end
 end
 
 local function updateJump()
     local _,hum=getCharacter()
     if hum then
         hum.UseJumpPower=true
-        hum.JumpPower=jumpOn and 100 or 50
+        hum.JumpPower=jumpOn and configuredJump or 50
     end
 end
+
+local function addNumericSetting(parent,title,default,minValue,maxValue,onValue)
+    label(parent,title)
+    local box=create("TextBox",{
+        Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),
+        TextColor3=Color3.fromRGB(245,245,250),PlaceholderColor3=Color3.fromRGB(145,145,155),
+        PlaceholderText=tostring(default),Text=tostring(default),ClearTextOnFocus=false,
+        Font=Enum.Font.GothamSemibold,TextSize=14
+    },parent)
+    round(box,9); outline(box)
+    box.FocusLost:Connect(function()
+        local n=tonumber(box.Text)
+        if not n then box.Text=tostring(default); return end
+        n=math.clamp(n,minValue,maxValue)
+        box.Text=tostring(n)
+        onValue(n)
+    end)
+    return box
+end
+
+addNumericSetting(movement,"WALK SPEED (16–250)",configuredSpeed,16,250,function(v)
+    configuredSpeed=v; if speedOn then updateSpeed() end
+end)
+addNumericSetting(movement,"JUMP POWER (50–300)",configuredJump,50,300,function(v)
+    configuredJump=v; if jumpOn then updateJump() end
+end)
 
 toggle(movement,"Speed boost",false,function(v)
     speedOn=v
@@ -436,6 +513,28 @@ end)
 
 toggle(movement,"Infinite jump",false,function(v)
     infiniteJump=v
+end)
+
+toggle(movement,"Noclip",false,function(v)
+    noclipOn=v
+    if noclipConnection then noclipConnection:Disconnect(); noclipConnection=nil end
+    if not v then
+        for part,old in pairs(noclipOriginal) do
+            if part and part.Parent then part.CanCollide=old end
+        end
+        table.clear(noclipOriginal)
+        return
+    end
+    noclipConnection=RunService.Stepped:Connect(function()
+        local char=Player.Character
+        if not char then return end
+        for _,part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                if noclipOriginal[part]==nil then noclipOriginal[part]=part.CanCollide end
+                part.CanCollide=false
+            end
+        end
+    end)
 end)
 
 UIS.JumpRequest:Connect(function()
@@ -2962,9 +3061,27 @@ button(settings,"Theme: Green",function() applyTheme("Green") end)
 button(settings,"Theme: Gold",function() applyTheme("Gold") end)
 button(settings,"Reset appearance",function() applyTheme("Purple") end)
 label(settings,"GUI STYLE / СТИЛЬ ИНТЕРФЕЙСА")
-button(settings,"Style: Modern",function() buttonStyle="Modern"; print("[DIAMOND] Button style: Modern") end)
-button(settings,"Style: Liquid Glass (iPhone)",function() buttonStyle="Liquid Glass"; print("[DIAMOND] Button style: Liquid Glass") end)
-button(settings,"Style: Neon",function() buttonStyle="Neon"; print("[DIAMOND] Button style: Neon") end)
+button(settings,"Style: Modern",function() setButtonStyle("Modern") end)
+button(settings,"Style: Liquid Glass (iPhone)",function() setButtonStyle("Liquid Glass") end)
+button(settings,"Style: Neon",function() setButtonStyle("Neon") end)
+label(settings,"ANIMATED BACKGROUND / ФОН")
+local backgroundMode="Aurora"
+local backgroundPresets={
+    Aurora=ColorSequence.new(Color3.fromRGB(15,10,42),Color3.fromRGB(20,75,90)),
+    Ocean=ColorSequence.new(Color3.fromRGB(4,24,58),Color3.fromRGB(0,120,145)),
+    Sunset=ColorSequence.new(Color3.fromRGB(65,18,55),Color3.fromRGB(210,95,45)),
+    Matrix=ColorSequence.new(Color3.fromRGB(0,24,12),Color3.fromRGB(0,100,48)),
+    Mono=ColorSequence.new(Color3.fromRGB(8,8,12),Color3.fromRGB(60,60,72))
+}
+local function setBackgroundMode(name)
+    if not backgroundPresets[name] then return end
+    backgroundMode=name
+    if backgroundGradient then backgroundGradient.Color=backgroundPresets[name]; backgroundGradient.Enabled=animatedBackground end
+    print("[DIAMOND] Background:",name)
+end
+for _,name in ipairs({"Aurora","Ocean","Sunset","Matrix","Mono"}) do
+    button(settings,"Background: "..name,function() setBackgroundMode(name) end)
+end
 button(settings,"Animated background: ON / OFF",function()
     animatedBackground=not animatedBackground
     if backgroundGradient then backgroundGradient.Enabled=animatedBackground end
@@ -2975,11 +3092,13 @@ round(prefixBox,9)
 prefixBox.FocusLost:Connect(function()
     playerPrefix=string.sub(prefixBox.Text,1,16)
     prefixBox.Text=playerPrefix
+    refreshPlayerTags()
 end)
 
 
 -- Animated background layer (kept behind all content).
-backgroundGradient=create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(12,10,28),Color3.fromRGB(24,10,48)),Rotation=0},Main)
+backgroundGradient=Main:FindFirstChildOfClass("UIGradient")
+if backgroundGradient then backgroundGradient.Color=backgroundPresets[backgroundMode] or backgroundPresets.Aurora end
 task.spawn(function()
     while GUI.Parent do
         if animatedBackground and backgroundGradient then
@@ -2994,30 +3113,52 @@ task.spawn(function()
     end
 end)
 
--- Local-only overhead labels. Roblox clients cannot replicate these labels to other players.
-local function addDiamondPlayerTag(plr)
-    local function attach(char)
-        local head=char:WaitForChild("Head",8)
-        if not head or not GUI.Parent then return end
-        local old=head:FindFirstChild("DiamondPlayerTag")
-        if old then old:Destroy() end
-        local roleText,roleColor
-        if plr.UserId==7162643277 then roleText,roleColor="OWNER",Color3.fromRGB(255,65,65)
-        elseif plr.UserId==4918761384 then roleText,roleColor="SCRIPT DEV",Color3.fromRGB(255,205,45)
-        else roleText,roleColor="{"..playerPrefix.."}",Color3.fromRGB(160,190,255) end
-        local tag=Instance.new("BillboardGui")
-        tag.Name="DiamondPlayerTag"; tag.Size=UDim2.fromOffset(150,24); tag.StudsOffset=Vector3.new(0,2.8,0)
-        tag.AlwaysOnTop=true; tag.MaxDistance=120; tag.Adornee=head; tag.Parent=head
-        local txt=Instance.new("TextLabel")
-        txt.Size=UDim2.fromScale(1,1); txt.BackgroundTransparency=1; txt.Text=roleText
-        txt.TextColor3=roleColor; txt.TextStrokeTransparency=0.35; txt.Font=Enum.Font.GothamBold
-        txt.TextSize=13; txt.Parent=tag
+-- Local-only overhead labels; executor clients cannot replicate tags to other clients.
+local playerTagConnections={}
+refreshPlayerTags=function()
+    for _,plr in ipairs(Players:GetPlayers()) do
+        local char=plr.Character
+        local head=char and char:FindFirstChild("Head")
+        if head then
+            local old=head:FindFirstChild("DiamondPlayerTag")
+            if old then old:Destroy() end
+            local role,roleColor
+            if plr.UserId==7162643277 then role,roleColor="OWNER",Color3.fromRGB(255,65,65)
+            elseif plr.UserId==4918761384 then role,roleColor="SCRIPT DEV",Color3.fromRGB(255,205,45) end
+            local prefix=(plr.UserId==Player.UserId and playerPrefix or "Player")
+            local tag=Instance.new("BillboardGui")
+            tag.Name="DiamondPlayerTag"; tag.Size=UDim2.fromOffset(170,role and 42 or 24)
+            tag.StudsOffset=Vector3.new(0,role and 3.1 or 2.8,0)
+            tag.AlwaysOnTop=true; tag.MaxDistance=120; tag.Adornee=head; tag.Parent=head
+            local prefixLabel=Instance.new("TextLabel")
+            prefixLabel.Size=UDim2.new(1,0,0,role and 20 or 24)
+            prefixLabel.Position=UDim2.fromOffset(0,0); prefixLabel.BackgroundTransparency=1
+            prefixLabel.Text=(role and prefix~="" and prefix or (role and "" or "{"..prefix.."}"))
+            prefixLabel.TextColor3=Color3.fromRGB(185,205,255); prefixLabel.TextStrokeTransparency=0.35
+            prefixLabel.Font=Enum.Font.GothamBold; prefixLabel.TextSize=13; prefixLabel.Parent=tag
+            if role then
+                local roleLabel=Instance.new("TextLabel")
+                roleLabel.Size=UDim2.new(1,0,0,20); roleLabel.Position=UDim2.fromOffset(0,19)
+                roleLabel.BackgroundTransparency=1; roleLabel.Text=role
+                roleLabel.TextColor3=roleColor; roleLabel.TextStrokeTransparency=0.3
+                roleLabel.Font=Enum.Font.GothamBlack; roleLabel.TextSize=13; roleLabel.Parent=tag
+            end
+        end
     end
-    if plr.Character then task.spawn(attach,plr.Character) end
-    plr.CharacterAdded:Connect(attach)
+end
+local function addDiamondPlayerTag(plr)
+    if playerTagConnections[plr] then playerTagConnections[plr]:Disconnect() end
+    playerTagConnections[plr]=plr.CharacterAdded:Connect(function()
+        task.wait(0.25)
+        refreshPlayerTags()
+    end)
+    task.defer(refreshPlayerTags)
 end
 for _,plr in ipairs(Players:GetPlayers()) do addDiamondPlayerTag(plr) end
 Players.PlayerAdded:Connect(addDiamondPlayerTag)
+Players.PlayerRemoving:Connect(function(plr)
+    if playerTagConnections[plr] then playerTagConnections[plr]:Disconnect(); playerTagConnections[plr]=nil end
+end)
 
 -- CREDITS PAGE
 label(credits,"DIAMOND BABFT")
@@ -3026,8 +3167,22 @@ label(credits,"Gfhkm_20")
 label(credits,"Xone42_2")
 button(credits,"OPEN TELEGRAM CHANNEL",function()
     local url="https://t.me/diamond_scripts"
-    if type(setclipboard)=="function" then pcall(setclipboard,url) end
-    pcall(function() game:GetService("GuiService"):OpenBrowserWindow(url) end)
+    local opened=false
+    local ok=pcall(function()
+        local guiService=game:GetService("GuiService")
+        assert(type(guiService.OpenBrowserWindow)=="function","browser API unavailable")
+        guiService:OpenBrowserWindow(url)
+        opened=true
+    end)
+    if not opened then
+        local copied=false
+        if type(setclipboard)=="function" then copied=pcall(setclipboard,url) end
+        if copied then
+            warn("[DIAMOND] Telegram could not open automatically; link copied: "..url)
+        else
+            warn("[DIAMOND] Open Telegram manually: "..url)
+        end
+    end
 end)
 label(credits,"DIAMOND BOAT HUB V1 [BETA]")
 
@@ -3348,8 +3503,8 @@ zh={["HOME"]="主页",["MOVEMENT"]="移动",["VISUALS"]="画面",["TELEPORTS"]="
 }
 
 local languageNames={
-{"🇷🇺  Русский","ru"},{"🇬🇧  English","en"},{"🇪🇸  Español","es"},{"🇩🇪  Deutsch","de"},
-{"🇫🇷  Français","fr"},{"🇧🇷  Português","pt"},{"🇹🇷  Türkçe","tr"},{"🇵🇱  Polski","pl"},{"🇨🇳  中文","zh"}
+{"Русский","ru"},{"English","en"},{"Español","es"},{"Deutsch","de"},
+{"Français","fr"},{"Português","pt"},{"Türkçe","tr"},{"Polski","pl"},{"中文","zh"}
 }
 local function applyLanguage(lang)
     CurrentLanguage=lang
@@ -3375,13 +3530,23 @@ local function applyLanguage(lang)
 end
 
 local deviceTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,112),BackgroundTransparency=1,Text="DEVICE / УСТРОЙСТВО",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
-deviceButton("🖥  PC / КОМПЬЮТЕР",136,"pc")
-deviceButton("📱  PHONE / ТЕЛЕФОН",174,"phone")
-local languageTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,213),BackgroundTransparency=1,Text="LANGUAGE / ЯЗЫК",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
-for i,item in ipairs(languageNames) do
-    local caption,code=item[1],item[2]
-    languageButton(caption,239+(i-1)*32,function() applyLanguage(code) end)
-end
+local pcDeviceButton=deviceButton("PC / КОМПЬЮТЕР",136,"pc")
+local phoneDeviceButton=deviceButton("PHONE / ТЕЛЕФОН",174,"phone")
+pcDeviceButton.Size=UDim2.new(0.5,-26,0,48); pcDeviceButton.Position=UDim2.new(0,16,0,145)
+phoneDeviceButton.Size=UDim2.new(0.5,-26,0,48); phoneDeviceButton.Position=UDim2.new(0.5,10,0,145)
+local languageTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,218),BackgroundTransparency=1,Text="LANGUAGE / ЯЗЫК",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
+local selectedLanguage="en"
+local languageSelect=languageButton("Language: English  ▼",253,function()
+    local currentIndex=1
+    for i,item in ipairs(languageNames) do if item[2]==selectedLanguage then currentIndex=i; break end end
+    currentIndex=currentIndex%#languageNames+1
+    selectedLanguage=languageNames[currentIndex][2]
+    languageSelect.Text="Language: "..languageNames[currentIndex][1].."  ▼"
+end)
+languageSelect.Size=UDim2.new(1,-44,0,42)
+local continueButton=languageButton("CONTINUE",307,function() applyLanguage(selectedLanguage) end)
+continueButton.Size=UDim2.new(1,-44,0,42)
+continueButton.BackgroundColor3=PURPLE; continueButton.TextColor3=WHITE
 
 Intro.Visible=true
 Main.Visible=false
@@ -3403,7 +3568,7 @@ local function getSharedConfig()
     return _G
 end
 local function saveHubConfig()
-    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,prefix=playerPrefix}
+    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,backgroundMode=backgroundMode,prefix=playerPrefix,speed=configuredSpeed,jump=configuredJump}
     local encoded=HttpService:JSONEncode(data)
     local shared=getSharedConfig()
     shared.__DIAMOND_BOAT_HUB_CONFIG=data
@@ -3440,9 +3605,12 @@ local function loadHubConfig()
         end
     end
     if type(data.theme)=="string" and themes[data.theme] then applyTheme(data.theme) end
-    if data.buttonStyle=="Modern" or data.buttonStyle=="Liquid Glass" or data.buttonStyle=="Neon" then buttonStyle=data.buttonStyle end
+    if data.buttonStyle=="Modern" or data.buttonStyle=="Liquid Glass" or data.buttonStyle=="Neon" then setButtonStyle(data.buttonStyle) end
     if type(data.animatedBackground)=="boolean" then animatedBackground=data.animatedBackground; if backgroundGradient then backgroundGradient.Enabled=animatedBackground end end
-    if type(data.prefix)=="string" then playerPrefix=string.sub(data.prefix,1,16); if prefixBox then prefixBox.Text=playerPrefix end end
+    if type(data.backgroundMode)=="string" then setBackgroundMode(data.backgroundMode) end
+    if type(data.prefix)=="string" then playerPrefix=string.sub(data.prefix,1,16); if prefixBox then prefixBox.Text=playerPrefix end; refreshPlayerTags() end
+    if tonumber(data.speed) then configuredSpeed=math.clamp(data.speed,16,250); updateSpeed() end
+    if tonumber(data.jump) then configuredJump=math.clamp(data.jump,50,300); updateJump() end
     setConfigStatus("CONFIG: loaded successfully")
     return true
 end
