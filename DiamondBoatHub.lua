@@ -3638,7 +3638,7 @@ function getSharedConfig()
     return _G
 end
 function saveHubConfig()
-    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,backgroundMode=backgroundMode,prefix=playerPrefix,speed=configuredSpeed,jump=configuredJump}
+    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,backgroundMode=backgroundMode,prefix=playerPrefix,prefixColor=prefixColor and {prefixColor.R,prefixColor.G,prefixColor.B} or nil,speed=configuredSpeed,jump=configuredJump}
     local encoded=HttpService:JSONEncode(data)
     local shared=getSharedConfig()
     shared.__DIAMOND_BOAT_HUB_CONFIG=data
