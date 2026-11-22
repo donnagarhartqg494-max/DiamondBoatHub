@@ -16,7 +16,6 @@ Workspace = game:GetService("Workspace")
 ReplicatedStorage = game:GetService("ReplicatedStorage")
 TweenService = game:GetService("TweenService")
 TeleportService = game:GetService("TeleportService")
-TextChatService = game:GetService("TextChatService")
 
 Player = Players.LocalPlayer
 Camera = Workspace.CurrentCamera
@@ -347,7 +346,6 @@ farm=makePage("AUTO FARM")
 shop=makePage("SHOP")
 tools=makePage("TOOLS")
 settings=makePage("SETTINGS")
-chatPage=makePage("CHAT")
 
 tabLayout=create("UIListLayout",{
     FillDirection=Enum.FillDirection.Horizontal,
@@ -375,7 +373,7 @@ tabIcons={
 }
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","CHAT","SETTINGS","CREDITS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","CREDITS"
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(0,58,0,56),
@@ -997,13 +995,31 @@ function getInventoryCount(blockName)
     return n and math.max(0,n) or 0
 end
 function getBlockTypeId(blockName)
-    local parts=ReplicatedStorage:FindFirstChild("BuildingParts")
-    if parts then
-        for index,template in ipairs(parts:GetChildren()) do
-            if template.Name==blockName then return index end
-        end
-        for index,template in ipairs(parts:GetChildren()) do
-            if string.lower(template.Name)==string.lower(blockName) then return index end
+    -- BABFT block IDs are stored as numeric values, not the child index
+    -- of ReplicatedStorage.BuildingParts (GetChildren order is not an ID).
+    local containers={
+        ReplicatedStorage:FindFirstChild("BlockData"),
+        ReplicatedStorage:FindFirstChild("BlockIds"),
+        ReplicatedStorage:FindFirstChild("BuildingParts")
+    }
+    for _,container in ipairs(containers) do
+        if container then
+            local value=container:FindFirstChild(blockName,true)
+            if value and value:IsA("ValueBase") then
+                local id=tonumber(value.Value)
+                if id then return id end
+            end
+            local template=container:FindFirstChild(blockName)
+            if template then
+                local attribute=tonumber(template:GetAttribute("ID") or template:GetAttribute("Id") or template:GetAttribute("BlockId"))
+                if attribute then return attribute end
+                for _,child in ipairs(template:GetChildren()) do
+                    if child:IsA("ValueBase") and (child.Name=="ID" or child.Name=="Id" or child.Name=="BlockId") then
+                        local id=tonumber(child.Value)
+                        if id then return id end
+                    end
+                end
+            end
         end
     end
     if blockName=="WoodBlock" then return 9 end
@@ -3160,8 +3176,9 @@ function setBackgroundMode(name)
     seasonalSnow=(name=="Winter" or name=="Christmas")
     if backgroundGradient then
         backgroundGradient.Color=backgroundPresets[name]
-        backgroundGradient.Enabled=animatedBackground
+        backgroundGradient.Enabled=true
     end
+    if BackgroundLayer then BackgroundLayer.Visible=true end
     if snowLayer then snowLayer.Visible=seasonalSnow end
     print("[DIAMOND] Background:",name)
 end
@@ -3170,7 +3187,8 @@ for _,name in ipairs({"Aurora","Ocean","Sunset","Matrix","Mono","Winter","Christ
 end
 button(settings,"Animated background: ON / OFF",function()
     animatedBackground=not animatedBackground
-    if backgroundGradient then backgroundGradient.Enabled=animatedBackground end
+    if backgroundGradient then backgroundGradient.Enabled=true end
+    if BackgroundLayer then BackgroundLayer.Visible=true end
 end)
 label(settings,"PLAYER TAG PREFIX")
 prefixBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,PlaceholderText="Your prefix",Text=playerPrefix,ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=13},settings)
@@ -3220,21 +3238,21 @@ label(settings,"PREFIX VISIBILITY")
 label(settings,"Префиксы этого executor видны локально. Чтобы все пользователи скрипта видели друг друга, нужен серверный обмен данными и Roblox TextService; клиентский скрипт не может безопасно создать такую репликацию.")
 
 
--- Dedicated animated background layer. The old gradient was attached to Main
--- and hidden behind opaque child panels, so it could not be seen.
+-- Dedicated animated background layer. Keep every large panel translucent
+-- so the gradient is actually visible behind the pages.
+Main.BackgroundTransparency=1
 BackgroundLayer=create("Frame",{
     Name="AnimatedBackground",Size=UDim2.new(1,0,1,0),Position=UDim2.fromOffset(0,0),
     BackgroundColor3=Color3.fromRGB(8,12,25),BorderSizePixel=0,ZIndex=0
 },Main)
 backgroundGradient=create("UIGradient",{
     Color=backgroundPresets[backgroundMode] or backgroundPresets.Aurora,
-    Rotation=0
+    Rotation=0,
+    Offset=Vector2.new(-0.35,0)
 },BackgroundLayer)
--- Let the animated layer show softly through the interface panels.
-Main.BackgroundTransparency=0
-Top.BackgroundTransparency=0.16
-Sidebar.BackgroundTransparency=0.18
-Content.BackgroundTransparency=0.20
+Top.BackgroundTransparency=0.12
+Sidebar.BackgroundTransparency=0.32
+Content.BackgroundTransparency=0.38
 snowLayer=create("Frame",{
     Name="SeasonalSnow",Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,
     ClipsDescendants=true,Visible=false,ZIndex=1
@@ -3264,12 +3282,16 @@ end
 snowLayer.Visible=seasonalSnow
 task.spawn(function()
     while GUI.Parent do
-        if animatedBackground and backgroundGradient then
-            local tw=TweenService:Create(backgroundGradient,TweenInfo.new(9,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Rotation=180})
-            tw:Play(); tw.Completed:Wait()
+        if animatedBackground and backgroundGradient and BackgroundLayer and BackgroundLayer.Parent then
+            local first=TweenService:Create(backgroundGradient,TweenInfo.new(7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{
+                Rotation=180,Offset=Vector2.new(0.35,0)
+            })
+            first:Play(); first.Completed:Wait()
             if not GUI.Parent then break end
-            local tw2=TweenService:Create(backgroundGradient,TweenInfo.new(9,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Rotation=360})
-            tw2:Play(); tw2.Completed:Wait()
+            local second=TweenService:Create(backgroundGradient,TweenInfo.new(7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{
+                Rotation=360,Offset=Vector2.new(-0.35,0)
+            })
+            second:Play(); second.Completed:Wait()
         else
             task.wait(0.35)
         end
@@ -3346,79 +3368,7 @@ Players.PlayerRemoving:Connect(function(plr)
     if playerTagConnections[plr] then playerTagConnections[plr]:Disconnect(); playerTagConnections[plr]=nil end
 end)
 
--- CHAT PAGE: uses Roblox's official TextChatService channel.
--- Roblox applies its own server-side text filtering to messages sent through SendAsync.
-label(chatPage,"DIAMOND HUB CHAT")
-label(chatPage,"Сообщения отправляются в обычный чат Roblox и проходят встроенную модерацию Roblox.")
-local chatLog=create("ScrollingFrame",{
-    Size=UDim2.new(1,-8,0,230),BackgroundColor3=Color3.fromRGB(16,18,27),
-    BorderSizePixel=0,ScrollBarThickness=4,CanvasSize=UDim2.new(0,0,0,0)
-},chatPage)
-round(chatLog,9)
-local chatLayout=create("UIListLayout",{Padding=UDim.new(0,4),SortOrder=Enum.SortOrder.LayoutOrder},chatLog)
-chatLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    chatLog.CanvasSize=UDim2.new(0,0,0,chatLayout.AbsoluteContentSize.Y+10)
-    chatLog.CanvasPosition=Vector2.new(0,math.max(0,chatLog.AbsoluteCanvasSize.Y-chatLog.AbsoluteSize.Y))
-end)
-local chatInput=create("TextBox",{
-    Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(25,27,38),
-    TextColor3=WHITE,PlaceholderText="Напиши сообщение...",Text="",ClearTextOnFocus=false,
-    Font=Enum.Font.Gotham,TextSize=13
-},chatPage)
-round(chatInput,8)
-local function addChatLine(message)
-    local line=create("TextLabel",{
-        Size=UDim2.new(1,-12,0,0),AutomaticSize=Enum.AutomaticSize.Y,
-        BackgroundTransparency=1,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,
-        TextColor3=Color3.fromRGB(225,230,245),TextSize=12,Font=Enum.Font.Gotham,
-        Text=string.sub(tostring(message),1,240)
-    },chatLog)
-    line.LayoutOrder=#chatLog:GetChildren()
-end
-local function sendHubChat()
-    local message=string.sub(chatInput.Text or "",1,180)
-    if message:gsub("%s","")=="" then return end
-    local channels=TextChatService:FindFirstChild("TextChannels")
-    local channel=channels and (channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildWhichIsA("TextChannel"))
-    if not channel then
-        addChatLine("[CHAT] Канал Roblox недоступен в этой игре.")
-        return
-    end
-    local ok,err=pcall(function() channel:SendAsync(message) end)
-    if ok then chatInput.Text="" else addChatLine("[CHAT] Не удалось отправить: "..tostring(err)) end
-end
-button(chatPage,"SEND MESSAGE / ОТПРАВИТЬ",sendHubChat)
--- MessageReceived belongs to each TextChannel, not TextChatService.
--- Connect safely because some games still use legacy chat.
-local function bindHubChatChannels()
-    local channels=TextChatService and TextChatService:FindFirstChild("TextChannels")
-    if not channels then
-        addChatLine("[CHAT] В этой игре не обнаружены каналы TextChatService.")
-        return
-    end
-    for _,channel in ipairs(channels:GetChildren()) do
-        if channel:IsA("TextChannel") and channel:GetAttribute("DiamondHubChatBound")~=true then
-            channel:SetAttribute("DiamondHubChatBound",true)
-            channel.MessageReceived:Connect(function(message)
-                if not message or not message.Text then return end
-                local source=message.TextSource
-                local speaker=source and Players:GetPlayerByUserId(source.UserId)
-                local name=speaker and speaker.DisplayName or "Roblox"
-                addChatLine(name..": "..message.Text)
-            end)
-        end
-    end
-end
-pcall(bindHubChatChannels)
-if TextChatService then
-    TextChatService.ChildAdded:Connect(function(child)
-        if child.Name=="TextChannels" then task.defer(bindHubChatChannels) end
-    end)
-    local channelFolder=TextChatService:FindFirstChild("TextChannels")
-    if channelFolder then
-        channelFolder.ChildAdded:Connect(function() task.defer(bindHubChatChannels) end)
-    end
-end
+-- CHAT tab removed: no in-game chat bypass or duplicate chat UI.
 
 -- CREDITS PAGE
 label(credits,"DIAMOND BABFT")
@@ -3888,7 +3838,7 @@ function loadHubConfig()
     end
     if type(data.theme)=="string" and themes[data.theme] then applyTheme(data.theme) end
     if data.buttonStyle=="Modern" or data.buttonStyle=="Liquid Glass" or data.buttonStyle=="Neon" then setButtonStyle(data.buttonStyle) end
-    if type(data.animatedBackground)=="boolean" then animatedBackground=data.animatedBackground; if backgroundGradient then backgroundGradient.Enabled=animatedBackground end end
+    if type(data.animatedBackground)=="boolean" then animatedBackground=data.animatedBackground; if backgroundGradient then backgroundGradient.Enabled=true end end
     if type(data.backgroundMode)=="string" then setBackgroundMode(data.backgroundMode) end
     if type(data.prefix)=="string" then playerPrefix=string.sub(data.prefix,1,16); if prefixBox then prefixBox.Text=playerPrefix end end
     if type(data.prefixColor)=="table" and #data.prefixColor==3 then prefixColor=Color3.new(math.clamp(data.prefixColor[1],0,1),math.clamp(data.prefixColor[2],0,1),math.clamp(data.prefixColor[3],0,1)) end
