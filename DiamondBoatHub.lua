@@ -665,9 +665,58 @@ button(movement,"Reset movement",function()
     updateJump()
 end)
 
+-- SPIN CONTROL
+spinEnabled=false
+spinSpeed=12
+addNumericSetting(movement,"SPIN SPEED (1–100)",spinSpeed,1,100,function(v)
+    spinSpeed=v
+end)
+toggle(movement,"Spin character",false,function(v)
+    spinEnabled=v
+    if not v then
+        local _,_,root=getCharacter()
+        if root then root.AssemblyAngularVelocity=Vector3.zero end
+    end
+end)
+local spinConnection=RunService.Heartbeat:Connect(function()
+    if not spinEnabled then return end
+    local _,_,root=getCharacter()
+    if root then
+        root.AssemblyAngularVelocity=Vector3.new(0,spinSpeed,0)
+    end
+end)
+
+
 -- VISUALS
 
 label(visuals,"Visual settings")
+
+-- FPS COUNTER
+fpsCounterEnabled=true
+fpsCounterLabel=create("TextLabel",{
+    Name="DiamondFPSCounter",AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-12,0,12),
+    Size=UDim2.fromOffset(118,28),BackgroundColor3=Color3.fromRGB(12,16,24),
+    BackgroundTransparency=0.18,Text="FPS: --",TextColor3=WHITE,
+    TextSize=13,Font=Enum.Font.GothamBold,ZIndex=100,Visible=true
+},GUI)
+round(fpsCounterLabel,8); outline(fpsCounterLabel)
+local fpsFrames,fpsElapsed=0,0
+RunService.RenderStepped:Connect(function(dt)
+    fpsFrames+=1; fpsElapsed+=dt
+    if fpsElapsed>=0.5 then
+        local fps=math.floor(fpsFrames/fpsElapsed+0.5)
+        if fpsCounterLabel and fpsCounterLabel.Parent then
+            fpsCounterLabel.Text="FPS: "..fps
+            fpsCounterLabel.Visible=fpsCounterEnabled
+        end
+        fpsFrames=0; fpsElapsed=0
+    end
+end)
+toggle(visuals,"FPS counter",true,function(v)
+    fpsCounterEnabled=v
+    fpsCounterLabel.Visible=v
+end)
+
 
 antiAfkConnection = nil
 toggle(visuals,"Anti-AFK",false,function(enabled)
@@ -803,6 +852,39 @@ button(teleport,"Stop current movement",function()
     local _,_,root=getCharacter()
     if root then root.AssemblyLinearVelocity=Vector3.zero; root.AssemblyAngularVelocity=Vector3.zero end
 end)
+
+-- PLAYER TELEPORT LIST (refreshes on demand)
+label(teleport,"PLAYER TELEPORT / ТЕЛЕПОРТ К ИГРОКАМ")
+playerTeleportStatus=label(teleport,"Choose a player below")
+function refreshPlayerTeleportList()
+    for _,child in ipairs(teleport:GetChildren()) do
+        if child:GetAttribute("DiamondPlayerTeleport") then child:Destroy() end
+    end
+    local count=0
+    for _,target in ipairs(Players:GetPlayers()) do
+        if target~=Player then
+            count+=1
+            local entry=button(teleport,"↗  "..target.DisplayName.."  (@"..target.Name..")",function()
+                local _,_,root=getCharacter()
+                local targetChar=target.Character
+                local targetRoot=targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+                if root and targetRoot then
+                    root.CFrame=targetRoot.CFrame*CFrame.new(0,0,4)
+                    playerTeleportStatus.Text="Teleported near "..target.Name
+                else
+                    playerTeleportStatus.Text="Player character unavailable"
+                end
+            end)
+            entry:SetAttribute("DiamondPlayerTeleport",true)
+        end
+    end
+    if count==0 then playerTeleportStatus.Text="No other players in this server" end
+end
+button(teleport,"REFRESH PLAYER LIST",refreshPlayerTeleportList)
+refreshPlayerTeleportList()
+Players.PlayerAdded:Connect(function() task.wait(1); refreshPlayerTeleportList() end)
+Players.PlayerRemoving:Connect(function() task.defer(refreshPlayerTeleportList) end)
+
 
 -- AUTO BUILD
 
@@ -3253,6 +3335,19 @@ end
 for _,name in ipairs({"Aurora","Ocean","Sunset","Matrix","Mono","Winter","Christmas"}) do
     button(settings,"Background: "..name,function() setBackgroundMode(name) end)
 end
+button(settings,"❄ WINTER THEME PACK",function()
+    applyTheme("Cyan")
+    setButtonStyle("Liquid Glass")
+    setBackgroundMode("Winter")
+    if snowLayer then snowLayer.Visible=true end
+    for _,obj in ipairs(GUI:GetDescendants()) do
+        if obj:IsA("UIStroke") then
+            obj.Color=Color3.fromRGB(125,205,255)
+        end
+    end
+    print("[DIAMOND] Winter theme pack enabled")
+end)
+
 button(settings,"Animated background: ON / OFF",function()
     animatedBackground=not animatedBackground
     if backgroundGradient then backgroundGradient.Enabled=true end
