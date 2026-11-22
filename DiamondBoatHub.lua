@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V25
+-- DIAMOND BOAT HUB V1 [BETA] V26
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -386,6 +386,7 @@ shop=makePage("SHOP")
 tools=makePage("TOOLS")
 settings=makePage("SETTINGS")
 globalChat=makePage("GLOBAL CHAT")
+servers=makePage("SERVERS")
 
 tabLayout=create("UIListLayout",{
     FillDirection=Enum.FillDirection.Horizontal,
@@ -410,17 +411,18 @@ tabIcons={
     TOOLS="rbxassetid://10723405749",
     SETTINGS="rbxassetid://10734950309",
     CREDITS="rbxassetid://10709819149",
-    ["GLOBAL CHAT"]="rbxassetid://10709819149"
+    ["GLOBAL CHAT"]="rbxassetid://10709819149",
+    SERVERS="rbxassetid://10734906744"
 }
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","CREDITS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","CREDITS"
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(0,58,0,56),
         ClipsDescendants=true,
         BackgroundColor3=BUTTON_WHITE,
-        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",CREDITS="CREDITS"})[name] or name,
+        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",CREDITS="CREDITS"})[name] or name,
         TextColor3=TEXT_DARK,
         TextSize=9,
         TextTruncate=Enum.TextTruncate.AtEnd,
@@ -3748,13 +3750,20 @@ end)
 
 -- CHAT tab removed: no in-game chat bypass or duplicate chat UI.
 
--- GLOBAL CHAT: Cloudflare-backed messages shared by DiamondBoatHub users in this game.
+-- GLOBAL CHAT: fixed viewport; only the message feed scrolls.
+for _,child in ipairs(globalChat:GetChildren()) do
+    if child:IsA("UIListLayout") then child:Destroy() end
+end
+globalChat.CanvasSize=UDim2.new(0,0,0,0)
+globalChat.ScrollingEnabled=false
 chatMessagesSeen={}
 chatMessageOrder={}
 chatLastFetch=0
 chatStatus=label(globalChat,"GLOBAL CHAT: CONNECTING...")
+chatStatus.Position=UDim2.fromOffset(8,3)
+chatStatus.Size=UDim2.new(1,-150,0,24)
 chatFeed=create("ScrollingFrame",{
-    Name="GlobalChatFeed",Size=UDim2.new(1,-8,1,-112),Position=UDim2.fromOffset(4,4),
+    Name="GlobalChatFeed",Size=UDim2.new(1,-8,1,-94),Position=UDim2.fromOffset(4,32),
     BackgroundColor3=Color3.fromRGB(12,12,16),BorderSizePixel=0,
     ScrollBarThickness=4,ScrollBarImageColor3=PURPLE,CanvasSize=UDim2.new(0,0,0,0)
 },globalChat)
@@ -3762,8 +3771,11 @@ round(chatFeed,10); outline(chatFeed)
 chatFeedLayout=create("UIListLayout",{Padding=UDim.new(0,5),SortOrder=Enum.SortOrder.LayoutOrder},chatFeed)
 create("UIPadding",{PaddingTop=UDim.new(0,7),PaddingBottom=UDim.new(0,7),PaddingLeft=UDim.new(0,7),PaddingRight=UDim.new(0,7)},chatFeed)
 chatFeedLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    local wasAtBottom=(chatFeed.CanvasPosition.Y+chatFeed.AbsoluteSize.Y)>=chatFeed.CanvasSize.Y.Offset-30
     chatFeed.CanvasSize=UDim2.new(0,0,0,chatFeedLayout.AbsoluteContentSize.Y+16)
-    chatFeed.CanvasPosition=Vector2.new(0,math.max(0,chatFeed.CanvasSize.Y.Offset-chatFeed.AbsoluteSize.Y))
+    if wasAtBottom then
+        chatFeed.CanvasPosition=Vector2.new(0,math.max(0,chatFeed.CanvasSize.Y.Offset-chatFeed.AbsoluteSize.Y))
+    end
 end)
 chatInput=create("TextBox",{
     Name="GlobalChatInput",Size=UDim2.new(1,-100,0,40),Position=UDim2.new(0,4,1,-48),
@@ -3780,6 +3792,29 @@ chatSendButton=create("TextButton",{
     Font=Enum.Font.GothamBold,AutoButtonColor=false
 },globalChat)
 round(chatSendButton,9); outline(chatSendButton)
+local CHAT_OWNER_ID=7162643277
+local isChatOwner=(Player.UserId==CHAT_OWNER_ID)
+chatInput.Visible=isChatOwner
+chatSendButton.Visible=isChatOwner
+if isChatOwner then
+    local profileLink=create("TextButton",{
+        Name="OwnerProfileLink",Size=UDim2.fromOffset(136,22),Position=UDim.new(1,-142,0,4),
+        BackgroundColor3=Color3.fromRGB(32,32,42),Text="MY ROBLOX PROFILE",
+        TextColor3=WHITE,TextSize=9,Font=Enum.Font.GothamBold,AutoButtonColor=true
+    },globalChat)
+    round(profileLink,7); outline(profileLink)
+    profileLink.Activated:Connect(function()
+        local url="https://www.roblox.com/users/7162643277/profile"
+        local opened=false
+        pcall(function()
+            game:GetService("GuiService"):OpenBrowserWindow(url)
+            opened=true
+        end)
+        if not opened and type(setclipboard)=="function" then pcall(setclipboard,url) end
+    end)
+else
+    chatStatus.Text="GLOBAL CHAT: READ ONLY"
+end
 function chatHexColor(hex)
     hex=tostring(hex or "#B9CDFF"):gsub("#","")
     if #hex~=6 then return Color3.fromRGB(185,205,255) end
@@ -3840,6 +3875,7 @@ function fetchGlobalChat()
     return true
 end
 function sendGlobalChat()
+    if not isChatOwner then return end
     local message=chatInput and chatInput.Text or ""
     message=string.gsub(message,"^%s+","")
     message=string.gsub(message,"%s+$","")
@@ -3869,6 +3905,96 @@ task.spawn(function()
     while GUI and GUI.Parent do
         fetchGlobalChat()
         task.wait(3)
+    end
+end)
+
+-- SERVERS: list active DiamondBoatHub instances for this place.
+label(servers,"ACTIVE DIAMONDBOATHUB SERVERS")
+label(servers,"Players shown here have recently sent a presence heartbeat.")
+local serversRefresh=button(servers,"REFRESH SERVERS",function() end)
+local serversStatus=label(servers,"SERVERS: WAITING")
+local serversFeed=create("ScrollingFrame",{
+    Name="HubServersFeed",Size=UDim2.new(1,-8,0,300),
+    BackgroundColor3=Color3.fromRGB(12,12,16),BorderSizePixel=0,
+    ScrollBarThickness=4,ScrollBarImageColor3=PURPLE,CanvasSize=UDim2.new(0,0,0,0)
+},servers)
+round(serversFeed,10); outline(serversFeed)
+local serversLayout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},serversFeed)
+create("UIPadding",{PaddingTop=UDim.new(0,7),PaddingBottom=UDim.new(0,7),PaddingLeft=UDim.new(0,7),PaddingRight=UDim.new(0,7)},serversFeed)
+serversLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    serversFeed.CanvasSize=UDim2.new(0,0,0,serversLayout.AbsoluteContentSize.Y+16)
+end)
+function refreshHubServers()
+    serversStatus.Text="SERVERS: LOADING..."
+    local result,err=relayRequest("GET","/servers?gameId="..tostring(game.PlaceId))
+    if not result or result.ok~=true or type(result.servers)~="table" then
+        serversStatus.Text="SERVERS: CONNECTION ERROR"
+        if err then warn("[DIAMOND SERVERS]",tostring(err)) end
+        return
+    end
+    for _,child in ipairs(serversFeed:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("TextButton") then child:Destroy() end
+    end
+    local count=0
+    for _,server in ipairs(result.servers) do
+        if type(server)=="table" and type(server.jobId)=="string" and server.jobId~="" then
+            count=count+1
+            local names={}
+            for _,p in ipairs(server.players or {}) do
+                table.insert(names,tostring(p.username or "Player"))
+            end
+            local row=create("Frame",{
+                Size=UDim2.new(1,-2,0,68),BackgroundColor3=Color3.fromRGB(25,25,32),BorderSizePixel=0
+            },serversFeed)
+            round(row,8)
+            create("TextLabel",{
+                Size=UDim2.new(1,-112,0,25),Position=UDim2.fromOffset(9,5),
+                BackgroundTransparency=1,Text="SERVER  "..tostring(#(server.players or {})).." PLAYER(S)",
+                TextColor3=WHITE,TextSize=12,Font=Enum.Font.GothamBold,
+                TextXAlignment=Enum.TextXAlignment.Left
+            },row)
+            create("TextLabel",{
+                Size=UDim2.new(1,-112,0,28),Position=UDim2.fromOffset(9,31),
+                BackgroundTransparency=1,Text=table.concat(names,", "),
+                TextColor3=Color3.fromRGB(175,175,190),TextSize=10,Font=Enum.Font.Gotham,
+                TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left
+            },row)
+            local join=create("TextButton",{
+                Size=UDim2.fromOffset(88,36),Position=UDim.new(1,-96,0,16),
+                BackgroundColor3=PURPLE,Text="JOIN",TextColor3=WHITE,
+                TextSize=12,Font=Enum.Font.GothamBold,AutoButtonColor=true
+            },row)
+            round(join,7)
+            local targetJob=server.jobId
+            join.Activated:Connect(function()
+                if targetJob==game.JobId then
+                    serversStatus.Text="YOU ARE ALREADY IN THIS SERVER"
+                    return
+                end
+                serversStatus.Text="CONNECTING..."
+                local ok,teleErr=pcall(function()
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId,targetJob,Player)
+                end)
+                if not ok then
+                    serversStatus.Text="TELEPORT FAILED - "..tostring(teleErr)
+                    warn("[DIAMOND SERVERS] Teleport failed:",teleErr)
+                end
+            end)
+        end
+    end
+    serversStatus.Text="SERVERS: "..tostring(count).." FOUND"
+end
+serversRefresh.Activated:Connect(refreshHubServers)
+task.spawn(function()
+    task.wait(4)
+    while GUI and GUI.Parent do
+        local data={
+            userId=tostring(Player.UserId),gameId=tostring(game.PlaceId),
+            jobId=tostring(game.JobId),username=Player.Name,
+            prefix=playerPrefix or "Player",color=prefixColorToHex(prefixColor)
+        }
+        if data.jobId~="" then relayRequest("POST","/presence",data) end
+        task.wait(20)
     end
 end)
 
@@ -4371,7 +4497,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=22"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=26"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
