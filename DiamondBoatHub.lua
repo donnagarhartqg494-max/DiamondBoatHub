@@ -1815,7 +1815,10 @@ local function loadOnlineSequencerSong(title, sequenceId)
     local id = tostring(sequenceId)
     local urls = {
         "https://onlinesequencer.net/ajax/load.php?id=" .. id,
-        "https://www.onlinesequencer.net/ajax/load.php?id=" .. id
+        "https://www.onlinesequencer.net/ajax/load.php?id=" .. id,
+        -- The sequencer page itself embeds the saved note string in its startup script.
+        "https://onlinesequencer.net/" .. id,
+        "https://www.onlinesequencer.net/" .. id
     }
     local headers = {
         ["Accept"] = "application/json, text/plain, */*",
