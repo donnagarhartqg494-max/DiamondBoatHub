@@ -3221,25 +3221,34 @@ backgroundPresets={
     Christmas=ColorSequence.new(Color3.fromRGB(18,55,43),Color3.fromRGB(125,25,42))
 }
 function setBackgroundMode(name)
-    if not backgroundPresets[name] then return end
+    local preset=backgroundPresets[name]
+    if not preset then return end
     backgroundMode=name
     seasonalSnow=(name=="Winter" or name=="Christmas")
-    -- Recolor every gradient that sits on an opaque panel, not just the snow layer.
-    local preset=backgroundPresets[name]
+    local first=preset.Keypoints[1].Value
+    local last=preset.Keypoints[#preset.Keypoints].Value
+    -- Apply the selected palette directly to visible panels as well as the background layer.
     local targets={Main,Top,Sidebar,Content,BackgroundLayer}
-    for _,target in ipairs(targets) do
+    for index,target in ipairs(targets) do
         if target then
-            for _,child in ipairs(target:GetChildren()) do
-                if child:IsA("UIGradient") then
-                    child.Color=preset
-                    child.Enabled=true
-                end
+            target.BackgroundColor3=first:Lerp(last,index==1 and 0.08 or 0.28)
+            local grad=target:FindFirstChildOfClass("UIGradient")
+            if not grad then
+                grad=Instance.new("UIGradient")
+                grad.Parent=target
             end
+            grad.Color=preset
+            grad.Enabled=true
+            grad.Rotation= index==1 and 90 or 0
         end
     end
+    Main.BackgroundTransparency=0
+    Top.BackgroundTransparency=0.08
+    Sidebar.BackgroundTransparency=0.12
+    Content.BackgroundTransparency=0.12
     if BackgroundLayer then BackgroundLayer.Visible=true end
     if snowLayer then snowLayer.Visible=seasonalSnow end
-    print("[DIAMOND] Background:",name)
+    print("[DIAMOND] Background applied:",name)
 end
 for _,name in ipairs({"Aurora","Ocean","Sunset","Matrix","Mono","Winter","Christmas"}) do
     button(settings,"Background: "..name,function() setBackgroundMode(name) end)
