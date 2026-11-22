@@ -183,6 +183,11 @@ create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRG
 
 local Pages = {}
 local CurrentPage
+local buttonStyle="Modern"
+local animatedBackground=true
+local playerPrefix="Player"
+local backgroundGradient
+local credits=makePage("CREDITS")
 
 local function makePage(name)
     local page=create("ScrollingFrame",{
@@ -248,6 +253,18 @@ local function button(page,text,callback)
     stroke.Transparency=0.55
     local accent=create("Frame",{Size=UDim2.new(0,3,1,-14),Position=UDim2.fromOffset(0,7),BackgroundColor3=PURPLE,BorderSizePixel=0},b)
     round(accent,3)
+    if buttonStyle=="Liquid Glass" then
+        b.BackgroundColor3=Color3.fromRGB(75,82,100)
+        b.BackgroundTransparency=0.38
+        stroke.Color=Color3.fromRGB(210,225,255)
+        stroke.Transparency=0.22
+        create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(220,235,255),Color3.fromRGB(85,100,135)),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.22),NumberSequenceKeypoint.new(1,0.62)}),Rotation=90},b)
+    elseif buttonStyle=="Neon" then
+        b.BackgroundColor3=Color3.fromRGB(15,18,28)
+        stroke.Color=PURPLE
+        stroke.Transparency=0.05
+        stroke.Thickness=1.5
+    end
     b.MouseEnter:Connect(function()
         TweenService:Create(b,TweenInfo.new(0.13),{BackgroundColor3=Color3.fromRGB(39,39,51)}):Play()
         TweenService:Create(stroke,TweenInfo.new(0.13),{Transparency=0.12}):Play()
@@ -308,12 +325,12 @@ end)
 
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","CREDITS"
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(0,58,1,-6),
         BackgroundColor3=BUTTON_WHITE,
-        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET"})[name] or name,
+        Text=({HOME="🏠 HOME",MOVEMENT="🏃 MOVE",VISUALS="👁 VISUAL",TELEPORTS="📍 TELEPORT",["AUTO BUILD"]="🧱 BUILD",MUSIC="🎵 MUSIC",["AUTO FARM"]="⚡ FARM",SHOP="🛒 SHOP",TOOLS="🛠 TOOLS",SETTINGS="⚙ SET",CREDITS="💎 CREDITS"})[name] or name,
         TextColor3=TEXT_DARK,
         TextSize=9,
         Font=Enum.Font.GothamBold,
@@ -2941,7 +2958,75 @@ button(settings,"Theme: Red",function() applyTheme("Red") end)
 button(settings,"Theme: Green",function() applyTheme("Green") end)
 button(settings,"Theme: Gold",function() applyTheme("Gold") end)
 button(settings,"Reset appearance",function() applyTheme("Purple") end)
+label(settings,"GUI STYLE / СТИЛЬ ИНТЕРФЕЙСА")
+button(settings,"Style: Modern",function() buttonStyle="Modern"; print("[DIAMOND] Button style: Modern") end)
+button(settings,"Style: Liquid Glass (iPhone)",function() buttonStyle="Liquid Glass"; print("[DIAMOND] Button style: Liquid Glass") end)
+button(settings,"Style: Neon",function() buttonStyle="Neon"; print("[DIAMOND] Button style: Neon") end)
+button(settings,"Animated background: ON / OFF",function()
+    animatedBackground=not animatedBackground
+    if backgroundGradient then backgroundGradient.Enabled=animatedBackground end
+end)
+label(settings,"PLAYER TAG PREFIX")
+local prefixBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,PlaceholderText="Your prefix",Text=playerPrefix,ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=13},settings)
+round(prefixBox,9)
+prefixBox.FocusLost:Connect(function()
+    playerPrefix=string.sub(prefixBox.Text,1,16)
+    prefixBox.Text=playerPrefix
+end)
 
+
+-- Animated background layer (kept behind all content).
+backgroundGradient=create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(12,10,28),Color3.fromRGB(24,10,48)),Rotation=0},Main)
+task.spawn(function()
+    while GUI.Parent do
+        if animatedBackground and backgroundGradient then
+            local tw=TweenService:Create(backgroundGradient,TweenInfo.new(8,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Rotation=180})
+            tw:Play(); tw.Completed:Wait()
+            if not GUI.Parent then break end
+            local tw2=TweenService:Create(backgroundGradient,TweenInfo.new(8,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Rotation=360})
+            tw2:Play(); tw2.Completed:Wait()
+        else
+            task.wait(0.4)
+        end
+    end
+end)
+
+-- Local-only overhead labels. Roblox clients cannot replicate these labels to other players.
+local function addDiamondPlayerTag(plr)
+    local function attach(char)
+        local head=char:WaitForChild("Head",8)
+        if not head or not GUI.Parent then return end
+        local old=head:FindFirstChild("DiamondPlayerTag")
+        if old then old:Destroy() end
+        local roleText,roleColor
+        if plr.UserId==7162643277 then roleText,roleColor="OWNER",Color3.fromRGB(255,65,65)
+        elseif plr.UserId==4918761384 then roleText,roleColor="SCRIPT DEV",Color3.fromRGB(255,205,45)
+        else roleText,roleColor="{"..playerPrefix.."}",Color3.fromRGB(160,190,255) end
+        local tag=Instance.new("BillboardGui")
+        tag.Name="DiamondPlayerTag"; tag.Size=UDim2.fromOffset(150,24); tag.StudsOffset=Vector3.new(0,2.8,0)
+        tag.AlwaysOnTop=true; tag.MaxDistance=120; tag.Adornee=head; tag.Parent=head
+        local txt=Instance.new("TextLabel")
+        txt.Size=UDim2.fromScale(1,1); txt.BackgroundTransparency=1; txt.Text=roleText
+        txt.TextColor3=roleColor; txt.TextStrokeTransparency=0.35; txt.Font=Enum.Font.GothamBold
+        txt.TextSize=13; txt.Parent=tag
+    end
+    if plr.Character then task.spawn(attach,plr.Character) end
+    plr.CharacterAdded:Connect(attach)
+end
+for _,plr in ipairs(Players:GetPlayers()) do addDiamondPlayerTag(plr) end
+Players.PlayerAdded:Connect(addDiamondPlayerTag)
+
+-- CREDITS PAGE
+label(credits,"DIAMOND BABFT")
+label(credits,"Script creators")
+label(credits,"Gfhkm_20")
+label(credits,"Xone42_2")
+button(credits,"OPEN TELEGRAM CHANNEL",function()
+    local url="https://t.me/diamond_scripts"
+    if type(setclipboard)=="function" then pcall(setclipboard,url) end
+    pcall(function() game:GetService("GuiService"):OpenBrowserWindow(url) end)
+end)
+label(credits,"DIAMOND BOAT HUB V1 [BETA]")
 
 -- DRAG
 
@@ -3285,7 +3370,7 @@ local function getSharedConfig()
     return _G
 end
 local function saveHubConfig()
-    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple"}
+    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,prefix=playerPrefix}
     local encoded=HttpService:JSONEncode(data)
     local shared=getSharedConfig()
     shared.__DIAMOND_BOAT_HUB_CONFIG=data
@@ -3322,6 +3407,9 @@ local function loadHubConfig()
         end
     end
     if type(data.theme)=="string" and themes[data.theme] then applyTheme(data.theme) end
+    if data.buttonStyle=="Modern" or data.buttonStyle=="Liquid Glass" or data.buttonStyle=="Neon" then buttonStyle=data.buttonStyle end
+    if type(data.animatedBackground)=="boolean" then animatedBackground=data.animatedBackground; if backgroundGradient then backgroundGradient.Enabled=animatedBackground end end
+    if type(data.prefix)=="string" then playerPrefix=string.sub(data.prefix,1,16); if prefixBox then prefixBox.Text=playerPrefix end end
     setConfigStatus("CONFIG: loaded successfully")
     return true
 end
