@@ -3178,6 +3178,10 @@ function setBackgroundMode(name)
         backgroundGradient.Color=backgroundPresets[name]
         backgroundGradient.Enabled=true
     end
+    if mainBackgroundGradient then
+        mainBackgroundGradient.Color=backgroundPresets[name]
+        mainBackgroundGradient.Enabled=true
+    end
     if BackgroundLayer then BackgroundLayer.Visible=true end
     if snowLayer then snowLayer.Visible=seasonalSnow end
     print("[DIAMOND] Background:",name)
@@ -3188,6 +3192,7 @@ end
 button(settings,"Animated background: ON / OFF",function()
     animatedBackground=not animatedBackground
     if backgroundGradient then backgroundGradient.Enabled=true end
+    if mainBackgroundGradient then mainBackgroundGradient.Enabled=true end
     if BackgroundLayer then BackgroundLayer.Visible=true end
 end)
 label(settings,"PLAYER TAG PREFIX")
@@ -3240,7 +3245,8 @@ label(settings,"Префиксы этого executor видны локально
 
 -- Dedicated animated background layer. Keep every large panel translucent
 -- so the gradient is actually visible behind the pages.
-Main.BackgroundTransparency=1
+Main.BackgroundTransparency=0
+mainBackgroundGradient=Main:FindFirstChildOfClass("UIGradient")
 BackgroundLayer=create("Frame",{
     Name="AnimatedBackground",Size=UDim2.new(1,0,1,0),Position=UDim2.fromOffset(0,0),
     BackgroundColor3=Color3.fromRGB(8,12,25),BorderSizePixel=0,ZIndex=0
@@ -3282,13 +3288,13 @@ end
 snowLayer.Visible=seasonalSnow
 task.spawn(function()
     while GUI.Parent do
-        if animatedBackground and backgroundGradient and BackgroundLayer and BackgroundLayer.Parent then
-            local first=TweenService:Create(backgroundGradient,TweenInfo.new(7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{
+        if animatedBackground and mainBackgroundGradient and mainBackgroundGradient.Parent then
+            local first=TweenService:Create(mainBackgroundGradient,TweenInfo.new(7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{
                 Rotation=180,Offset=Vector2.new(0.35,0)
             })
             first:Play(); first.Completed:Wait()
             if not GUI.Parent then break end
-            local second=TweenService:Create(backgroundGradient,TweenInfo.new(7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{
+            local second=TweenService:Create(mainBackgroundGradient,TweenInfo.new(7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{
                 Rotation=360,Offset=Vector2.new(-0.35,0)
             })
             second:Play(); second.Completed:Wait()
@@ -3838,7 +3844,11 @@ function loadHubConfig()
     end
     if type(data.theme)=="string" and themes[data.theme] then applyTheme(data.theme) end
     if data.buttonStyle=="Modern" or data.buttonStyle=="Liquid Glass" or data.buttonStyle=="Neon" then setButtonStyle(data.buttonStyle) end
-    if type(data.animatedBackground)=="boolean" then animatedBackground=data.animatedBackground; if backgroundGradient then backgroundGradient.Enabled=true end end
+    if type(data.animatedBackground)=="boolean" then
+        animatedBackground=data.animatedBackground
+        if backgroundGradient then backgroundGradient.Enabled=true end
+        if mainBackgroundGradient then mainBackgroundGradient.Enabled=true end
+    end
     if type(data.backgroundMode)=="string" then setBackgroundMode(data.backgroundMode) end
     if type(data.prefix)=="string" then playerPrefix=string.sub(data.prefix,1,16); if prefixBox then prefixBox.Text=playerPrefix end end
     if type(data.prefixColor)=="table" and #data.prefixColor==3 then prefixColor=Color3.new(math.clamp(data.prefixColor[1],0,1),math.clamp(data.prefixColor[2],0,1),math.clamp(data.prefixColor[3],0,1)) end
