@@ -79,22 +79,51 @@ export default {
 
     if (url.pathname === "/servers" && request.method === "GET") {
       const gameId = clean(url.searchParams.get("gameId"), 32);
-      if (!gameId) return reply({ error: "gameId is required" }, 400);
-      const listed = await env.PREFIXES.list({ prefix: "presence:" + gameId + ":", limit: 1000 });
+      if (!gameId || !validId(gameId)) return reply({ error: "Valid gameId is required" }, 400);
       const grouped = new Map();
+      // First include DiamondBoatHub users currently reporting their server presence.
+      const listed = await env.PREFIXES.list({ prefix: "presence:" + gameId + ":", limit: 1000 });
       for (const key of listed.keys) {
         const raw = await env.PREFIXES.get(key.name);
         if (!raw) continue;
         try {
           const player = JSON.parse(raw);
           if (!player.jobId || Date.now() - Number(player.updatedAt || 0) > 90000) continue;
-          if (!grouped.has(player.jobId)) grouped.set(player.jobId, { jobId: player.jobId, players: [] });
+          if (!grouped.has(player.jobId)) grouped.set(player.jobId, {
+            jobId: player.jobId, players: [], playing: 0, maxPlayers: 0, hubUsers: true
+          });
           grouped.get(player.jobId).players.push({
             userId: player.userId, username: player.username, prefix: player.prefix, color: player.color
           });
         } catch {}
       }
-      return reply({ ok: true, servers: Array.from(grouped.values()) });
+      // Also list public Roblox servers, even when no hub users have reported presence there.
+      let publicListAvailable = false;
+      try {
+        const api = await fetch("https://games.roblox.com/v1/games/" + gameId + "/servers/Public?sortOrder=Asc&limit=100");
+        if (api.ok) {
+          const data = await api.json();
+          if (Array.isArray(data.data)) {
+            publicListAvailable = true;
+            for (const server of data.data) {
+              if (!server || typeof server.id !== "string" || !/^[a-zA-Z0-9-]+$/.test(server.id)) continue;
+              const existing = grouped.get(server.id);
+              if (existing) {
+                existing.playing = Number(server.playing || existing.players.length);
+                existing.maxPlayers = Number(server.maxPlayers || 0);
+              } else {
+                grouped.set(server.id, {
+                  jobId: server.id, players: [], playing: Number(server.playing || 0),
+                  maxPlayers: Number(server.maxPlayers || 0), hubUsers: false
+                });
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Presence-only results remain usable if Roblox's public server API is unavailable.
+      }
+      return reply({ ok: true, servers: Array.from(grouped.values()), publicListAvailable });
     }
 
     if (url.pathname === "/prefix" && request.method === "POST") {
