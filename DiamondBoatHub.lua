@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V24
+-- DIAMOND BOAT HUB V1 [BETA] V24
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -116,7 +116,7 @@ local TitleLabel=create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎  DIAMOND BOAT HUB",
+    Text="💎  DIAMOND BOAT HUB V1 [BETA]",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -2751,7 +2751,7 @@ button(tools,"SCAN MY CHARACTER + PLAYER DATA",function()
 end)
 
 button(tools,"COPY DIAGNOSTIC INSTRUCTIONS",function()
-    print("DIAMOND BOAT HUB: press F9, open Client log, run FULL GAME STRUCTURE SCAN, SCAN REMOTES and SCAN INTERACTION OBJECTS. Copy the output.")
+    print("DIAMOND BOAT HUB V1 [BETA]: press F9, open Client log, run FULL GAME STRUCTURE SCAN, SCAN REMOTES and SCAN INTERACTION OBJECTS. Copy the output.")
 end)
 
 
@@ -3035,7 +3035,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB",
+    Text="💎 DIAMOND BOAT HUB V1 [BETA]",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
@@ -3126,7 +3126,7 @@ local function applyLanguage(lang)
             obj.Text=CurrentTranslations[original] or original
         end
     end
-    TitleLabel.Text="💎  DIAMOND BOAT HUB"
+    TitleLabel.Text="💎  DIAMOND BOAT HUB V1 [BETA]"
     Intro.Visible=false
     Main.Visible=true
     MainScale.Scale=0.88
@@ -3202,4 +3202,4 @@ button(settings,"RELOAD SCRIPT",function()
     if not ok then warn("[DIAMOND RELOAD] Failed:",tostring(err)) end
 end)
 
-print("DIAMOND BOAT HUB V32 LOADED")
+print("DIAMOND BOAT HUB V1 [BETA] LOADED")
