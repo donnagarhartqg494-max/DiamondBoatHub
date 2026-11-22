@@ -1,4 +1,4 @@
-// DiamondBoatHub shared-prefix relay (Cloudflare Worker + KV)
+// DiamondBoatHub shared-prefix, owner-only chat, and server-presence relay (Cloudflare Worker + KV)
 // Deploy with a KV namespace binding named PREFIXES.
 // IMPORTANT: Executor clients cannot prove Roblox account ownership to this Worker.
 // Treat records as unverified display data; do not use for permissions, moderation, or trust.
@@ -46,6 +46,7 @@ export default {
       const prefix = clean(body.prefix || "Player", 16);
       const color = String(body.color || "#B9CDFF");
       const message = clean(body.message, 240);
+      if (userId !== "7162643277") return reply({ error: "Only the DiamondBoatHub owner can send messages" }, 403);
       if (!validId(userId) || !gameId || !username || !message || !validColor(color)) {
         return reply({ error: "Invalid userId, gameId, username, message, or color" }, 400);
       }
@@ -56,6 +57,44 @@ export default {
       const record = { id: crypto.randomUUID(), userId, username, prefix, color: color.toUpperCase(), message, createdAt };
       await env.PREFIXES.put("chat:" + gameId + ":" + String(createdAt).padStart(13, "0") + ":" + record.id, JSON.stringify(record), { expirationTtl: 86400 });
       return reply({ ok: true, message: record });
+    }
+
+    // Short-lived server presence. Each client refreshes its own record every 20 seconds.
+    if (url.pathname === "/presence" && request.method === "POST") {
+      let body;
+      try { body = await request.json(); } catch { return reply({ error: "Invalid JSON" }, 400); }
+      const userId = String(body.userId ?? "");
+      const gameId = clean(body.gameId, 32);
+      const jobId = clean(body.jobId, 64);
+      const username = clean(body.username, 20);
+      const prefix = clean(body.prefix || "Player", 16);
+      const color = String(body.color || "#B9CDFF");
+      if (!validId(userId) || !gameId || !jobId || !/^[a-zA-Z0-9-]+$/.test(jobId) || !username || !validColor(color)) {
+        return reply({ error: "Invalid presence data" }, 400);
+      }
+      const record = { userId, gameId, jobId, username, prefix, color: color.toUpperCase(), updatedAt: Date.now() };
+      await env.PREFIXES.put("presence:" + gameId + ":" + jobId + ":" + userId, JSON.stringify(record), { expirationTtl: 90 });
+      return reply({ ok: true });
+    }
+
+    if (url.pathname === "/servers" && request.method === "GET") {
+      const gameId = clean(url.searchParams.get("gameId"), 32);
+      if (!gameId) return reply({ error: "gameId is required" }, 400);
+      const listed = await env.PREFIXES.list({ prefix: "presence:" + gameId + ":", limit: 1000 });
+      const grouped = new Map();
+      for (const key of listed.keys) {
+        const raw = await env.PREFIXES.get(key.name);
+        if (!raw) continue;
+        try {
+          const player = JSON.parse(raw);
+          if (!player.jobId || Date.now() - Number(player.updatedAt || 0) > 90000) continue;
+          if (!grouped.has(player.jobId)) grouped.set(player.jobId, { jobId: player.jobId, players: [] });
+          grouped.get(player.jobId).players.push({
+            userId: player.userId, username: player.username, prefix: player.prefix, color: player.color
+          });
+        } catch {}
+      }
+      return reply({ ok: true, servers: Array.from(grouped.values()) });
     }
 
     if (url.pathname === "/prefix" && request.method === "POST") {
