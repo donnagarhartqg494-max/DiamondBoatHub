@@ -3478,6 +3478,7 @@ function languageButton(caption,y,callback)
         TweenService:Create(st,TweenInfo.new(0.12),{Transparency=0.35}):Play()
     end)
     b.Activated:Connect(callback)
+    return b
 end
 
 translations={
