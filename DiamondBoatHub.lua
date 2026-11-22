@@ -691,6 +691,99 @@ end)
 
 label(visuals,"Visual settings")
 
+-- IMAGE DECAL + LOCAL BLOCK COLOR TOOLS
+label(visuals,"IMAGE ON BLOCK / ЦВЕТ БЛОКА")
+label(visuals,"Select a block in the world, then apply a Roblox image asset ID. This is a local preview; server-side placement depends on the game's authorized tools.")
+local selectedVisualPart=nil
+local visualMouse=Player:GetMouse()
+local selectedBlockStatus=label(visuals,"Selected block: none")
+local imageAssetInput=create("TextBox",{
+    Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),
+    TextColor3=WHITE,PlaceholderText="Roblox image URL or asset ID",Text="",
+    ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=13
+},visuals)
+round(imageAssetInput,8); outline(imageAssetInput)
+local blockColorInput=create("TextBox",{
+    Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),
+    TextColor3=WHITE,PlaceholderText="Block color HEX, e.g. #39A9FF",Text="#39A9FF",
+    ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=13
+},visuals)
+round(blockColorInput,8); outline(blockColorInput)
+button(visuals,"SELECT BLOCK UNDER MOUSE",function()
+    local target=visualMouse.Target
+    if target and target:IsA("BasePart") then
+        selectedVisualPart=target
+        selectedBlockStatus.Text="Selected: "..target:GetFullName()
+    else
+        selectedVisualPart=nil
+        selectedBlockStatus.Text="No BasePart under mouse"
+    end
+end)
+button(visuals,"COLOR SELECTED BLOCK (LOCAL PREVIEW)",function()
+    if not selectedVisualPart or not selectedVisualPart.Parent then
+        selectedBlockStatus.Text="Select a block first"; return
+    end
+    local hex=blockColorInput.Text:gsub("#","")
+    if #hex~=6 or not hex:match("^%x%x%x%x%x%x$") then
+        selectedBlockStatus.Text="Invalid HEX color"; return
+    end
+    local r=tonumber(hex:sub(1,2),16)/255
+    local g=tonumber(hex:sub(3,4),16)/255
+    local b=tonumber(hex:sub(5,6),16)/255
+    selectedVisualPart.Color=Color3.new(r,g,b)
+    selectedBlockStatus.Text="Local color preview applied"
+end)
+button(visuals,"APPLY IMAGE TO SELECTED BLOCK (LOCAL)",function()
+    if not selectedVisualPart or not selectedVisualPart.Parent then
+        selectedBlockStatus.Text="Select a block first"; return
+    end
+    local raw=imageAssetInput.Text
+    local assetId=raw:match("[?&]id=(%d+)") or raw:match("rbxassetid://(%d+)") or raw:match("(%d+)")
+    if not assetId then
+        selectedBlockStatus.Text="Use a Roblox image/decal asset ID"; return
+    end
+    local old=selectedVisualPart:FindFirstChild("DiamondImagePreview")
+    if old then old:Destroy() end
+    local surface=Instance.new("SurfaceGui")
+    surface.Name="DiamondImagePreview"
+    surface.Face=Enum.NormalId.Front
+    surface.AlwaysOnTop=true
+    surface.LightInfluence=0
+    surface.SizingMode=Enum.SurfaceGuiSizingMode.PixelsPerStud
+    surface.PixelsPerStud=50
+    surface.Parent=selectedVisualPart
+    local image=Instance.new("ImageLabel")
+    image.Name="Image"
+    image.Size=UDim2.fromScale(1,1)
+    image.BackgroundTransparency=1
+    image.Image="rbxassetid://"..assetId
+    image.ScaleType=Enum.ScaleType.Fit
+    image.Parent=surface
+    selectedBlockStatus.Text="Image preview added (local only)"
+end)
+button(visuals,"REMOVE IMAGE PREVIEW",function()
+    if selectedVisualPart then
+        local old=selectedVisualPart:FindFirstChild("DiamondImagePreview")
+        if old then old:Destroy() end
+        selectedBlockStatus.Text="Image preview removed"
+    end
+end)
+
+-- DISPLAY STRETCH SIMULATION: Roblox clients cannot change monitor resolution/aspect ratio.
+label(visuals,"SCREEN STRETCH EFFECT (CAMERA FOV)")
+local stretchFov=70
+addNumericSetting(visuals,"STRETCH STRENGTH / FOV (50–120)",stretchFov,50,120,function(v)
+    stretchFov=v
+    local cam=Workspace.CurrentCamera
+    if cam then cam.FieldOfView=v end
+end)
+button(visuals,"RESET STRETCH",function()
+    stretchFov=70
+    local cam=Workspace.CurrentCamera
+    if cam then cam.FieldOfView=originalFov or 70 end
+end)
+
+
 -- FPS COUNTER
 fpsCounterEnabled=true
 fpsCounterLabel=create("TextLabel",{
