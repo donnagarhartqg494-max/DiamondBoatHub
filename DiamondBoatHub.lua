@@ -88,9 +88,9 @@ function fitToScreen()
     local viewport=cam.ViewportSize
     MainScale.Scale=1
     if deviceMode=="phone" then
-        -- Compact phone layout: leave a small safe margin around the hub.
-        local w=math.max(280,math.min(430,viewport.X-16))
-        local h=math.max(360,math.min(720,viewport.Y-48))
+        -- Fit the hub to the actual phone viewport without forcing oversized minimums.
+        local w=math.clamp(math.floor(viewport.X-16),220,680)
+        local h=math.clamp(math.floor(viewport.Y-32),280,720)
         Main.Size=UDim2.fromOffset(w,h)
     elseif windowMode=="fullscreen" then
         Main.Size=UDim2.new(1,0,1,0)
@@ -178,8 +178,8 @@ outline(Sidebar)
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(5,5,5)),Rotation=90},Sidebar)
 
 Content = create("Frame",{
-    Size=UDim2.new(1,-14,1,-108),
-    Position=UDim2.fromOffset(7,101),
+    Size=UDim2.new(1,-14,1,-136),
+    Position=UDim2.fromOffset(7,129),
     BackgroundColor3=PANEL,
     BorderSizePixel=0
 },Main)
@@ -376,10 +376,13 @@ for _,name in ipairs({
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(0,58,0,56),
+        ClipsDescendants=true,
         BackgroundColor3=BUTTON_WHITE,
         Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",CREDITS="CREDITS"})[name] or name,
         TextColor3=TEXT_DARK,
         TextSize=9,
+        TextTruncate=Enum.TextTruncate.AtEnd,
+        TextWrapped=true,
         Font=Enum.Font.GothamBold,
         TextXAlignment=Enum.TextXAlignment.Center,
         TextYAlignment=Enum.TextYAlignment.Top,
@@ -3394,15 +3397,15 @@ create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(18,18,18),Color3.fro
 IntroScale=create("UIScale",{Scale=0.92},Intro)
 function fitIntro()
     local cam=Workspace.CurrentCamera
-    if cam and (isTouchDevice or cam.ViewportSize.X<620) then
-        Intro.Size=UDim2.new(1,0,1,0)
-        Intro.Position=UDim2.fromOffset(0,0)
-        IntroScale.Scale=1
-    else
-        Intro.Size=UDim2.fromOffset(390,540)
-        Intro.Position=UDim2.new(0.5,-195,0.5,-270)
-        IntroScale.Scale=math.clamp(math.min(cam.ViewportSize.X/430,cam.ViewportSize.Y/480),0.75,1)
-    end
+    if not cam then return end
+    local viewport=cam.ViewportSize
+    -- Keep the complete setup flow (device, language list and Continue) inside
+    -- the visible area on both portrait and landscape phones.
+    Intro.Size=UDim2.fromOffset(390,540)
+    Intro.Position=UDim2.new(0.5,-195,0.5,-270)
+    local fitX=(viewport.X-16)/390
+    local fitY=(viewport.Y-16)/540
+    IntroScale.Scale=math.clamp(math.min(fitX,fitY,1),0.55,1)
 end
 fitIntro()
 if Workspace.CurrentCamera then Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitIntro) end
@@ -3452,6 +3455,9 @@ function deviceButton(caption,y,mode)
         isTouchDevice=(mode=="phone")
         fitToScreen()
         fitIntro()
+        for tabName,tabButton in pairs(TabButtons) do
+            tabButton.Size=UDim2.new(0,mode=="phone" and 54 or 58,0,56)
+        end
         for _,child in ipairs(Intro:GetChildren()) do
             if child:IsA("TextButton") and child~=b and (child.Name=="DevicePC" or child.Name=="DevicePhone") then
                 child.BackgroundColor3=Color3.fromRGB(35,35,48)
