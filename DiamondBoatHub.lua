@@ -183,12 +183,12 @@ outline(Content)
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(5,5,5)),Rotation=90},Content)
 
 Pages = {}
-CurrentPage
+CurrentPage = nil
 buttonStyle="Modern"
 animatedBackground=true
 playerPrefix="Player"
-backgroundGradient
-credits
+backgroundGradient = nil
+credits = nil
 
 function makePage(name)
     local page=create("ScrollingFrame",{
@@ -453,14 +453,14 @@ speedOn=false
 jumpOn=false
 infiniteJump=false
 noclipOn=false
-noclipConnection
+noclipConnection = nil
 noclipOriginal={}
 configuredSpeed=45
 configuredJump=100
 flyOn=false
-flyConnection
-flyVelocity
-flyGyro
+flyConnection = nil
+flyVelocity = nil
+flyGyro = nil
 
 function updateSpeed()
     local _,hum=getCharacter()
@@ -617,7 +617,7 @@ end)
 
 label(visuals,"Visual settings")
 
-antiAfkConnection
+antiAfkConnection = nil
 toggle(visuals,"Anti-AFK",false,function(enabled)
     if antiAfkConnection then antiAfkConnection:Disconnect(); antiAfkConnection=nil end
     if enabled then
@@ -695,7 +695,7 @@ end)
 
 label(teleport,"Position manager")
 
-savedPosition
+savedPosition = nil
 
 button(teleport,"Save current position",function()
     local _,_,root=getCharacter()
@@ -2439,7 +2439,7 @@ outline(shopQuantityInput)
 shopBuyStatus=label(shop,"SHOP: ready")
 shopBuying=false
 shopAutoEnabled=false
-shopAutoButton
+shopAutoButton = nil
 function getShopPurchaseArgs()
     local itemName=shopItemInput.Text:gsub("^%s+",""):gsub("%s+$","")
     local quantity=tonumber(shopQuantityInput.Text)
@@ -3190,9 +3190,9 @@ label(credits,"DIAMOND BOAT HUB V1 [BETA]")
 
 -- Resize grips: bottom-right corner, right edge and bottom edge. Touch and mouse supported.
 resizing=false
-resizeStart
-resizeStartSize
-resizeGrip
+resizeStart = nil
+resizeStartSize = nil
+resizeGrip = nil
 function makeResizeGrip(name,size,pos,cursor)
     local grip=create("TextButton",{Name=name,Size=size,Position=pos,BackgroundColor3=PURPLE,BackgroundTransparency=0.12,Text="",AutoButtonColor=false,ZIndex=20,Active=true},Main)
     round(grip,7)
@@ -3233,8 +3233,8 @@ UIS.InputEnded:Connect(function(input)
 end)
 
 dragging=false
-dragStart
-startAbsolutePosition
+dragStart = nil
+startAbsolutePosition = nil
 
 DragHandle.InputBegan:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1
@@ -3293,8 +3293,8 @@ create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(175,130,255),Color3.
 
 -- Drag the floating reopen button with mouse or touch.
 reopenDragging=false
-reopenDragStart
-reopenStartPosition
+reopenDragStart = nil
+reopenStartPosition = nil
 reopen.InputBegan:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
         reopenDragging=true
@@ -3556,7 +3556,7 @@ showPage("HOME")
 -- DELTA-FRIENDLY CONFIGURATION + RELOAD
 HttpService=game:GetService("HttpService")
 CONFIG_FILE="DiamondBoatHub_Config.json"
-configStatus
+configStatus = nil
 function setConfigStatus(message)
     if configStatus and configStatus.Parent then configStatus.Text=message end
     print("[DIAMOND CONFIG]",message)
