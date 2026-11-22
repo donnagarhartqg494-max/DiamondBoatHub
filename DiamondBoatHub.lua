@@ -764,6 +764,44 @@ button(build,"LOCAL COPY PREVIEW",function()
     print("Local preview created. This is not a server build.")
 end)
 
+button(build,"AUTO BUILD PREVIEW ON MY PLOT",function()
+    if not selectedBase or not selectedBase.Parent then
+        warn("Select a base first")
+        return
+    end
+    local sourcePlayer=Players:FindFirstChild(selectedBase.Name)
+    local sourceZone=getPlayerZone(sourcePlayer)
+    local targetZone=getPlayerZone(Player)
+    if not sourceZone or not targetZone then
+        warn("Could not locate source/your plot")
+        return
+    end
+    clearPreview()
+    local ok,clone=pcall(function() return selectedBase:Clone() end)
+    if not ok or not clone or not clone:IsA("Model") then
+        if clone then clone:Destroy() end
+        warn("Preview clone failed")
+        return
+    end
+    local sourcePivot=clone:GetPivot()
+    local targetPivot=targetZone.CFrame*sourceZone.CFrame:ToObjectSpace(sourcePivot)
+    clone.Name="DIAMOND_AUTO_BUILD_GHOST"
+    clone.Parent=Workspace
+    clone:PivotTo(targetPivot)
+    for _,obj in ipairs(clone:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Anchored=true
+            obj.CanCollide=false
+            obj.CanTouch=false
+            obj.CanQuery=false
+            obj.Transparency=math.max(obj.Transparency,0.58)
+        end
+    end
+    previewModel=clone
+    buildProgressLabel.Text="Auto Build preview: ghost only"
+    print("[DIAMOND AUTO BUILD] Plot preview displayed locally; no server blocks placed.")
+end)
+
 button(build,"REMOVE LOCAL PREVIEW",clearPreview)
 
 -- REAL AUTO BUILD V4
@@ -805,11 +843,34 @@ local function getBuildTool()
     return remote
 end
 
-local function getBlockTypeId(blockName)
+-- Inventory counts and block template IDs are separate in BABFT.
+-- Data values are quantities; BuildingParts order supplies the placement ID.
+local function findPlayerDataValue(blockName)
     local data=Player:FindFirstChild("Data")
-    local value=data and data:FindFirstChild(blockName)
-    if value and (value:IsA("IntValue") or value:IsA("NumberValue")) then
-        return value.Value
+    if not data then return nil end
+    local direct=data:FindFirstChild(blockName)
+    if direct and direct:IsA("ValueBase") then return direct end
+    local wanted=string.lower(blockName)
+    for _,obj in ipairs(data:GetDescendants()) do
+        if obj:IsA("ValueBase") and string.lower(obj.Name)==wanted then return obj end
+    end
+    return nil
+end
+local function getInventoryCount(blockName)
+    local value=findPlayerDataValue(blockName)
+    if not value then return 0 end
+    local n=tonumber(value.Value)
+    return n and math.max(0,n) or 0
+end
+local function getBlockTypeId(blockName)
+    local parts=ReplicatedStorage:FindFirstChild("BuildingParts")
+    if parts then
+        for index,template in ipairs(parts:GetChildren()) do
+            if template.Name==blockName then return index end
+        end
+        for index,template in ipairs(parts:GetChildren()) do
+            if string.lower(template.Name)==string.lower(blockName) then return index end
+        end
     end
     if blockName=="WoodBlock" then return 9 end
     return nil
@@ -917,6 +978,25 @@ button(build,"AUTO BUILD TO MY BASE",function()
 
     if #snapshot==0 then
         warn("Не найдено блоков для копирования")
+        return
+    end
+
+    -- Preflight by exact block type; report missing stock instead of silently skipping.
+    local requiredByName={}
+    for _,item in ipairs(snapshot) do
+        requiredByName[item.name]=(requiredByName[item.name] or 0)+1
+    end
+    local missing={}
+    for name,needed in pairs(requiredByName) do
+        local have=getInventoryCount(name)
+        if have<needed then
+            missing[#missing+1]=string.format("%s: need %d / have %d",name,needed,have)
+        end
+    end
+    if #missing>0 then
+        table.sort(missing)
+        buildProgressLabel.Text="Auto Build: missing inventory ("..#missing.." types)"
+        warn("[DIAMOND AUTO BUILD] Inventory check failed:\n"..table.concat(missing,"\n"))
         return
     end
 
@@ -1634,10 +1714,8 @@ local function findPropertyRemote()
     return rf and rf:IsA("RemoteFunction") and rf or nil
 end
 local function getMusicBlockId(name)
-    local data=Player:FindFirstChild("Data")
-    local v=data and data:FindFirstChild(name)
-    if v and (v:IsA("IntValue") or v:IsA("NumberValue")) and v.Value>0 then return v.Value end
-    return nil
+    if getInventoryCount(name)<=0 then return nil end
+    return getBlockTypeId(name)
 end
 local function equipMusicTool(tool)
     if not tool then return false end
@@ -1723,8 +1801,8 @@ local function startMidiBuild()
     end
     local requiredNotes=0
     for _,g in ipairs(groups) do requiredNotes+=#g.notes end
-    local noteCount=data:FindFirstChild("Note") and data.Note.Value or 0
-    local delayCount=data:FindFirstChild("Delay") and data.Delay.Value or 0
+    local noteCount=getInventoryCount("Note")
+    local delayCount=getInventoryCount("Delay")
     if noteCount<requiredNotes or delayCount<#groups then
         midiBuildStatus.Text=string.format("Need %d Notes + %d Delays; have %d + %d",requiredNotes,#groups,noteCount,delayCount)
         warn("[MIDI BUILD] Not enough inventory. Need",requiredNotes,"Notes and",#groups,"Delays; have",noteCount,delayCount)
