@@ -87,7 +87,12 @@ function fitToScreen()
     if not cam then return end
     local viewport=cam.ViewportSize
     MainScale.Scale=1
-    if windowMode=="fullscreen" or deviceMode=="phone" then
+    if deviceMode=="phone" then
+        -- Compact phone layout: leave a small safe margin around the hub.
+        local w=math.max(280,math.min(430,viewport.X-16))
+        local h=math.max(360,math.min(720,viewport.Y-48))
+        Main.Size=UDim2.fromOffset(w,h)
+    elseif windowMode=="fullscreen" then
         Main.Size=UDim2.new(1,0,1,0)
     elseif viewport.X<620 then
         local w=math.clamp(math.floor(viewport.X*0.92),300,900)
