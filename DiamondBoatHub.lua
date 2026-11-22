@@ -2850,24 +2850,42 @@ UIS.InputEnded:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then reopenDragging=false end
 end)
 
+local function animateOpen()
+    Main.Visible=true
+    reopen.Visible=false
+    MainScale.Scale=0.88
+    Main.BackgroundTransparency=0.18
+    TweenService:Create(MainScale,TweenInfo.new(0.24,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Scale=1}):Play()
+    TweenService:Create(Main,TweenInfo.new(0.2),{BackgroundTransparency=0}):Play()
+end
+
+local function animateClose()
+    local tween=TweenService:Create(MainScale,TweenInfo.new(0.16,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{Scale=0.86})
+    TweenService:Create(Main,TweenInfo.new(0.16),{BackgroundTransparency=0.2}):Play()
+    tween:Play()
+    tween.Completed:Once(function()
+        Main.Visible=false
+        Main.BackgroundTransparency=0
+        MainScale.Scale=1
+        reopen.Visible=true
+        local iconScale=reopen:FindFirstChildOfClass("UIScale") or create("UIScale",{Scale=0.7},reopen)
+        iconScale.Scale=0.7
+        TweenService:Create(iconScale,TweenInfo.new(0.22,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Scale=1}):Play()
+    end)
+end
+
 Min.Activated:Connect(function()
     minimized=not minimized
     Sidebar.Visible=not minimized
     Content.Visible=not minimized
-    Main.Size=minimized and UDim2.fromOffset(680,48)
-        or UDim2.fromOffset(680,470)
+    local target=minimized and UDim2.fromOffset(680,48) or UDim2.fromOffset(680,470)
+    TweenService:Create(Main,TweenInfo.new(0.2,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=target}):Play()
     Min.Text=minimized and "+" or "—"
 end)
 
-Close.Activated:Connect(function()
-    Main.Visible=false
-    reopen.Visible=true
-end)
+Close.Activated:Connect(animateClose)
 
-reopen.Activated:Connect(function()
-    Main.Visible=true
-    reopen.Visible=false
-end)
+reopen.Activated:Connect(animateOpen)
 
 Player.CharacterAdded:Connect(function()
     task.wait(1)
@@ -2876,23 +2894,32 @@ Player.CharacterAdded:Connect(function()
     if flyOn then stopFly() end
 end)
 
--- FIRST START LANGUAGE MENU
+-- FIRST START LANGUAGE MENU + LOCALIZATION
+local CurrentLanguage="en"
+local CurrentTranslations={}
+local function localizeText(value)
+    if type(value)~="string" then return value end
+    return CurrentTranslations[value] or value
+end
+
 local Intro=create("Frame",{
-    Size=UDim2.fromOffset(360,250),
-    Position=UDim2.new(0.5,-180,0.5,-125),
+    Size=UDim2.fromOffset(390,440),
+    Position=UDim2.new(0.5,-195,0.5,-220),
     BackgroundColor3=DARK,
     BorderSizePixel=0,
     ZIndex=50
 },GUI)
 round(Intro,18)
 outline(Intro)
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(39,29,68),Color3.fromRGB(13,15,26)),Rotation=35},Intro)
+Intro.ClipsDescendants=true
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(18,18,18),Color3.fromRGB(0,0,0)),Rotation=90},Intro)
+local IntroScale=create("UIScale",{Scale=0.92},Intro)
 
 create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V29",
+    Text="💎 DIAMOND BOAT HUB",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
@@ -2900,80 +2927,107 @@ create("TextLabel",{
 },Intro)
 create("TextLabel",{
     Size=UDim2.new(1,-20,0,30),
-    Position=UDim2.fromOffset(10,72),
+    Position=UDim2.fromOffset(10,64),
     BackgroundTransparency=1,
     Text="Choose your language / Выбери язык",
-    TextColor3=PURPLE,
+    TextColor3=Color3.fromRGB(205,205,205),
     TextSize=14,
+    Font=Enum.Font.Gotham,
+    ZIndex=51
+},Intro)
+create("TextLabel",{
+    Size=UDim2.new(1,-30,0,20),
+    Position=UDim2.fromOffset(15,91),
+    BackgroundTransparency=1,
+    Text="Select language to translate the hub interface",
+    TextColor3=Color3.fromRGB(145,145,145),
+    TextSize=11,
     Font=Enum.Font.Gotham,
     ZIndex=51
 },Intro)
 
 local function languageButton(caption,y,callback)
     local b=create("TextButton",{
-        Size=UDim2.new(1,-44,0,44),
+        Size=UDim2.new(1,-44,0,36),
         Position=UDim2.fromOffset(22,y),
-        BackgroundColor3=PANEL,
+        BackgroundColor3=BUTTON_WHITE,
         Text=caption,
-        TextColor3=WHITE,
-        TextSize=16,
+        TextColor3=TEXT_DARK,
+        TextSize=14,
         Font=Enum.Font.GothamSemibold,
+        AutoButtonColor=false,
         ZIndex=51
     },Intro)
-    round(b,8)
+    round(b,9)
+    local st=outline(b)
+    b.MouseEnter:Connect(function()
+        TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=BUTTON_HOVER}):Play()
+        TweenService:Create(st,TweenInfo.new(0.12),{Transparency=0.05}):Play()
+    end)
+    b.MouseLeave:Connect(function()
+        TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=BUTTON_WHITE}):Play()
+        TweenService:Create(st,TweenInfo.new(0.12),{Transparency=0.35}):Play()
+    end)
     b.Activated:Connect(callback)
 end
 
-local function applyLanguage(lang)
-    local ru=lang=="ru"
+local translations={
+ru={
+["HOME"]="ГЛАВНАЯ",["MOVEMENT"]="ДВИЖЕНИЕ",["VISUALS"]="ГРАФИКА",["TELEPORTS"]="ТЕЛЕПОРТЫ",["AUTO BUILD"]="АВТОСТРОЙКА",["MUSIC"]="МУЗЫКА",["AUTO FARM"]="АВТОФАРМ",["SHOP"]="МАГАЗИН",["TOOLS"]="ИНСТРУМЕНТЫ",["SETTINGS"]="НАСТРОЙКИ",
+["Welcome to Diamond Boat Hub"]="Добро пожаловать в Diamond Boat Hub",["Build A Boat For Treasure"]="Build A Boat For Treasure",["INSTANT REJOIN"]="БЫСТРЫЙ ПЕРЕЗАХОД",["Player information"]="Информация об игроке",["Character information"]="Информация о персонаже",["Reset character"]="Перезапустить персонажа",
+["Movement controls"]="Управление движением",["Speed boost"]="Ускорение",["High jump"]="Высокий прыжок",["Infinite jump"]="Бесконечный прыжок",["Fly"]="Полёт",["Noclip"]="Проходить сквозь стены",["Reset movement"]="Сбросить движение",
+["Visual settings"]="Настройки графики",["Wide FOV"]="Широкий угол обзора",["Fullbright"]="Полное освещение",["Hide GUI"]="Скрыть интерфейс",["Anti-AFK"]="Анти-АФК",["Low graphics / FPS boost"]="Низкая графика / повышение FPS",
+["Position manager"]="Управление позицией",["Save current position"]="Сохранить позицию",["Return to saved position"]="Вернуться к сохранённой позиции",["Move 20 studs upward"]="Переместиться вверх на 20",["Move 20 studs downward"]="Переместиться вниз на 20",["Teleport to nearest spawn"]="Телепорт к ближайшему спавну",["Copy coordinates"]="Копировать координаты",["Stop current movement"]="Остановить движение",
+["Base scanner"]="Сканер баз",["Select a candidate and inspect it. Preview is local only."]="Выбери базу для просмотра. Превью видно только тебе.",["Selected base: none"]="Выбранная база: нет",["SCAN BASES"]="СКАНИРОВАТЬ БАЗЫ",["SHOW SELECTED BASE INFO"]="ИНФОРМАЦИЯ О ВЫБРАННОЙ БАЗЕ",["LOCAL COPY PREVIEW"]="ЛОКАЛЬНОЕ ПРЕВЬЮ КОПИИ",["REMOVE LOCAL PREVIEW"]="УДАЛИТЬ ПРЕВЬЮ",["COPY SELECTED PLAYER BASE"]="КОПИРОВАТЬ БАЗУ ИГРОКА",["AUTO BUILD TO MY BASE"]="СТРОИТЬ НА МОЕЙ БАЗЕ",["STOP AUTO BUILD"]="ОСТАНОВИТЬ СТРОЙКУ",["CLEAR BASE SELECTION"]="СБРОСИТЬ ВЫБОР БАЗЫ",["SCAN BUILD REMOTES"]="СКАНИРОВАТЬ REMOTE СТРОИТЕЛЬСТВА",
+["SHAPE BUILDER — FILLED"]="ПОСТРОИТЕЛЬ ФИГУР",["FILLED CIRCLE"]="ЗАПОЛНЕННЫЙ КРУГ",["LARGE FILLED CIRCLE"]="БОЛЬШОЙ ЗАПОЛНЕННЫЙ КРУГ",["SPHERE — DENSE"]="ПЛОТНАЯ СФЕРА",["SMALL SPHERE"]="МАЛЕНЬКАЯ СФЕРА",["IMPROVED BUILD PRESETS"]="УЛУЧШЕННЫЕ ШАБЛОНЫ",["PRESET: WIDE PLATFORM"]="ШАБЛОН: ШИРОКАЯ ПЛАТФОРМА",["PRESET: FORTRESS"]="ШАБЛОН: КРЕПОСТЬ",["PRESET: BRIDGE"]="ШАБЛОН: МОСТ",["PRESET: HOUSE PLUS"]="ШАБЛОН: ДОМ",
+["EASY MIDI IMPORT"]="ПРОСТОЙ ИМПОРТ MIDI",["MIDI: waiting for input"]="MIDI: ожидание данных",["AUTO FIND + LOAD MIDI"]="НАЙТИ И ЗАГРУЗИТЬ MIDI",["IMPORT / PARSE MIDI"]="ИМПОРТ / ЧТЕНИЕ MIDI",["SHOW MIDI SUMMARY"]="ПОКАЗАТЬ СВЕДЕНИЯ MIDI",["MUSIC BUILDER — MIDI SOURCES"]="МУЗЫКАЛЬНЫЙ РЕДАКТОР — MIDI",["BUILD HOLY WAR — QUAVER RHYTHM"]="ПОСТРОИТЬ HOLY WAR — РИТМ",["BUILD RUSH E"]="ПОСТРОИТЬ RUSH E",["AUTO BUILD + WIRE MIDI"]="АВТОСТРОЙКА И СОЕДИНЕНИЕ MIDI",["STOP MIDI AUTO BUILD"]="ОСТАНОВИТЬ MIDI-АВТОСТРОЙКУ",["BABFT BLOCK CHECK"]="ПРОВЕРКА БЛОКОВ BABFT",
+["AUTO BUY — BUILD A BOAT FOR TREASURE"]="АВТОПОКУПКА — BUILD A BOAT FOR TREASURE",["QUANTITY (1–1000)"]="КОЛИЧЕСТВО (1–1000)",["BUY SELECTED ITEM × QUANTITY"]="КУПИТЬ ВЫБРАННЫЙ ПРЕДМЕТ × КОЛИЧЕСТВО",["SHOP: ready"]="МАГАЗИН: готов",["Game diagnostics"]="Диагностика игры",["FULL GAME STRUCTURE SCAN"]="ПОЛНОЕ СКАНИРОВАНИЕ ИГРЫ",["SCAN REMOTES (BUILD + REWARDS)"]="СКАНИРОВАТЬ REMOTE (СТРОЙКА + НАГРАДЫ)",["SCAN INTERACTION OBJECTS"]="СКАНИРОВАТЬ ОБЪЕКТЫ ВЗАИМОДЕЙСТВИЯ",["Hub settings"]="Настройки хаба",["Appearance / Внешний вид"]="Внешний вид",["Reset appearance"]="Сбросить оформление",["Theme: Purple"]="Тема: фиолетовая",["Theme: Cyan"]="Тема: голубая",["Theme: Red"]="Тема: красная",["Theme: Green"]="Тема: зелёная",["Theme: Gold"]="Тема: золотая",["Reset"]="Сбросить",
+["Choose your language / Выбери язык"]="Выбери язык интерфейса",["Select language to translate the hub interface"]="Выбери язык, на который перевести меню"
+},
+es={["HOME"]="INICIO",["MOVEMENT"]="MOVIMIENTO",["VISUALS"]="VISUAL",["TELEPORTS"]="TELETRANSPORTE",["AUTO BUILD"]="CONSTRUCCIÓN AUTO",["MUSIC"]="MÚSICA",["AUTO FARM"]="FARMEO AUTO",["SHOP"]="TIENDA",["TOOLS"]="HERRAMIENTAS",["SETTINGS"]="AJUSTES",["Welcome to Diamond Boat Hub"]="Bienvenido a Diamond Boat Hub",["Movement controls"]="Controles de movimiento",["Visual settings"]="Ajustes visuales",["Position manager"]="Gestor de posición",["Base scanner"]="Escáner de bases",["EASY MIDI IMPORT"]="IMPORTAR MIDI",["AUTO FIND + LOAD MIDI"]="BUSCAR Y CARGAR MIDI",["IMPORT / PARSE MIDI"]="IMPORTAR / LEER MIDI",["BUY SELECTED ITEM × QUANTITY"]="COMPRAR ARTÍCULO × CANTIDAD",["Hub settings"]="Ajustes del hub",["Choose your language / Выбери язык"]="Elige el idioma"},
+de={["HOME"]="START",["MOVEMENT"]="BEWEGUNG",["VISUALS"]="GRAFIK",["TELEPORTS"]="TELEPORT",["AUTO BUILD"]="AUTO-BAU",["MUSIC"]="MUSIK",["AUTO FARM"]="AUTO-FARM",["SHOP"]="SHOP",["TOOLS"]="WERKZEUGE",["SETTINGS"]="EINSTELLUNGEN",["Welcome to Diamond Boat Hub"]="Willkommen bei Diamond Boat Hub",["Movement controls"]="Bewegungssteuerung",["Visual settings"]="Grafikeinstellungen",["Position manager"]="Positionsverwaltung",["Base scanner"]="Basis-Scanner",["EASY MIDI IMPORT"]="MIDI-IMPORT",["AUTO FIND + LOAD MIDI"]="MIDI AUTOMATISCH FINDEN",["IMPORT / PARSE MIDI"]="MIDI IMPORTIEREN",["BUY SELECTED ITEM × QUANTITY"]="AUSGEWÄHLTEN ARTIKEL KAUFEN",["Hub settings"]="Hub-Einstellungen",["Choose your language / Выбери язык"]="Sprache auswählen"},
+fr={["HOME"]="ACCUEIL",["MOVEMENT"]="MOUVEMENT",["VISUALS"]="VISUEL",["TELEPORTS"]="TÉLÉPORTS",["AUTO BUILD"]="CONSTRUCTION AUTO",["MUSIC"]="MUSIQUE",["AUTO FARM"]="FARM AUTO",["SHOP"]="BOUTIQUE",["TOOLS"]="OUTILS",["SETTINGS"]="PARAMÈTRES",["Welcome to Diamond Boat Hub"]="Bienvenue sur Diamond Boat Hub",["Movement controls"]="Contrôles de mouvement",["Visual settings"]="Paramètres visuels",["Position manager"]="Gestion de position",["Base scanner"]="Scanner de base",["EASY MIDI IMPORT"]="IMPORT MIDI",["AUTO FIND + LOAD MIDI"]="TROUVER ET CHARGER MIDI",["IMPORT / PARSE MIDI"]="IMPORTER / LIRE MIDI",["BUY SELECTED ITEM × QUANTITY"]="ACHETER L'ARTICLE",["Hub settings"]="Paramètres du hub",["Choose your language / Выбери язык"]="Choisissez la langue"},
+pt={["HOME"]="INÍCIO",["MOVEMENT"]="MOVIMENTO",["VISUALS"]="VISUAL",["TELEPORTS"]="TELEPORTES",["AUTO BUILD"]="CONSTRUÇÃO AUTO",["MUSIC"]="MÚSICA",["AUTO FARM"]="FARM AUTO",["SHOP"]="LOJA",["TOOLS"]="FERRAMENTAS",["SETTINGS"]="CONFIGURAÇÕES",["Welcome to Diamond Boat Hub"]="Bem-vindo ao Diamond Boat Hub",["Movement controls"]="Controles de movimento",["Visual settings"]="Configurações visuais",["Position manager"]="Gerenciador de posição",["Base scanner"]="Scanner de bases",["EASY MIDI IMPORT"]="IMPORTAR MIDI",["AUTO FIND + LOAD MIDI"]="LOCALIZAR E CARREGAR MIDI",["IMPORT / PARSE MIDI"]="IMPORTAR MIDI",["BUY SELECTED ITEM × QUANTITY"]="COMPRAR ITEM SELECIONADO",["Hub settings"]="Configurações do hub",["Choose your language / Выбери язык"]="Escolha o idioma"},
+tr={["HOME"]="ANA SAYFA",["MOVEMENT"]="HAREKET",["VISUALS"]="GÖRÜNÜM",["TELEPORTS"]="IŞINLANMA",["AUTO BUILD"]="OTOMATİK İNŞA",["MUSIC"]="MÜZİK",["AUTO FARM"]="OTOMATİK KASMA",["SHOP"]="MAĞAZA",["TOOLS"]="ARAÇLAR",["SETTINGS"]="AYARLAR",["Welcome to Diamond Boat Hub"]="Diamond Boat Hub'a hoş geldin",["Movement controls"]="Hareket kontrolleri",["Visual settings"]="Görünüm ayarları",["Position manager"]="Konum yöneticisi",["Base scanner"]="Üs tarayıcı",["EASY MIDI IMPORT"]="MIDI İÇE AKTAR",["AUTO FIND + LOAD MIDI"]="MIDI BUL VE YÜKLE",["IMPORT / PARSE MIDI"]="MIDI İÇE AKTAR",["BUY SELECTED ITEM × QUANTITY"]="SEÇİLİ ÖĞEYİ SATIN AL",["Hub settings"]="Hub ayarları",["Choose your language / Выбери язык"]="Dilini seç"},
+pl={["HOME"]="GŁÓWNA",["MOVEMENT"]="RUCH",["VISUALS"]="GRAFIKA",["TELEPORTS"]="TELEPORTY",["AUTO BUILD"]="AUTO BUDOWA",["MUSIC"]="MUZYKA",["AUTO FARM"]="AUTO FARM",["SHOP"]="SKLEP",["TOOLS"]="NARZĘDZIA",["SETTINGS"]="USTAWIENIA",["Welcome to Diamond Boat Hub"]="Witamy w Diamond Boat Hub",["Movement controls"]="Sterowanie ruchem",["Visual settings"]="Ustawienia grafiki",["Position manager"]="Menedżer pozycji",["Base scanner"]="Skaner baz",["EASY MIDI IMPORT"]="IMPORT MIDI",["AUTO FIND + LOAD MIDI"]="ZNAJDŹ I ZAŁADUJ MIDI",["IMPORT / PARSE MIDI"]="IMPORTUJ MIDI",["BUY SELECTED ITEM × QUANTITY"]="KUP WYBRANY PRZEDMIOT",["Hub settings"]="Ustawienia huba",["Choose your language / Выбери язык"]="Wybierz język"},
+zh={["HOME"]="主页",["MOVEMENT"]="移动",["VISUALS"]="画面",["TELEPORTS"]="传送",["AUTO BUILD"]="自动建造",["MUSIC"]="音乐",["AUTO FARM"]="自动刷取",["SHOP"]="商店",["TOOLS"]="工具",["SETTINGS"]="设置",["Welcome to Diamond Boat Hub"]="欢迎使用 Diamond Boat Hub",["Movement controls"]="移动控制",["Visual settings"]="画面设置",["Position manager"]="位置管理",["Base scanner"]="基地扫描",["EASY MIDI IMPORT"]="导入 MIDI",["AUTO FIND + LOAD MIDI"]="自动查找并加载 MIDI",["IMPORT / PARSE MIDI"]="导入 / 解析 MIDI",["BUY SELECTED ITEM × QUANTITY"]="购买所选物品",["Hub settings"]="Hub 设置",["Choose your language / Выбери язык"]="选择语言"}
+}
 
-    local translations={
-        ["HOME"]="ГЛАВНАЯ",["MOVEMENT"]="ДВИЖЕНИЕ",["VISUALS"]="ГРАФИКА",["TELEPORTS"]="ТЕЛЕПОРТЫ",["AUTO BUILD"]="АВТОСТРОЙКА",["MUSIC"]="МУЗЫКА",["AUTO FARM"]="АВТОФАРМ",["TOOLS"]="ИНСТРУМЕНТЫ",["SETTINGS"]="НАСТРОЙКИ",
-        ["Welcome to Diamond Boat Hub"]="Добро пожаловать в Diamond Boat Hub",["Player information"]="Информация об игроке",["Character information"]="Информация о персонаже",["Reset character"]="Перезапустить персонажа",["Movement controls"]="Управление движением",
-        ["Speed boost"]="Ускорение",["High jump"]="Высокий прыжок",["Infinite jump"]="Бесконечный прыжок",["Fly"]="Полёт",["Reset movement"]="Сбросить движение",
-        ["Visual settings"]="Настройки графики",["Wide FOV"]="Широкий угол обзора",["Fullbright"]="Полное освещение",["Hide GUI"]="Скрыть интерфейс",["Anti-AFK"]="Анти-AFK",["Low graphics / FPS boost"]="Низкая графика / повышение FPS",
-        ["Position manager"]="Управление позицией",["Save current position"]="Сохранить позицию",["Return to saved position"]="Вернуться к сохранённой позиции",["Move 20 studs upward"]="Переместиться вверх на 20",["Move 20 studs downward"]="Переместиться вниз на 20",
-        ["Base scanner"]="Сканер баз",["Select a candidate and inspect it. Preview is local only."]="Выбери базу для просмотра. Превью видно только тебе.",["Selected base: none"]="Выбранная база: нет",
-        ["SCAN BASES"]="СКАНИРОВАТЬ БАЗЫ",["SHOW SELECTED BASE INFO"]="ИНФОРМАЦИЯ О ВЫБРАННОЙ БАЗЕ",["LOCAL COPY PREVIEW"]="ЛОКАЛЬНОЕ ПРЕВЬЮ КОПИИ",["REMOVE LOCAL PREVIEW"]="УДАЛИТЬ ПРЕВЬЮ",
-        ["COPY SELECTED PLAYER BASE"]="КОПИРОВАТЬ БАЗУ ИГРОКА",["AUTO BUILD TO MY BASE"]="СТРОИТЬ НА МОЕЙ БАЗЕ",["STOP AUTO BUILD"]="ОСТАНОВИТЬ СТРОЙКУ",["CLEAR BASE SELECTION"]="СБРОСИТЬ ВЫБОР БАЗЫ",["SCAN BUILD REMOTES"]="СКАНИРОВАТЬ REMOTE СТРОИТЕЛЬСТВА",
-        ["AUTO FARM GOLD V14"]="АВТОФАРМ ЗОЛОТА V12",["Each cave stage is confirmed before moving on. Death/respawn is awaited."]="Каждый этап проверяется. После смерти скрипт ждёт возрождения.",["START AUTO FARM"]="ЗАПУСТИТЬ АВТОФАРМ",["STOP AUTO FARM"]="ОСТАНОВИТЬ АВТОФАРМ",["SCAN FARM ROUTE"]="СКАНИРОВАТЬ МАРШРУТ",
-        ["MUSIC BUILDER — MIDI SOURCES"]="МУЗЫКАЛЬНЫЙ РЕДАКТОР — MIDI",["COPY HOLY WAR — URAL GAYSIN MIDI LINK"]="КОПИРОВАТЬ MIDI HOLY WAR — УРАЛ ГАЙСИН",["COPY RUSH E MIDI LINK"]="КОПИРОВАТЬ MIDI RUSH E",["SCAN MUSIC BLOCK INVENTORY"]="СКАНИРОВАТЬ МУЗЫКАЛЬНЫЕ БЛОКИ",["PRINT DUPLICATION STEPS TO CONSOLE"]="ВЫВЕСТИ ШАГИ ДЮПА В КОНСОЛЬ",["Game diagnostics"]="Диагностика игры",["DIAGNOSTICS V3: вывод в консоль F9"]="ДИАГНОСТИКА V3: вывод в консоль F9",["FULL GAME STRUCTURE SCAN"]="ПОЛНОЕ СКАНИРОВАНИЕ ИГРЫ",["SCAN REMOTES (BUILD + REWARDS)"]="СКАНИРОВАТЬ REMOTE (СТРОЙКА + НАГРАДЫ)",["SCAN INTERACTION OBJECTS"]="СКАНИРОВАТЬ ОБЪЕКТЫ ВЗАИМОДЕЙСТВИЯ",
-        ["SCAN MY CHARACTER + PLAYER DATA"]="СКАНИРОВАТЬ ПЕРСОНАЖА И ДАННЫЕ",["COPY DIAGNOSTIC INSTRUCTIONS"]="КОПИРОВАТЬ ИНСТРУКЦИЮ ДИАГНОСТИКИ",["Scan Workspace roots"]="СКАНИРОВАТЬ ОБЪЕКТЫ WORKSPACE",["Scan ReplicatedStorage remotes"]="СКАНИРОВАТЬ REMOTE В REPLICATEDSTORAGE",["Scan player attributes"]="СКАНИРОВАТЬ АТРИБУТЫ ИГРОКА",["Print current position"]="ПОКАЗАТЬ ТЕКУЩУЮ ПОЗИЦИЮ",["Print game information"]="ПОКАЗАТЬ ИНФОРМАЦИЮ ОБ ИГРЕ",
-        ["Hub settings"]="Настройки хаба",["Destroy local preview"]="Удалить локальное превью",["Restore lighting"]="Восстановить освещение",["Restore camera FOV"]="Восстановить угол обзора",["Appearance / Внешний вид"]="Внешний вид",["Reset appearance"]="Сбросить внешний вид",
-        ["Theme: Purple"]="Тема: Фиолетовая",["Theme: Cyan"]="Тема: Голубая",["Theme: Red"]="Тема: Красная",["Theme: Green"]="Тема: Зелёная",["Theme: Gold"]="Тема: Золотая",
-        ["Choose your language / Выбери язык"]="Выбери язык / Choose your language"
-    }
-    if ru then
-        for _,obj in ipairs(GUI:GetDescendants()) do
-            if obj:IsA("TextButton") or obj:IsA("TextLabel") then
-                local translated=translations[obj.Text]
-                if translated then
-                    obj.Text=translated
-                elseif obj.Text:match("^Selected base:") then
-                    obj.Text="Выбранная база:"..obj.Text:sub(14)
-                elseif obj.Text:match("^Auto Build:") then
-                    obj.Text="Автостройка:"..obj.Text:sub(12)
-                end
+local languageNames={
+{"🇷🇺  Русский","ru"},{"🇬🇧  English","en"},{"🇪🇸  Español","es"},{"🇩🇪  Deutsch","de"},
+{"🇫🇷  Français","fr"},{"🇧🇷  Português","pt"},{"🇹🇷  Türkçe","tr"},{"🇵🇱  Polski","pl"},{"🇨🇳  中文","zh"}
+}
+local function applyLanguage(lang)
+    CurrentLanguage=lang
+    CurrentTranslations=translations[lang] or {}
+    for _,obj in ipairs(GUI:GetDescendants()) do
+        if obj:IsA("TextButton") or obj:IsA("TextLabel") then
+            local original=obj:GetAttribute("OriginalText")
+            if not original then
+                original=obj.Text
+                obj:SetAttribute("OriginalText",original)
             end
+            obj.Text=CurrentTranslations[original] or original
         end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V29"
-    else
-        for _,obj in ipairs(GUI:GetDescendants()) do
-            if obj:IsA("TextButton") or obj:IsA("TextLabel") then
-                for english,russian in pairs(translations) do
-                    if obj.Text==russian then obj.Text=english end
-                end
-            end
-        end
-        Top:FindFirstChildOfClass("TextLabel").Text="💎 DIAMOND BOAT HUB V21"
     end
+    TitleLabel.Text="💎  DIAMOND BOAT HUB"
     Intro.Visible=false
     Main.Visible=true
+    MainScale.Scale=0.88
+    IntroScale.Scale=0.92
+    TweenService:Create(IntroScale,TweenInfo.new(0.2,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{Scale=0.85}):Play()
+    animateOpen()
     showPage("HOME")
 end
 
-languageButton("🇷🇺 Русский",122,function() applyLanguage("ru") end)
-languageButton("🇬🇧 English",174,function() applyLanguage("en") end)
+for i,item in ipairs(languageNames) do
+    local caption,code=item[1],item[2]
+    languageButton(caption,116+(i-1)*36,function() applyLanguage(code) end)
+end
+
+Intro.Visible=true
+Main.Visible=false
+TweenService:Create(IntroScale,TweenInfo.new(0.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Scale=1}):Play()
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V21 LOADED")
+print("DIAMOND BOAT HUB V30 LOADED")
