@@ -2306,7 +2306,7 @@ label(shop,"The game server checks the item, price and your gold. This does not 
 
 -- AUTO FARM V10
 label(farm,"AUTO FARM GOLD V10")
-label(farm,"Each cave stage is confirmed before moving on. Death/respawn is awaited.")
+label(farm,"Continuous fast route: no idle pauses between stages. Respawn and server registration checks remain.")
 
 local farmEnabled=false
 local farmRunId=0
@@ -2373,7 +2373,7 @@ local function farmWaitStage(other,index,oldValue,runId,timeout)
             local newChar=farmWaitAlive(runId,25)
             if not newChar then return false,"Respawn timeout" end
         end
-        task.wait(0.1)
+        task.wait(0.03)
     end
     return false,"Stage progress timeout"
 end
@@ -2383,7 +2383,7 @@ local function farmNudge(runId)
     if not root then return false end
     local base=root.CFrame
     root.CFrame=base*CFrame.new(-10,0,-10)
-    task.wait(0.1)
+    task.wait(0.03)
     if not farmEnabled or runId~=farmRunId then return false end
     char,root,hum=farmWaitAlive(runId,15)
     if not root then return false end
@@ -2396,11 +2396,11 @@ local function farmTouchChest(trigger,runId)
     if not root then return false end
     local chestCF=trigger.CFrame*CFrame.new(-5,-1.7,0)*CFrame.Angles(0,math.rad(-90),0)
     char:PivotTo(chestCF)
-    task.wait(0.2)
+    task.wait(0.03)
     if typeof(firetouchinterest)=="function" then
         local ok,err=pcall(function()
             firetouchinterest(root,trigger,1)
-            task.wait(0.15)
+            task.wait(0.03)
             firetouchinterest(root,trigger,0)
         end)
         if not ok then farmLog("Touch error:",err) end
@@ -2431,7 +2431,7 @@ local function farmFlyTo(root,targetCFrame,runId)
     farmHoldVelocity=nil
     if not root or not root.Parent then return false end
     local distance=(root.Position-targetCFrame.Position).Magnitude
-    local duration=math.clamp(distance/55,0.35,1.25)
+    local duration=math.clamp(distance/150,0.08,0.45)
     local tween=TweenService:Create(root,TweenInfo.new(duration,Enum.EasingStyle.Linear),{CFrame=targetCFrame})
     tween:Play()
     local finished=false
@@ -2493,17 +2493,13 @@ local function runFarm(runId)
         -- BindableEvent alone does not guarantee that the server records it.
         if not farmFlyTo(root,dark.CFrame*CFrame.new(0,1.5,0),runId) then return end
         farmHold(root)
-        -- Pause at every location for half a second before activating the stage.
-        local stopUntil=os.clock()+0.5
-        while farmEnabled and runId==farmRunId and os.clock()<stopUntil do
-            RunService.Heartbeat:Wait()
-        end
+        -- No idle pause at stage: trigger immediately after arrival.
         if not farmEnabled or runId~=farmRunId then return end
         pcall(function() event:Fire() end)
         if typeof(firetouchinterest)=="function" then
             pcall(function()
                 firetouchinterest(root,dark,0)
-                task.wait(0.12)
+                task.wait(0.03)
                 firetouchinterest(root,dark,1)
             end)
         end
@@ -2547,8 +2543,7 @@ local function runFarm(runId)
     local char,root,hum=farmWaitAlive(runId,20)
     if not root then farmLog("No live character before chest"); farmEnabled=false; return end
 
-    farmLog("All stage triggers sent; waiting 0.7s before Golden Chest.")
-    task.wait(0.7)
+    farmLog("All stage triggers sent; moving to Golden Chest.")
     if not farmEnabled or runId~=farmRunId then return end
 
     -- Connect the respawn listener BEFORE touching the chest so a fast reset is not missed.
@@ -2569,7 +2564,6 @@ local function runFarm(runId)
     farmLog("Teleporting to Golden Chest trigger.")
     if not farmFlyTo(root,chest.CFrame*CFrame.new(0,3,0),runId) then conn:Disconnect(); return end
     farmHold(root)
-    task.wait(0.7)
     if not farmEnabled or runId~=farmRunId then conn:Disconnect(); return end
 
     char,root,hum=farmCharacter()
@@ -2580,7 +2574,7 @@ local function runFarm(runId)
             firetouchinterest(root,chest,1)
         end)
         farmLog("Chest touch sent; waiting 1.5s for game response.")
-        task.wait(1.5)
+        task.wait(0.25)
     elseif root and hum and hum.Health>0 then
         farmLog("firetouchinterest unavailable; waiting for natural chest contact.")
         task.wait(1.5)
@@ -2617,7 +2611,7 @@ button(farm,"START AUTO FARM",function()
     task.spawn(function()
         while farmEnabled and id==farmRunId do
             runFarm(id)
-            if farmEnabled and id==farmRunId then task.wait(2) end
+            if farmEnabled and id==farmRunId then task.wait(0.1) end
         end
         farmLog("Stopped")
     end)
