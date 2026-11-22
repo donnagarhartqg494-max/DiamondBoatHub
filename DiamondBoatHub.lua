@@ -2213,15 +2213,29 @@ round(shopQuantityInput,8)
 outline(shopQuantityInput)
 local shopBuyStatus=label(shop,"SHOP: ready")
 local shopBuying=false
-button(shop,"BUY SELECTED ITEM × QUANTITY",function()
-    if shopBuying then shopBuyStatus.Text="SHOP: purchase already in progress"; return end
+local shopAutoEnabled=false
+local shopAutoButton
+local function getShopPurchaseArgs()
     local itemName=shopItemInput.Text:gsub("^%s+",""):gsub("%s+$","")
     local quantity=tonumber(shopQuantityInput.Text)
-    if itemName=="" then shopBuyStatus.Text="SHOP: enter an item name"; return end
-    if not quantity or quantity%1~=0 or quantity<1 or quantity>1000 then shopBuyStatus.Text="SHOP: quantity must be a whole number from 1 to 1000"; return end
+    if itemName=="" then return nil,nil,"SHOP: enter an item name" end
+    if not quantity or quantity%1~=0 or quantity<1 or quantity>1000 then
+        return nil,nil,"SHOP: quantity must be a whole number from 1 to 1000"
+    end
+    return itemName,quantity,nil
+end
+local function getShopRemote()
     local remote=Workspace:FindFirstChild("ItemBoughtFromShop")
-    if not remote then shopBuyStatus.Text="SHOP: purchase remote not found"; warn("[DIAMOND SHOP] ItemBoughtFromShop not found"); return end
-    if not remote:IsA("RemoteFunction") then shopBuyStatus.Text="SHOP: unexpected remote type"; warn("[DIAMOND SHOP] Unexpected remote class:",remote.ClassName); return end
+    if not remote then return nil,"SHOP: purchase remote not found" end
+    if not remote:IsA("RemoteFunction") then return nil,"SHOP: unexpected remote type" end
+    return remote
+end
+button(shop,"BUY SELECTED ITEM × QUANTITY",function()
+    if shopBuying then shopBuyStatus.Text="SHOP: purchase already in progress"; return end
+    local itemName,quantity,err=getShopPurchaseArgs()
+    if err then shopBuyStatus.Text=err; return end
+    local remote,remoteErr=getShopRemote()
+    if not remote then shopBuyStatus.Text=remoteErr; warn("[DIAMOND SHOP]",remoteErr); return end
     shopBuying=true
     shopBuyStatus.Text=string.format("SHOP: buying %d × %s...",quantity,itemName)
     task.spawn(function()
@@ -2236,7 +2250,59 @@ button(shop,"BUY SELECTED ITEM × QUANTITY",function()
         end
     end)
 end)
-label(shop,"The game server checks the item, price and your gold. One bulk request is sent; this does not bypass payment or guarantee stock.")
+shopAutoButton=button(shop,"AUTO BUY: OFF",function()
+    if shopAutoEnabled then
+        shopAutoEnabled=false
+        shopAutoButton.Text="AUTO BUY: OFF"
+        shopBuyStatus.Text="SHOP: auto-buy stopped"
+        return
+    end
+    local itemName,quantity,err=getShopPurchaseArgs()
+    if err then shopBuyStatus.Text=err; return end
+    local remote,remoteErr=getShopRemote()
+    if not remote then shopBuyStatus.Text=remoteErr; warn("[DIAMOND SHOP]",remoteErr); return end
+    shopAutoEnabled=true
+    shopAutoButton.Text="AUTO BUY: ON"
+    shopBuyStatus.Text="SHOP: auto-buy running — "..itemName
+    task.spawn(function()
+        while shopAutoEnabled do
+            if not shopBuying then
+                local currentName,currentQuantity,currentErr=getShopPurchaseArgs()
+                if currentErr then
+                    shopAutoEnabled=false
+                    shopAutoButton.Text="AUTO BUY: OFF"
+                    shopBuyStatus.Text=currentErr
+                    break
+                end
+                local currentRemote,currentRemoteErr=getShopRemote()
+                if not currentRemote then
+                    shopAutoEnabled=false
+                    shopAutoButton.Text="AUTO BUY: OFF"
+                    shopBuyStatus.Text=currentRemoteErr
+                    warn("[DIAMOND SHOP]",currentRemoteErr)
+                    break
+                end
+                shopBuying=true
+                local ok,result=pcall(function()
+                    return currentRemote:InvokeServer(currentName,currentQuantity)
+                end)
+                shopBuying=false
+                if not ok then
+                    shopAutoEnabled=false
+                    shopAutoButton.Text="AUTO BUY: OFF"
+                    shopBuyStatus.Text="SHOP: auto-buy failed — see F9"
+                    warn("[DIAMOND SHOP] Auto-buy failed:",tostring(result))
+                    break
+                end
+                print("[DIAMOND SHOP] Auto purchase:",currentName,"quantity:",currentQuantity,"server response:",tostring(result))
+                shopBuyStatus.Text=string.format("SHOP: auto-buy sent %d × %s",currentQuantity,currentName)
+            end
+            task.wait(2)
+        end
+    end)
+end)
+label(shop,"AUTO BUY repeats the selected quantity every 2 seconds until switched OFF. Watch your gold; the game server still validates every purchase.")
+label(shop,"The game server checks the item, price and your gold. This does not bypass payment or guarantee stock.")
 
 -- AUTO FARM V10
 label(farm,"AUTO FARM GOLD V10")
