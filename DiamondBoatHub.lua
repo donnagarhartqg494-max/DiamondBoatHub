@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V33
+-- DIAMOND BOAT HUB V1 [BETA] V34
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -3946,32 +3946,47 @@ end
 chatSendButton.Activated:Connect(sendGlobalChat)
 chatInput.FocusLost:Connect(function(enterPressed) if enterPressed then sendGlobalChat() end end)
 
--- Display already-filtered Roblox TextChatService messages above the speaker locally.
+-- Local overhead chat bubbles. Listen to both modern TextChatService and legacy Player.Chatted.
+local overheadLastMessage={}
 local function showOverheadChat(userId, messageText)
     local plr=Players:GetPlayerByUserId(tonumber(userId) or -1)
     if not plr or type(messageText)~="string" or messageText=="" then return end
+    messageText=string.sub(messageText,1,180)
+    local now=os.clock()
+    local previous=overheadLastMessage[plr.UserId]
+    if previous and previous.text==messageText and now-previous.time<0.8 then return end
+    overheadLastMessage[plr.UserId]={text=messageText,time=now}
     local character=plr.Character
     local head=character and character:FindFirstChild("Head")
-    if not head then return end
-    local old=head:FindFirstChild("DiamondChatBubble")
+    for _=1,10 do
+        if head and head.Parent then break end
+        task.wait(0.1)
+        character=plr.Character
+        head=character and character:FindFirstChild("Head")
+    end
+    if not head or not head.Parent then return end
+    local playerGui=Player:FindFirstChildOfClass("PlayerGui")
+    if not playerGui then return end
+    local old=playerGui:FindFirstChild("DiamondChatBubble_"..tostring(plr.UserId))
     if old then old:Destroy() end
     local bubble=Instance.new("BillboardGui")
-    bubble.Name="DiamondChatBubble"
-    bubble.Size=UDim2.fromOffset(210,54)
-    bubble.StudsOffset=Vector3.new(0,6.1,0)
+    bubble.Name="DiamondChatBubble_"..tostring(plr.UserId)
+    bubble.Size=UDim2.fromOffset(240,64)
+    bubble.StudsOffset=Vector3.new(0,4.5,0)
     bubble.AlwaysOnTop=true
-    bubble.MaxDistance=85
+    bubble.MaxDistance=150
+    bubble.LightInfluence=0
     bubble.Adornee=head
-    bubble.Parent=head
+    bubble.Parent=playerGui
     local label=Instance.new("TextLabel")
     label.Size=UDim2.new(1,0,1,0)
     label.BackgroundColor3=Color3.fromRGB(18,18,24)
     label.BackgroundTransparency=0.12
     label.BorderSizePixel=0
-    label.Text=tostring(messageText):sub(1,180)
+    label.Text=messageText
     label.TextColor3=Color3.fromRGB(255,255,255)
     label.TextStrokeTransparency=0.65
-    label.TextSize=13
+    label.TextSize=14
     label.Font=Enum.Font.Gotham
     label.TextWrapped=true
     label.TextTruncate=Enum.TextTruncate.AtEnd
@@ -3979,19 +3994,30 @@ local function showOverheadChat(userId, messageText)
     local corner=Instance.new("UICorner")
     corner.CornerRadius=UDim.new(0,9)
     corner.Parent=label
-    task.delay(5,function()
+    task.delay(6,function()
         if bubble and bubble.Parent then bubble:Destroy() end
     end)
 end
+
 local overheadChatConnected=false
+local function connectOverheadPlayer(plr)
+    plr.Chatted:Connect(function(messageText)
+        showOverheadChat(plr.UserId,messageText)
+    end)
+end
 pcall(function()
     local textChat=game:GetService("TextChatService")
     textChat.MessageReceived:Connect(function(message)
-        local source=message.TextSource
-        if source and source.UserId and message.Status==Enum.TextChatMessageStatus.Success then
+        local source=message and message.TextSource
+        if source and source.UserId then
             showOverheadChat(source.UserId,message.Text)
         end
     end)
+    overheadChatConnected=true
+end)
+pcall(function()
+    for _,plr in ipairs(Players:GetPlayers()) do connectOverheadPlayer(plr) end
+    Players.PlayerAdded:Connect(connectOverheadPlayer)
     overheadChatConnected=true
 end)
 if chatStatus and chatStatus.Parent then
@@ -4613,7 +4639,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=33"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=34"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
