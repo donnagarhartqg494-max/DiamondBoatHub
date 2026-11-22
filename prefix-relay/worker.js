@@ -22,6 +22,42 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/health" && request.method === "GET") return reply({ ok: true, service: "DiamondBoatHub Prefix Relay", version: 1 });
 
+    // Shared GLOBAL CHAT. Messages are scoped to the Roblox place and expire after 24 hours.
+    if (url.pathname === "/chat" && request.method === "GET") {
+      const gameId = clean(url.searchParams.get("gameId"), 32);
+      if (!gameId) return reply({ error: "gameId is required" }, 400);
+      const listed = await env.PREFIXES.list({ prefix: "chat:" + gameId + ":", limit: 1000 });
+      const messages = [];
+      for (const key of listed.keys) {
+        const raw = await env.PREFIXES.get(key.name);
+        if (!raw) continue;
+        try { messages.push(JSON.parse(raw)); } catch {}
+      }
+      messages.sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+      return reply({ ok: true, messages: messages.slice(-60) });
+    }
+
+    if (url.pathname === "/chat" && request.method === "POST") {
+      let body;
+      try { body = await request.json(); } catch { return reply({ error: "Invalid JSON" }, 400); }
+      const userId = String(body.userId ?? "");
+      const gameId = clean(body.gameId, 32);
+      const username = clean(body.username, 20);
+      const prefix = clean(body.prefix || "Player", 16);
+      const color = String(body.color || "#B9CDFF");
+      const message = clean(body.message, 240);
+      if (!validId(userId) || !gameId || !username || !message || !validColor(color)) {
+        return reply({ error: "Invalid userId, gameId, username, message, or color" }, 400);
+      }
+      const rateKey = "chat-rate:" + gameId + ":" + userId;
+      if (await env.PREFIXES.get(rateKey)) return reply({ error: "Please wait before sending another message" }, 429);
+      await env.PREFIXES.put(rateKey, "1", { expirationTtl: 2 });
+      const createdAt = Date.now();
+      const record = { id: crypto.randomUUID(), userId, username, prefix, color: color.toUpperCase(), message, createdAt };
+      await env.PREFIXES.put("chat:" + gameId + ":" + String(createdAt).padStart(13, "0") + ":" + record.id, JSON.stringify(record), { expirationTtl: 86400 });
+      return reply({ ok: true, message: record });
+    }
+
     if (url.pathname === "/prefix" && request.method === "POST") {
       let body;
       try { body = await request.json(); } catch { return reply({ error: "Invalid JSON" }, 400); }
