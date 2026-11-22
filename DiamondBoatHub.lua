@@ -122,18 +122,18 @@ local Close = create("TextButton",{
 round(Close,7)
 
 local Sidebar = create("Frame",{
-    Size=UDim2.new(0,150,1,-58),
+    Size=UDim2.new(1,-14,0,43),
     Position=UDim2.fromOffset(7,53),
-    BackgroundColor3=PANEL,
+    BackgroundColor3=Color3.fromRGB(20,21,33),
     BorderSizePixel=0
 },Main)
-round(Sidebar,12)
+round(Sidebar,10)
 outline(Sidebar)
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(27,27,43),Color3.fromRGB(17,18,29)),Rotation=90},Sidebar)
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(29,28,45),Color3.fromRGB(18,19,30)),Rotation=90},Sidebar)
 
 local Content = create("Frame",{
-    Size=UDim2.new(1,-165,1,-58),
-    Position=UDim2.fromOffset(157,53),
+    Size=UDim2.new(1,-14,1,-108),
+    Position=UDim2.fromOffset(7,101),
     BackgroundColor3=PANEL,
     BorderSizePixel=0
 },Main)
@@ -174,12 +174,12 @@ local function showPage(name)
     for n,p in pairs(Pages) do p.Visible=(n==name) end
     for n,b in pairs(TabButtons) do
         local active=(n==name)
-        b.BackgroundColor3=active and Color3.fromRGB(57,43,91) or Color3.fromRGB(20,20,31)
-        b.TextColor3=active and WHITE or Color3.fromRGB(158,158,181)
+        b.BackgroundColor3=active and Color3.fromRGB(225,218,248) or Color3.fromRGB(32,33,47)
+        b.TextColor3=Color3.fromRGB(35,35,48)
         local mark=b:FindFirstChild("ActiveMark")
         if mark then mark.Visible=active end
         local stroke=b:FindFirstChildOfClass("UIStroke")
-        if stroke then stroke.Transparency=active and 0.15 or 0.78 end
+        if stroke then stroke.Transparency=active and 0.12 or 0.65 end
     end
     CurrentPage=name
 end
@@ -189,7 +189,7 @@ local function label(page,text)
         Size=UDim2.new(1,-8,0,30),
         BackgroundTransparency=1,
         Text=text,
-        TextColor3=PURPLE,
+        TextColor3=Color3.fromRGB(55,48,75),
         TextSize=14,
         Font=Enum.Font.GothamBold,
         TextXAlignment=Enum.TextXAlignment.Left
@@ -198,16 +198,16 @@ end
 
 local function button(page,text,callback)
     local b=create("TextButton",{
-        Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(23,22,36),
+        Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(218,218,229),
         Text="  "..text,TextColor3=WHITE,TextSize=12,Font=Enum.Font.GothamSemibold,
         TextXAlignment=Enum.TextXAlignment.Left,AutoButtonColor=false
     },page)
     round(b,10)
     local stroke=outline(b)
     stroke.Transparency=0.58
-    create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(34,30,53),Color3.fromRGB(20,20,31)),Rotation=0},b)
+    create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(239,238,246),Color3.fromRGB(211,211,225)),Rotation=0},b)
     b.MouseEnter:Connect(function()
-        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=Color3.fromRGB(65,48,105)}):Play()
+        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=Color3.fromRGB(198,190,220)}):Play()
         TweenService:Create(stroke,TweenInfo.new(0.14),{Transparency=0.12}):Play()
     end)
     b.MouseLeave:Connect(function()
@@ -224,7 +224,7 @@ local function toggle(page,text,default,callback)
     b=button(page,text..": "..(state and "ON" or "OFF"),function()
         state=not state
         b.Text=text..": "..(state and "ON" or "OFF")
-        b.BackgroundColor3=state and Color3.fromRGB(65,45,120) or DARK
+        b.BackgroundColor3=state and Color3.fromRGB(190,180,215) or Color3.fromRGB(218,218,229)
         callback(state)
     end)
     return b
@@ -252,34 +252,40 @@ local tools=makePage("TOOLS")
 local settings=makePage("SETTINGS")
 
 local tabLayout=create("UIListLayout",{
-    Padding=UDim.new(0,6),
-    SortOrder=Enum.SortOrder.LayoutOrder
+    FillDirection=Enum.FillDirection.Horizontal,
+    Padding=UDim.new(0,5),
+    SortOrder=Enum.SortOrder.LayoutOrder,
+    VerticalAlignment=Enum.VerticalAlignment.Center
 },Sidebar)
+create("UIPadding",{PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),PaddingTop=UDim.new(0,3),PaddingBottom=UDim.new(0,3)},Sidebar)
 
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
     "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS"
 }) do
     local b=create("TextButton",{
-        Size=UDim2.new(1,-12,0,36),
-        BackgroundColor3=Color3.fromRGB(20,20,31),
+        Size=UDim2.new(0,0,1,-6),
+        AutomaticSize=Enum.AutomaticSize.X,
+        BackgroundColor3=Color3.fromRGB(32,33,47),
         Text="   "..name,
-        TextColor3=Color3.fromRGB(158,158,181),
+        TextColor3=Color3.fromRGB(35,35,48),
         TextSize=11,
         Font=Enum.Font.GothamBold,
-        TextXAlignment=Enum.TextXAlignment.Left,
+        TextXAlignment=Enum.TextXAlignment.Center,
         AutoButtonColor=false
     },Sidebar)
-    round(b,9)
-    outline(b)
-    local mark=create("Frame",{Name="ActiveMark",Size=UDim2.new(0,3,1,-12),Position=UDim2.fromOffset(5,6),BackgroundColor3=PURPLE,BorderSizePixel=0,Visible=false},b)
-    round(mark,3)
+    round(b,8)
+    local tabStroke=outline(b)
+    tabStroke.Transparency=0.65
+    create("UIPadding",{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10)},b)
+    local mark=create("Frame",{Name="ActiveMark",Size=UDim2.new(1,-14,0,2),Position=UDim2.new(0,7,1,-3),BackgroundColor3=PURPLE,BorderSizePixel=0,Visible=false},b)
+    round(mark,2)
     TabButtons[name]=b
     b.MouseEnter:Connect(function()
-        if CurrentPage~=name then TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=Color3.fromRGB(35,32,51)}):Play() end
+        if CurrentPage~=name then TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=Color3.fromRGB(215,213,226)}):Play() end
     end)
     b.MouseLeave:Connect(function()
-        if CurrentPage~=name then TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=Color3.fromRGB(20,20,31)}):Play() end
+        if CurrentPage~=name then TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=Color3.fromRGB(32,33,47)}):Play() end
     end)
     b.Activated:Connect(function() showPage(name) end)
 end
