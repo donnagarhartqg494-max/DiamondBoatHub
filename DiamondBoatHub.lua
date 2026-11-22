@@ -16,6 +16,7 @@ Workspace = game:GetService("Workspace")
 ReplicatedStorage = game:GetService("ReplicatedStorage")
 TweenService = game:GetService("TweenService")
 TeleportService = game:GetService("TeleportService")
+TextChatService = game:GetService("TextChatService")
 
 Player = Players.LocalPlayer
 Camera = Workspace.CurrentCamera
@@ -3387,13 +3388,37 @@ local function sendHubChat()
     if ok then chatInput.Text="" else addChatLine("[CHAT] Не удалось отправить: "..tostring(err)) end
 end
 button(chatPage,"SEND MESSAGE / ОТПРАВИТЬ",sendHubChat)
-TextChatService.MessageReceived:Connect(function(message)
-    if not message or not message.Text then return end
-    local source=message.TextSource
-    local speaker=source and Players:GetPlayerByUserId(source.UserId)
-    local name=speaker and speaker.DisplayName or "Roblox"
-    addChatLine(name..": "..message.Text)
-end)
+-- MessageReceived belongs to each TextChannel, not TextChatService.
+-- Connect safely because some games still use legacy chat.
+local function bindHubChatChannels()
+    local channels=TextChatService and TextChatService:FindFirstChild("TextChannels")
+    if not channels then
+        addChatLine("[CHAT] В этой игре не обнаружены каналы TextChatService.")
+        return
+    end
+    for _,channel in ipairs(channels:GetChildren()) do
+        if channel:IsA("TextChannel") and channel:GetAttribute("DiamondHubChatBound")~=true then
+            channel:SetAttribute("DiamondHubChatBound",true)
+            channel.MessageReceived:Connect(function(message)
+                if not message or not message.Text then return end
+                local source=message.TextSource
+                local speaker=source and Players:GetPlayerByUserId(source.UserId)
+                local name=speaker and speaker.DisplayName or "Roblox"
+                addChatLine(name..": "..message.Text)
+            end)
+        end
+    end
+end
+pcall(bindHubChatChannels)
+if TextChatService then
+    TextChatService.ChildAdded:Connect(function(child)
+        if child.Name=="TextChannels" then task.defer(bindHubChatChannels) end
+    end)
+    local channelFolder=TextChatService:FindFirstChild("TextChannels")
+    if channelFolder then
+        channelFolder.ChildAdded:Connect(function() task.defer(bindHubChatChannels) end)
+    end
+end
 
 -- CREDITS PAGE
 label(credits,"DIAMOND BABFT")
