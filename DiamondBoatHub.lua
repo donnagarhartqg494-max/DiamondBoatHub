@@ -4245,7 +4245,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=20"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
