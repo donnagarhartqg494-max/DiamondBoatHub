@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V26
+-- DIAMOND BOAT HUB V1 [BETA] V27
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -3798,7 +3798,7 @@ chatInput.Visible=isChatOwner
 chatSendButton.Visible=isChatOwner
 if isChatOwner then
     local profileLink=create("TextButton",{
-        Name="OwnerProfileLink",Size=UDim2.fromOffset(136,22),Position=UDim.new(1,-142,0,4),
+        Name="OwnerProfileLink",Size=UDim2.fromOffset(136,22),Position=UDim2.new(1,-142,0,4),
         BackgroundColor3=Color3.fromRGB(32,32,42),Text="MY ROBLOX PROFILE",
         TextColor3=WHITE,TextSize=9,Font=Enum.Font.GothamBold,AutoButtonColor=true
     },globalChat)
@@ -3960,7 +3960,7 @@ function refreshHubServers()
                 TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left
             },row)
             local join=create("TextButton",{
-                Size=UDim2.fromOffset(88,36),Position=UDim.new(1,-96,0,16),
+                Size=UDim2.fromOffset(88,36),Position=UDim2.new(1,-96,0,16),
                 BackgroundColor3=PURPLE,Text="JOIN",TextColor3=WHITE,
                 TextSize=12,Font=Enum.Font.GothamBold,AutoButtonColor=true
             },row)
@@ -4497,7 +4497,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=26"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=27"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
