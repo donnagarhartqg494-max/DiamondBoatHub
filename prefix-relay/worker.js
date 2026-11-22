@@ -21,7 +21,7 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     if (!env.PREFIXES) return reply({ error: "KV binding PREFIXES is missing" }, 500);
     const url = new URL(request.url);
-    if (url.pathname === "/health" && request.method === "GET") return reply({ ok: true, service: "DiamondBoatHub Prefix Relay", version: 1 });
+    if (url.pathname === "/health" && request.method === "GET") return reply({ ok: true, service: "DiamondBoatHub Prefix Relay", version: 2 });
 
     // Shared GLOBAL CHAT. Messages are scoped to the Roblox place and expire after 24 hours.
     if (url.pathname === "/chat" && request.method === "GET") {
@@ -55,7 +55,8 @@ export default {
       if (await env.PREFIXES.get(rateKey)) return reply({ error: "Please wait before sending another message" }, 429);
       await env.PREFIXES.put(rateKey, "1", { expirationTtl: 2 });
       const createdAt = Date.now();
-      const record = { id: crypto.randomUUID(), userId, username, prefix, color: color.toUpperCase(), message, createdAt };
+      const messageId = (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") ? globalThis.crypto.randomUUID() : (String(createdAt) + "-" + Math.random().toString(36).slice(2));
+      const record = { id: messageId, userId, username, prefix, color: color.toUpperCase(), message, createdAt };
       await env.PREFIXES.put("chat:" + gameId + ":" + String(createdAt).padStart(13, "0") + ":" + record.id, JSON.stringify(record), { expirationTtl: 86400 });
       return reply({ ok: true, message: record });
     }
