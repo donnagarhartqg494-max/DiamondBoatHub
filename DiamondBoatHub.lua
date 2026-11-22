@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V32
+-- DIAMOND BOAT HUB V1 [BETA] V33
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -239,6 +239,7 @@ end
 credits=makePage("CREDITS")
 
 TabButtons={}
+ToggleSetters={}
 function showPage(name)
     for n,p in pairs(Pages) do p.Visible=(n==name) end
     for n,b in pairs(TabButtons) do
@@ -371,11 +372,14 @@ function toggle(page,text,default,callback)
             TweenService:Create(track,TweenInfo.new(0.16),{BackgroundColor3=color}):Play()
         end
     end
-    hit.Activated:Connect(function()
-        state=not state
-        render(false)
+    local function setState(value,instant)
+        state=value==true
+        row:SetAttribute("SwitchState",state)
+        render(instant==true)
         if callback then callback(state) end
-    end)
+    end
+    ToggleSetters[text]=setState
+    hit.Activated:Connect(function() setState(not state,false) end)
     row:SetAttribute("SwitchState",state)
     return row
 end
@@ -565,10 +569,10 @@ function addNumericSetting(parent,title,default,minValue,maxValue,onValue)
     return box
 end
 
-addNumericSetting(movement,"WALK SPEED (16–250)",configuredSpeed,16,250,function(v)
+speedInput=addNumericSetting(movement,"WALK SPEED (16–250)",configuredSpeed,16,250,function(v)
     configuredSpeed=v; if speedOn then updateSpeed() end
 end)
-addNumericSetting(movement,"JUMP POWER (50–300)",configuredJump,50,300,function(v)
+jumpInput=addNumericSetting(movement,"JUMP POWER (50–300)",configuredJump,50,300,function(v)
     configuredJump=v; if jumpOn then updateJump() end
 end)
 
@@ -687,7 +691,7 @@ end)
 -- SPIN CONTROL
 spinEnabled=false
 spinSpeed=12
-addNumericSetting(movement,"SPIN SPEED (1–100)",spinSpeed,1,100,function(v)
+spinInput=addNumericSetting(movement,"SPIN SPEED (1–100)",spinSpeed,1,100,function(v)
     spinSpeed=v
 end)
 toggle(movement,"Spin character",false,function(v)
@@ -3641,7 +3645,7 @@ function relayRequest(method,path,body)
                     if decodedOk then return decoded end
                     lastError="Invalid JSON response from relay"
                 else
-                    lastError="HTTP "..tostring(code)..": "..string.sub(responseBody,1,220)
+                    lastError="HTTP "..tostring(code)..": "..string.sub(responseBody,1,1200)
                 end
             elseif result.Success==true or result.success==true then
                 return result
@@ -4524,7 +4528,7 @@ function getSharedConfig()
     return _G
 end
 function saveHubConfig()
-    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,backgroundMode=backgroundMode,prefix=playerPrefix,prefixColor=prefixColor and {prefixColor.R,prefixColor.G,prefixColor.B} or nil,speed=configuredSpeed,jump=configuredJump}
+    local data={version=2,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,backgroundMode=backgroundMode,prefix=playerPrefix,prefixColor=prefixColor and {prefixColor.R,prefixColor.G,prefixColor.B} or nil,speed=configuredSpeed,jump=configuredJump,speedOn=speedOn,jumpOn=jumpOn,infiniteJump=infiniteJump,noclipOn=noclipOn,flyOn=flyOn,spinEnabled=spinEnabled,spinSpeed=spinSpeed}
     local encoded=HttpService:JSONEncode(data)
     local shared=getSharedConfig()
     shared.__DIAMOND_BOAT_HUB_CONFIG=data
@@ -4571,8 +4575,24 @@ function loadHubConfig()
     if type(data.prefix)=="string" then playerPrefix=string.sub(data.prefix,1,16); if prefixBox then prefixBox.Text=playerPrefix end end
     if type(data.prefixColor)=="table" and #data.prefixColor==3 then prefixColor=Color3.new(math.clamp(data.prefixColor[1],0,1),math.clamp(data.prefixColor[2],0,1),math.clamp(data.prefixColor[3],0,1)) end
     refreshPlayerTags()
-    if tonumber(data.speed) then configuredSpeed=math.clamp(data.speed,16,250); updateSpeed() end
-    if tonumber(data.jump) then configuredJump=math.clamp(data.jump,50,300); updateJump() end
+    if tonumber(data.speed) then
+        configuredSpeed=math.clamp(data.speed,16,250)
+        if speedInput then speedInput.Text=tostring(configuredSpeed) end
+    end
+    if tonumber(data.jump) then
+        configuredJump=math.clamp(data.jump,50,300)
+        if jumpInput then jumpInput.Text=tostring(configuredJump) end
+    end
+    if tonumber(data.spinSpeed) then
+        spinSpeed=math.clamp(data.spinSpeed,1,100)
+        if spinInput then spinInput.Text=tostring(spinSpeed) end
+    end
+    if type(data.speedOn)=="boolean" then ToggleSetters["Speed boost"](data.speedOn,true) else updateSpeed() end
+    if type(data.jumpOn)=="boolean" then ToggleSetters["High jump"](data.jumpOn,true) else updateJump() end
+    if type(data.infiniteJump)=="boolean" then ToggleSetters["Infinite jump"](data.infiniteJump,true) end
+    if type(data.noclipOn)=="boolean" then ToggleSetters["Noclip"](data.noclipOn,true) end
+    if type(data.flyOn)=="boolean" then ToggleSetters["Fly"](data.flyOn,true) end
+    if type(data.spinEnabled)=="boolean" then ToggleSetters["Spin character"](data.spinEnabled,true) end
     setConfigStatus("CONFIG: loaded successfully")
     return true
 end
@@ -4593,7 +4613,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=32"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=33"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
