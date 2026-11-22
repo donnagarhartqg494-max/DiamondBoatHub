@@ -102,24 +102,34 @@ create("TextLabel",{
 },Top)
 
 local Min = create("TextButton",{
-    Size=UDim2.fromOffset(35,30),
-    Position=UDim2.new(1,-82,0,9),
+    Size=UDim2.fromOffset(30,28),
+    AnchorPoint=Vector2.new(1,0),
+    Position=UDim2.new(1,-46,0,10),
     BackgroundColor3=PURPLE,
     Text="—",
     TextColor3=WHITE,
     TextSize=18
 },Top)
-round(Min,7)
+round(Min,8)
+outline(Min)
+Min.Font=Enum.Font.GothamBold
+Min.BackgroundColor3=Color3.fromRGB(226,220,245)
+Min.TextColor3=Color3.fromRGB(48,39,70)
+Min.AutoButtonColor=false
 
 local Close = create("TextButton",{
-    Size=UDim2.fromOffset(35,30),
-    Position=UDim2.new(1,-42,0,9),
+    Size=UDim2.fromOffset(30,28),
+    AnchorPoint=Vector2.new(1,0),
+    Position=UDim2.new(1,-10,0,10),
     BackgroundColor3=Color3.fromRGB(170,55,75),
     Text="X",
     TextColor3=WHITE,
     TextSize=15
 },Top)
-round(Close,7)
+round(Close,8)
+outline(Close)
+Close.Font=Enum.Font.GothamBold
+Close.AutoButtonColor=false
 
 local Sidebar = create("Frame",{
     Size=UDim2.new(1,-14,0,43),
@@ -199,7 +209,7 @@ end
 local function button(page,text,callback)
     local b=create("TextButton",{
         Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(218,218,229),
-        Text="  "..text,TextColor3=WHITE,TextSize=12,Font=Enum.Font.GothamSemibold,
+        Text="  "..text,TextColor3=Color3.fromRGB(42,39,55),TextSize=12,Font=Enum.Font.GothamSemibold,
         TextXAlignment=Enum.TextXAlignment.Left,AutoButtonColor=false
     },page)
     round(b,10)
@@ -211,7 +221,7 @@ local function button(page,text,callback)
         TweenService:Create(stroke,TweenInfo.new(0.14),{Transparency=0.12}):Play()
     end)
     b.MouseLeave:Connect(function()
-        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=Color3.fromRGB(23,22,36)}):Play()
+        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=Color3.fromRGB(218,218,229)}):Play()
         TweenService:Create(stroke,TweenInfo.new(0.14),{Transparency=0.58}):Play()
     end)
     b.Activated:Connect(callback)
@@ -264,12 +274,11 @@ for _,name in ipairs({
     "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS"
 }) do
     local b=create("TextButton",{
-        Size=UDim2.new(0,0,1,-6),
-        AutomaticSize=Enum.AutomaticSize.X,
+        Size=UDim2.new(0,62,1,-6),
         BackgroundColor3=Color3.fromRGB(32,33,47),
-        Text="   "..name,
+        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET"})[name] or name,
         TextColor3=Color3.fromRGB(35,35,48),
-        TextSize=11,
+        TextSize=9,
         Font=Enum.Font.GothamBold,
         TextXAlignment=Enum.TextXAlignment.Center,
         AutoButtonColor=false
