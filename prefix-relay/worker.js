@@ -17,6 +17,7 @@ const validColor = (s) => /^#[0-9a-fA-F]{6}$/.test(String(s ?? ""));
 
 export default {
   async fetch(request, env) {
+    try {
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     if (!env.PREFIXES) return reply({ error: "KV binding PREFIXES is missing" }, 500);
     const url = new URL(request.url);
@@ -163,5 +164,9 @@ export default {
       return reply({ ok: true });
     }
     return reply({ error: "Not found" }, 404);
+    } catch (error) {
+      const detail = String(error && (error.stack || error.message) || error).slice(0, 1800);
+      return reply({ error: "Worker exception", detail }, 500);
+    }
   }
 };
