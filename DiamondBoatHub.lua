@@ -7,20 +7,20 @@
 
 repeat task.wait() until game:IsLoaded()
 
-local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local TeleportService = game:GetService("TeleportService")
+Players = game:GetService("Players")
+UIS = game:GetService("UserInputService")
+VirtualUser = game:GetService("VirtualUser")
+RunService = game:GetService("RunService")
+Lighting = game:GetService("Lighting")
+Workspace = game:GetService("Workspace")
+ReplicatedStorage = game:GetService("ReplicatedStorage")
+TweenService = game:GetService("TweenService")
+TeleportService = game:GetService("TeleportService")
 
-local Player = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
+Player = Players.LocalPlayer
+Camera = Workspace.CurrentCamera
 
-local function getParent()
+function getParent()
     if gethui then
         local ok, result = pcall(gethui)
         if ok and result then return result end
@@ -28,26 +28,26 @@ local function getParent()
     return Player:WaitForChild("PlayerGui")
 end
 
-local Parent = getParent()
-local previous = Parent:FindFirstChild("DiamondBoatHub")
+Parent = getParent()
+previous = Parent:FindFirstChild("DiamondBoatHub")
 if previous then previous:Destroy() end
 
-local GUI = Instance.new("ScreenGui")
+GUI = Instance.new("ScreenGui")
 GUI.Name = "DiamondBoatHub"
 GUI.ResetOnSpawn = false
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 GUI.Parent = Parent
 
-local PURPLE = Color3.fromRGB(150,150,150)
-local DARK = Color3.fromRGB(0,0,0)
-local PANEL = Color3.fromRGB(0,0,0)
-local WHITE = Color3.fromRGB(255,255,255)
-local BUTTON_WHITE = Color3.fromRGB(255,255,255)
-local BUTTON_HOVER = Color3.fromRGB(190,190,190)
-local TEXT_DARK = Color3.fromRGB(20,20,20)
-local GREEN = Color3.fromRGB(60,180,120)
+PURPLE = Color3.fromRGB(150,150,150)
+DARK = Color3.fromRGB(0,0,0)
+PANEL = Color3.fromRGB(0,0,0)
+WHITE = Color3.fromRGB(255,255,255)
+BUTTON_WHITE = Color3.fromRGB(255,255,255)
+BUTTON_HOVER = Color3.fromRGB(190,190,190)
+TEXT_DARK = Color3.fromRGB(20,20,20)
+GREEN = Color3.fromRGB(60,180,120)
 
-local function create(class, props, parent)
+function create(class, props, parent)
     local obj = Instance.new(class)
     for k,v in pairs(props or {}) do
         obj[k] = v
@@ -56,17 +56,17 @@ local function create(class, props, parent)
     return obj
 end
 
-local function round(obj, radius)
+function round(obj, radius)
     create("UICorner", {
         CornerRadius=UDim.new(0,radius or 8)
     },obj)
 end
 
-local function outline(obj)
+function outline(obj)
     return create("UIStroke",{Color=Color3.fromRGB(95,78,145),Thickness=1,Transparency=0.35},obj)
 end
 
-local Main = create("Frame",{
+Main = create("Frame",{
     Visible=false,
     Size=UDim2.fromOffset(680,470),
     Position=UDim2.new(.5,-340,.5,-235),
@@ -74,15 +74,15 @@ local Main = create("Frame",{
     BorderSizePixel=0
 },GUI)
 round(Main,16)
-local mainStroke=outline(Main)
+mainStroke=outline(Main)
 mainStroke.Thickness=1.4
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(8,8,8)),Rotation=90},Main)
-local MainScale=create("UIScale",{Scale=1},Main)
-local isTouchDevice=UIS.TouchEnabled
-local deviceMode=isTouchDevice and "phone" or "pc"
-local windowMode="medium"
-local desktopSizes={small=Vector2.new(560,390),medium=Vector2.new(680,470),large=Vector2.new(800,560)}
-local function fitToScreen()
+MainScale=create("UIScale",{Scale=1},Main)
+isTouchDevice=UIS.TouchEnabled
+deviceMode=isTouchDevice and "phone" or "pc"
+windowMode="medium"
+desktopSizes={small=Vector2.new(560,390),medium=Vector2.new(680,470),large=Vector2.new(800,560)}
+function fitToScreen()
     local cam=Workspace.CurrentCamera
     if not cam then return end
     local viewport=cam.ViewportSize
@@ -103,7 +103,7 @@ end
 fitToScreen()
 if Workspace.CurrentCamera then Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitToScreen) end
 
-local Top = create("Frame",{
+Top = create("Frame",{
     Size=UDim2.new(1,0,0,48),
     BackgroundColor3=Color3.fromRGB(0,0,0),
     BorderSizePixel=0
@@ -111,11 +111,11 @@ local Top = create("Frame",{
 round(Top,15)
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(12,12,12),Color3.fromRGB(0,0,0)),Rotation=0},Top)
 
-local DragHandle=create("TextButton",{
+DragHandle=create("TextButton",{
     Name="DragHandle",Size=UDim2.new(1,-100,1,0),Position=UDim2.fromOffset(0,0),
     BackgroundTransparency=1,Text="",AutoButtonColor=false,Active=true,ZIndex=2
 },Top)
-local TitleLabel=create("TextLabel",{
+TitleLabel=create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
@@ -127,7 +127,7 @@ local TitleLabel=create("TextLabel",{
     Active=false,ZIndex=3
 },Top)
 
-local Min = create("TextButton",{
+Min = create("TextButton",{
     Size=UDim2.fromOffset(30,28),
     AnchorPoint=Vector2.new(1,0),
     Position=UDim2.new(1,-46,0,10),
@@ -143,7 +143,7 @@ Min.BackgroundColor3=BUTTON_WHITE
 Min.TextColor3=TEXT_DARK
 Min.AutoButtonColor=false
 
-local Close = create("TextButton",{
+Close = create("TextButton",{
     Size=UDim2.fromOffset(30,28),
     AnchorPoint=Vector2.new(1,0),
     Position=UDim2.new(1,-10,0,10),
@@ -158,7 +158,7 @@ Close.TextColor3=TEXT_DARK
 Close.Font=Enum.Font.GothamBold
 Close.AutoButtonColor=false
 
-local Sidebar = create("ScrollingFrame",{
+Sidebar = create("ScrollingFrame",{
     Size=UDim2.new(1,-14,0,43),
     Position=UDim2.fromOffset(7,53),
     BackgroundColor3=Color3.fromRGB(0,0,0),
@@ -172,7 +172,7 @@ round(Sidebar,10)
 outline(Sidebar)
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(5,5,5)),Rotation=90},Sidebar)
 
-local Content = create("Frame",{
+Content = create("Frame",{
     Size=UDim2.new(1,-14,1,-108),
     Position=UDim2.fromOffset(7,101),
     BackgroundColor3=PANEL,
@@ -182,15 +182,15 @@ round(Content,12)
 outline(Content)
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(5,5,5)),Rotation=90},Content)
 
-local Pages = {}
-local CurrentPage
-local buttonStyle="Modern"
-local animatedBackground=true
-local playerPrefix="Player"
-local backgroundGradient
-local credits
+Pages = {}
+CurrentPage
+buttonStyle="Modern"
+animatedBackground=true
+playerPrefix="Player"
+backgroundGradient
+credits
 
-local function makePage(name)
+function makePage(name)
     local page=create("ScrollingFrame",{
         Size=UDim2.new(1,-12,1,-12),
         Position=UDim2.fromOffset(6,6),
@@ -217,8 +217,8 @@ end
 
 credits=makePage("CREDITS")
 
-local TabButtons={}
-local function showPage(name)
+TabButtons={}
+function showPage(name)
     for n,p in pairs(Pages) do p.Visible=(n==name) end
     for n,b in pairs(TabButtons) do
         local active=(n==name)
@@ -232,7 +232,7 @@ local function showPage(name)
     CurrentPage=name
 end
 
-local function label(page,text)
+function label(page,text)
     return create("TextLabel",{
         Size=UDim2.new(1,-8,0,30),
         BackgroundTransparency=1,
@@ -244,7 +244,7 @@ local function label(page,text)
     },page)
 end
 
-local function button(page,text,callback)
+function button(page,text,callback)
     local b=create("TextButton",{
         Size=UDim2.new(1,-8,0,42),BackgroundColor3=Color3.fromRGB(24,24,31),
         Text="   "..text,TextColor3=Color3.fromRGB(242,242,248),TextSize=13,Font=Enum.Font.GothamSemibold,
@@ -283,7 +283,7 @@ local function button(page,text,callback)
     return b
 end
 
-local function setButtonStyle(style)
+function setButtonStyle(style)
     if style~="Modern" and style~="Liquid Glass" and style~="Neon" then return end
     buttonStyle=style
     for _,obj in ipairs(GUI:GetDescendants()) do
@@ -308,7 +308,7 @@ local function setButtonStyle(style)
     end
 end
 
-local function toggle(page,text,default,callback)
+function toggle(page,text,default,callback)
     local state=default or false
     local b
     b=button(page,text..": "..(state and "ON" or "OFF"),function()
@@ -320,7 +320,7 @@ local function toggle(page,text,default,callback)
     return b
 end
 
-local function getCharacter()
+function getCharacter()
     local char=Player.Character
     if not char then return end
     local hum=char:FindFirstChildOfClass("Humanoid")
@@ -330,18 +330,18 @@ end
 
 -- PAGES
 
-local home=makePage("HOME")
-local movement=makePage("MOVEMENT")
-local visuals=makePage("VISUALS")
-local teleport=makePage("TELEPORTS")
-local build=makePage("AUTO BUILD")
-local music=makePage("MUSIC")
-local farm=makePage("AUTO FARM")
-local shop=makePage("SHOP")
-local tools=makePage("TOOLS")
-local settings=makePage("SETTINGS")
+home=makePage("HOME")
+movement=makePage("MOVEMENT")
+visuals=makePage("VISUALS")
+teleport=makePage("TELEPORTS")
+build=makePage("AUTO BUILD")
+music=makePage("MUSIC")
+farm=makePage("AUTO FARM")
+shop=makePage("SHOP")
+tools=makePage("TOOLS")
+settings=makePage("SETTINGS")
 
-local tabLayout=create("UIListLayout",{
+tabLayout=create("UIListLayout",{
     FillDirection=Enum.FillDirection.Horizontal,
     Padding=UDim.new(0,5),
     SortOrder=Enum.SortOrder.LayoutOrder,
@@ -352,7 +352,7 @@ tabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Sidebar.CanvasSize=UDim2.new(0,tabLayout.AbsoluteContentSize.X+16,0,0)
 end)
 
-local tabIcons={
+tabIcons={
     HOME="rbxassetid://10723407389",
     MOVEMENT="rbxassetid://10734906744",
     VISUALS="rbxassetid://10723346959",
@@ -407,7 +407,7 @@ end
 
 label(home,"Welcome to Diamond Boat Hub")
 label(home,"Build A Boat For Treasure")
-local rejoinBusy=false
+rejoinBusy=false
 button(home,"⚡ INSTANT REJOIN",function()
     if rejoinBusy then return end
     rejoinBusy=true
@@ -449,25 +449,25 @@ end)
 
 label(movement,"Movement controls")
 
-local speedOn=false
-local jumpOn=false
-local infiniteJump=false
-local noclipOn=false
-local noclipConnection
-local noclipOriginal={}
-local configuredSpeed=45
-local configuredJump=100
-local flyOn=false
-local flyConnection
-local flyVelocity
-local flyGyro
+speedOn=false
+jumpOn=false
+infiniteJump=false
+noclipOn=false
+noclipConnection
+noclipOriginal={}
+configuredSpeed=45
+configuredJump=100
+flyOn=false
+flyConnection
+flyVelocity
+flyGyro
 
-local function updateSpeed()
+function updateSpeed()
     local _,hum=getCharacter()
     if hum then hum.WalkSpeed=speedOn and configuredSpeed or 16 end
 end
 
-local function updateJump()
+function updateJump()
     local _,hum=getCharacter()
     if hum then
         hum.UseJumpPower=true
@@ -475,7 +475,7 @@ local function updateJump()
     end
 end
 
-local function addNumericSetting(parent,title,default,minValue,maxValue,onValue)
+function addNumericSetting(parent,title,default,minValue,maxValue,onValue)
     label(parent,title)
     local box=create("TextBox",{
         Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),
@@ -546,7 +546,7 @@ UIS.JumpRequest:Connect(function()
     end
 end)
 
-local function stopFly()
+function stopFly()
     flyOn=false
     if flyConnection then
         flyConnection:Disconnect()
@@ -617,7 +617,7 @@ end)
 
 label(visuals,"Visual settings")
 
-local antiAfkConnection
+antiAfkConnection
 toggle(visuals,"Anti-AFK",false,function(enabled)
     if antiAfkConnection then antiAfkConnection:Disconnect(); antiAfkConnection=nil end
     if enabled then
@@ -630,8 +630,8 @@ toggle(visuals,"Anti-AFK",false,function(enabled)
     end
 end)
 
-local savedEffects={}
-local lowGraphicsOn=false
+savedEffects={}
+lowGraphicsOn=false
 toggle(visuals,"Low graphics / FPS boost",false,function(enabled)
     if enabled and not lowGraphicsOn then
         lowGraphicsOn=true
@@ -661,12 +661,12 @@ toggle(visuals,"Low graphics / FPS boost",false,function(enabled)
     end
 end)
 
-local originalFov=Camera.FieldOfView
+originalFov=Camera.FieldOfView
 toggle(visuals,"Wide FOV",false,function(v)
     Camera.FieldOfView=v and 100 or originalFov
 end)
 
-local oldLighting={
+oldLighting={
     Brightness=Lighting.Brightness,
     ClockTime=Lighting.ClockTime,
     GlobalShadows=Lighting.GlobalShadows,
@@ -695,7 +695,7 @@ end)
 
 label(teleport,"Position manager")
 
-local savedPosition
+savedPosition
 
 button(teleport,"Save current position",function()
     local _,_,root=getCharacter()
@@ -757,27 +757,27 @@ end)
 label(build,"Base scanner")
 label(build,"Select a candidate and inspect it. Preview is local only.")
 
-local selectedBase=nil
-local baseButtons={}
-local previewModel=nil
+selectedBase=nil
+baseButtons={}
+previewModel=nil
 
-local selectedLabel=label(build,"Selected base: none")
+selectedLabel=label(build,"Selected base: none")
 
-local function clearPreview()
+function clearPreview()
     if previewModel then
         previewModel:Destroy()
         previewModel=nil
     end
 end
 
-local function clearBaseButtons()
+function clearBaseButtons()
     for _,b in ipairs(baseButtons) do
         if b and b.Parent then b:Destroy() end
     end
     table.clear(baseButtons)
 end
 
-local function scanBases()
+function scanBases()
     clearBaseButtons()
     clearPreview()
     selectedBase=nil
@@ -924,10 +924,10 @@ end)
 button(build,"REMOVE LOCAL PREVIEW",clearPreview)
 
 -- REAL AUTO BUILD V4
-local buildRunning=false
-local buildProgressLabel=label(build,"Auto Build: idle")
+buildRunning=false
+buildProgressLabel=label(build,"Auto Build: idle")
 
-local function getPlayerZone(plr)
+function getPlayerZone(plr)
     if not plr then return nil end
     for _,obj in ipairs(Workspace:GetChildren()) do
         local teamColor=obj:FindFirstChild("TeamColor")
@@ -938,7 +938,7 @@ local function getPlayerZone(plr)
     return nil
 end
 
-local function getBuildTool()
+function getBuildTool()
     local char,hum=getCharacter()
     if not char or not hum then return nil end
     local tool=char:FindFirstChild("BuildingTool")
@@ -964,7 +964,7 @@ end
 
 -- Inventory counts and block template IDs are separate in BABFT.
 -- Data values are quantities; BuildingParts order supplies the placement ID.
-local function findPlayerDataValue(blockName)
+function findPlayerDataValue(blockName)
     local data=Player:FindFirstChild("Data")
     if not data then return nil end
     local direct=data:FindFirstChild(blockName)
@@ -975,13 +975,13 @@ local function findPlayerDataValue(blockName)
     end
     return nil
 end
-local function getInventoryCount(blockName)
+function getInventoryCount(blockName)
     local value=findPlayerDataValue(blockName)
     if not value then return 0 end
     local n=tonumber(value.Value)
     return n and math.max(0,n) or 0
 end
-local function getBlockTypeId(blockName)
+function getBlockTypeId(blockName)
     local parts=ReplicatedStorage:FindFirstChild("BuildingParts")
     if parts then
         for index,template in ipairs(parts:GetChildren()) do
@@ -995,7 +995,7 @@ local function getBlockTypeId(blockName)
     return nil
 end
 
-local function getNewBlockCFrame(sourceBlock,sourceZone,targetZone)
+function getNewBlockCFrame(sourceBlock,sourceZone,targetZone)
     local part=sourceBlock:FindFirstChild("PPart")
     if not part or not sourceZone or not targetZone then return nil end
     local offset=sourceZone.CFrame:ToObjectSpace(part.CFrame)
@@ -1193,7 +1193,7 @@ button(build,"STOP AUTO BUILD",function()
 end)
 
 -- Procedural shapes and ready-made starter builds.
-local function getMyBuildContext()
+function getMyBuildContext()
     local zone=getPlayerZone(Player)
     local remote=getBuildTool()
     if not zone or not remote then
@@ -1209,7 +1209,7 @@ local function getMyBuildContext()
     return zone,remote,myFolder
 end
 
-local function buildWoodPattern(name,offsets)
+function buildWoodPattern(name,offsets)
     if buildRunning then warn("[DIAMOND SHAPES] Сначала останови текущую стройку"); return end
     if #offsets>350 then warn("[DIAMOND SHAPES] Пресет превышает лимит 350 блоков"); return end
     local zone,remote,myFolder=getMyBuildContext()
@@ -1271,7 +1271,7 @@ local function buildWoodPattern(name,offsets)
 end
 
 -- Filled disk: rows of adjacent blocks, not just an outline ring.
-local function makeCircle(radius,step,y)
+function makeCircle(radius,step,y)
     local points={}
     for x=-radius,radius,step do
         for z=-radius,radius,step do
@@ -1284,7 +1284,7 @@ local function makeCircle(radius,step,y)
 end
 
 -- Dense spherical shell with a smaller grid spacing to avoid visible gaps.
-local function makeSphere(radius,step)
+function makeSphere(radius,step)
     local points={}
     for y=-radius,radius,step do
         for x=-radius,radius,step do
@@ -1377,7 +1377,7 @@ end)
 -- Same URL/base64 workflow on desktop Solara and Android Delta; no native file picker required.
 label(music,"EASY MIDI IMPORT")
 label(music,"Paste a .mid download link, an OnlineSequencer song link, or a local file path. No Base64 converter needed.")
-local midiInput=create("TextBox",{
+midiInput=create("TextBox",{
     Size=UDim2.new(1,-8,0,76), BackgroundColor3=DARK, Text="",
     PlaceholderText="song.mid (in Solara workspace) or direct .mid URL...",
     TextColor3=WHITE, TextSize=12, Font=Enum.Font.Gotham,
@@ -1385,9 +1385,9 @@ local midiInput=create("TextBox",{
     TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top
 },music)
 round(midiInput,8); outline(midiInput)
-local midiStatus=label(music,"MIDI: waiting for input")
-local parsedMidi=nil
-local function decodeBase64(data)
+midiStatus=label(music,"MIDI: waiting for input")
+parsedMidi=nil
+function decodeBase64(data)
     local chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local map={}
     for i=1,#chars do map[chars:sub(i,i)]=i-1 end
@@ -1408,7 +1408,7 @@ local function decodeBase64(data)
     end
     return table.concat(out)
 end
-local function readMidi(data)
+function readMidi(data)
     if #data<14 or data:sub(1,4)~="MThd" then error("Not a Standard MIDI file (missing MThd)") end
     local function u16(p) local a,b=data:byte(p,p+1); if not b then error("Unexpected end of MIDI") end; return a*256+b end
     local function u32(p) local a,b,c,d=data:byte(p,p+3); if not d then error("Unexpected end of MIDI") end; return ((a*256+b)*256+c)*256+d end
@@ -1495,7 +1495,7 @@ local function readMidi(data)
     end
     return {format=format,tracks=trackCount,division=division,notes=allNotes}
 end
-local function getMidiBytes(input)
+function getMidiBytes(input)
     input=input:gsub("^%s+",""):gsub("%s+$","")
     local function validMidi(data)
         return type(data)=="string" and #data>=14 and data:sub(1,4)=="MThd"
@@ -1644,7 +1644,7 @@ label(music,"This stage imports and parses the actual MIDI. Automatic placement,
 -- MUSIC HELPER V1: inventory checks, verified sequence links and safe duplication notes.
 label(music,"ONE-CLICK MIDI CONVERTER")
 label(music,"Convert a local .mid file into a BABFT music blueprint with Note keys, Delay timing and wiring steps.")
-local midiConverterUrl="https://babft-music-note.vercel.app/"
+midiConverterUrl="https://babft-music-note.vercel.app/"
 button(music,"COPY / OPEN MIDI → BABFT CONVERTER",function()
     local copied=false
     if setclipboard then copied=pcall(setclipboard,midiConverterUrl) end
@@ -1664,9 +1664,9 @@ button(music,"COPY MIDI CONVERTER LINK",function()
 end)
 label(music,"MUSIC BUILDER — MIDI SOURCES")
 label(music,"Song charts are linked below. Property Tool settings and note bindings must be verified in-game before a full automatic arrangement can be generated.")
-local holyWarUrl="https://onlinesequencer.net/5314889"
-local rushEUrl="https://onlinesequencer.net/5775937"
-local function copyMusicUrl(url,title)
+holyWarUrl="https://onlinesequencer.net/5314889"
+rushEUrl="https://onlinesequencer.net/5775937"
+function copyMusicUrl(url,title)
     if setclipboard then
         local ok=pcall(setclipboard,url)
         if ok then print("[DIAMOND MUSIC] Copied "..title..": "..url); return end
@@ -1680,7 +1680,7 @@ button(music,"COPY RUSH E MIDI LINK",function()
     copyMusicUrl(rushEUrl,"Rush E")
 end)
 label(music,"BABFT BLOCK CHECK")
-local musicInventoryLabel=label(music,"Inventory: not scanned")
+musicInventoryLabel=label(music,"Inventory: not scanned")
 button(music,"DEEP SCAN PLAYER INVENTORY",function()
     local totalValues=0
     local matches={}
@@ -1810,9 +1810,9 @@ label(music,"Delay Block: 0.05–10 sec. Key and delay values are set with the i
 label(music,"MIDI conversion is available from the linked converter. Direct in-game import is not enabled yet: the live Property Tool and BindingTool APIs must be confirmed before the hub can safely set pitch, delay and wiring automatically.")
 -- MIDI AUTO BUILD V1: places actual Note/Delay blocks and applies pitch/timing properties.
 -- BindingTool wire protocol is deliberately not guessed; blocks are laid out in an easy-to-bind row.
-local midiBuildRunning=false
-local midiBuildStatus=label(music,"MIDI BUILD: waiting for parsed MIDI")
-local function findTool(names)
+midiBuildRunning=false
+midiBuildStatus=label(music,"MIDI BUILD: waiting for parsed MIDI")
+function findTool(names)
     local char=Player.Character
     local backpack=Player:FindFirstChildOfClass("Backpack")
     for _,name in ipairs(names) do
@@ -1826,17 +1826,17 @@ local function findTool(names)
         end
     end
 end
-local function findPropertyRemote()
+function findPropertyRemote()
     local tool=findTool({"PropertiesTool","PropertyTool"})
     if not tool then return nil end
     local rf=tool:FindFirstChild("SetPropertieRF",true) or tool:FindFirstChild("SetPropertyRF",true)
     return rf and rf:IsA("RemoteFunction") and rf or nil
 end
-local function getMusicBlockId(name)
+function getMusicBlockId(name)
     if getInventoryCount(name)<=0 then return nil end
     return getBlockTypeId(name)
 end
-local function equipMusicTool(tool)
+function equipMusicTool(tool)
     if not tool then return false end
     local char=Player.Character
     if not char then return false end
@@ -1853,7 +1853,7 @@ local function equipMusicTool(tool)
     end
     return tool.Parent==Player.Character
 end
-local function setMusicProperty(remote,property,block,value)
+function setMusicProperty(remote,property,block,value)
     local tool=remote and remote:FindFirstAncestorOfClass("Tool")
     if not tool or not equipMusicTool(tool) then
         return false,"PropertiesTool could not be equipped"
@@ -1864,7 +1864,7 @@ local function setMusicProperty(remote,property,block,value)
     if not ok then return false,tostring(result) end
     return true,result
 end
-local function findBindValue(block)
+function findBindValue(block)
     if not block then return nil end
     local direct=block:FindFirstChild("BindFire")
     if direct and direct:IsA("IntValue") then return direct end
@@ -1873,7 +1873,7 @@ local function findBindValue(block)
     end
     return nil
 end
-local function findMusicInput(folder)
+function findMusicInput(folder)
     local names={Button=true,Switch=true,SwitchBig=true,BigSwitch=true,Lever=true}
     for _,obj in ipairs(folder:GetChildren()) do
         if obj:IsA("Model") and names[obj.Name] and obj:FindFirstChild("PPart") then
@@ -1882,7 +1882,7 @@ local function findMusicInput(folder)
     end
     return nil
 end
-local function bindMusicTarget(remote,target,controller)
+function bindMusicTarget(remote,target,controller)
     local bindValue=findBindValue(target)
     if not bindValue then return false,"No Bind IntValue in "..target.Name end
     local tool=remote and remote:FindFirstAncestorOfClass("Tool")
@@ -1895,7 +1895,7 @@ local function bindMusicTarget(remote,target,controller)
     if not ok then return false,tostring(result) end
     return true
 end
-local function startMidiBuild()
+function startMidiBuild()
     if midiBuildRunning then warn("[MIDI BUILD] Already running"); return end
     if not parsedMidi or #parsedMidi.notes==0 then warn("[MIDI BUILD] Import a MIDI first"); return end
 
@@ -2085,8 +2085,8 @@ end
 button(music,"AUTO BUILD + WIRE MIDI",startMidiBuild)
 -- ONE-CLICK SONG BUILDER V2: fetch Online Sequencer's saved note data (no MIDI file).
 -- Online Sequencer stores each note as: cellTime pitch length instrument; sequence data starts with BPM.
-local HttpService = game:GetService("HttpService")
-local function loadOnlineSequencerSong(title, sequenceId)
+HttpService = game:GetService("HttpService")
+function loadOnlineSequencerSong(title, sequenceId)
     local id = tostring(sequenceId)
     local urls = {
         "https://onlinesequencer.net/ajax/load.php?id=" .. id,
@@ -2189,7 +2189,7 @@ local function loadOnlineSequencerSong(title, sequenceId)
     return {notes=notes, bpm=bpm, tracks=1, source="Online Sequencer"}
 end
 
-local function loadAndBuildSong(title, sequenceId)
+function loadAndBuildSong(title, sequenceId)
     if midiBuildRunning then warn("[DIAMOND MUSIC] Builder is already running"); return end
     midiBuildStatus.Text = "Loading " .. title .. " sequence..."
     task.spawn(function()
@@ -2213,7 +2213,7 @@ label(music,"READY SONGS — CLICK TO BUILD ON YOUR BASE")
 -- Quaver chart loader. This is a 4-lane rhythm chart, not a piano transcription:
 -- each lane is mapped to one BABFT pitch. It reproduces the chart rhythm, not the
 -- original song's full melodic pitches.
-local function loadQuaverHolyWar()
+function loadQuaverHolyWar()
     local url="https://api.quavergame.com/d/web/map/190014"
     local body
     local methods={
@@ -2286,7 +2286,7 @@ local function loadQuaverHolyWar()
     return {notes=notes,bpm=150,tracks=1,source="Quaver map 190014 (4-lane rhythm approximation)"}
 end
 
-local function loadAndBuildQuaverHolyWar()
+function loadAndBuildQuaverHolyWar()
     if midiBuildRunning then warn("[DIAMOND MUSIC] Builder is already running"); return end
     midiBuildStatus.Text="Downloading Holy War chart from Quaver..."
     task.spawn(function()
@@ -2309,7 +2309,7 @@ button(music,"BUILD RUSH E",function()
 end)
 
 -- BINDING TOOL API SCAN V1
-local function dumpToolTree(root,tag)
+function dumpToolTree(root,tag)
     if not root then print("[BIND SCAN]",tag,"MISSING"); return end
     print("[BIND SCAN]",tag,root:GetFullName(),root.ClassName)
     for _,obj in ipairs(root:GetDescendants()) do
@@ -2386,9 +2386,9 @@ label(music,"AUTO BUILD places Note + Delay pairs in a row and applies pitch/tim
 
 label(music,"DUPLICATION — CHOOSE TARGET SAVE SLOT")
 label(music,"Enter the slot number you are willing to overwrite. The hub does not press Save/Load for you.")
-local selectedSaveSlot=1
-local slotLabel=label(music,"Target slot: 1")
-local slotInput=create("TextBox",{
+selectedSaveSlot=1
+slotLabel=label(music,"Target slot: 1")
+slotInput=create("TextBox",{
     Size=UDim2.new(1,-8,0,38),
     BackgroundColor3=DARK,
     Text="1",
@@ -2429,18 +2429,18 @@ end)
 -- SHOP AUTO BUY V1
 label(shop,"AUTO BUY — BUILD A BOAT FOR TREASURE")
 label(shop,"Enter the exact item name shown in the in-game shop. Bulk purchase supports up to 1000 per request.")
-local shopItemInput=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=DARK,Text="Note",PlaceholderText="Exact shop item name (e.g. Note)",TextColor3=WHITE,TextSize=14,Font=Enum.Font.Gotham,ClearTextOnFocus=false},shop)
+shopItemInput=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=DARK,Text="Note",PlaceholderText="Exact shop item name (e.g. Note)",TextColor3=WHITE,TextSize=14,Font=Enum.Font.Gotham,ClearTextOnFocus=false},shop)
 round(shopItemInput,8)
 outline(shopItemInput)
 label(shop,"QUANTITY (1–1000)")
-local shopQuantityInput=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=DARK,Text="100",PlaceholderText="Quantity",TextColor3=WHITE,TextSize=14,Font=Enum.Font.Gotham,ClearTextOnFocus=false},shop)
+shopQuantityInput=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=DARK,Text="100",PlaceholderText="Quantity",TextColor3=WHITE,TextSize=14,Font=Enum.Font.Gotham,ClearTextOnFocus=false},shop)
 round(shopQuantityInput,8)
 outline(shopQuantityInput)
-local shopBuyStatus=label(shop,"SHOP: ready")
-local shopBuying=false
-local shopAutoEnabled=false
-local shopAutoButton
-local function getShopPurchaseArgs()
+shopBuyStatus=label(shop,"SHOP: ready")
+shopBuying=false
+shopAutoEnabled=false
+shopAutoButton
+function getShopPurchaseArgs()
     local itemName=shopItemInput.Text:gsub("^%s+",""):gsub("%s+$","")
     local quantity=tonumber(shopQuantityInput.Text)
     if itemName=="" then return nil,nil,"SHOP: enter an item name" end
@@ -2449,7 +2449,7 @@ local function getShopPurchaseArgs()
     end
     return itemName,quantity,nil
 end
-local function getShopRemote()
+function getShopRemote()
     local remote=Workspace:FindFirstChild("ItemBoughtFromShop")
     if not remote then return nil,"SHOP: purchase remote not found" end
     if not remote:IsA("RemoteFunction") then return nil,"SHOP: unexpected remote type" end
@@ -2533,15 +2533,15 @@ label(shop,"The game server checks the item, price and your gold. This does not 
 label(farm,"AUTO FARM GOLD V10")
 label(farm,"Continuous fast route: no idle pauses between stages. Respawn and server registration checks remain.")
 
-local farmEnabled=false
-local farmRunId=0
-local farmDelay=1.25
+farmEnabled=false
+farmRunId=0
+farmDelay=1.25
 
-local function farmLog(...)
+function farmLog(...)
     print("[DIAMOND AUTO FARM V10]",...)
 end
 
-local function farmGet()
+function farmGet()
     local boatStages=Workspace:FindFirstChild("BoatStages")
     local normal=boatStages and boatStages:FindFirstChild("NormalStages")
     if not normal then return nil,nil,nil,nil,"Workspace.BoatStages.NormalStages not found" end
@@ -2556,14 +2556,14 @@ local function farmGet()
     return normal,trigger,other,claim,nil
 end
 
-local function farmCharacter()
+function farmCharacter()
     local char=Player.Character
     local hum=char and char:FindFirstChildOfClass("Humanoid")
     local root=char and char:FindFirstChild("HumanoidRootPart")
     return char,root,hum
 end
 
-local function farmWaitAlive(runId,timeout)
+function farmWaitAlive(runId,timeout)
     local deadline=os.clock()+(timeout or 25)
     while farmEnabled and runId==farmRunId and os.clock()<deadline do
         local char,root,hum=farmCharacter()
@@ -2573,16 +2573,16 @@ local function farmWaitAlive(runId,timeout)
     return nil
 end
 
-local function farmStageValue(other,index)
+function farmStageValue(other,index)
     local v=other:FindFirstChild("Stage"..index)
     return v and v.Value or nil
 end
 
-local function farmHasProgress(value)
+function farmHasProgress(value)
     return value~=nil and value~="" and value~=false and value~=0
 end
 
-local function farmWaitStage(other,index,oldValue,runId,timeout)
+function farmWaitStage(other,index,oldValue,runId,timeout)
     local v=other:FindFirstChild("Stage"..index)
     if not v then return false,"OtherData.Stage"..index.." missing" end
     local deadline=os.clock()+(timeout or 18)
@@ -2603,7 +2603,7 @@ local function farmWaitStage(other,index,oldValue,runId,timeout)
     return false,"Stage progress timeout"
 end
 
-local function farmNudge(runId)
+function farmNudge(runId)
     local char,root,hum=farmWaitAlive(runId,15)
     if not root then return false end
     local base=root.CFrame
@@ -2616,7 +2616,7 @@ local function farmNudge(runId)
     return true
 end
 
-local function farmTouchChest(trigger,runId)
+function farmTouchChest(trigger,runId)
     local char,root,hum=farmWaitAlive(runId,20)
     if not root then return false end
     local chestCF=trigger.CFrame*CFrame.new(-5,-1.7,0)*CFrame.Angles(0,math.rad(-90),0)
@@ -2636,7 +2636,7 @@ local function farmTouchChest(trigger,runId)
     return true
 end
 
-local function farmWaitReset(other,runId)
+function farmWaitReset(other,runId)
     local deadline=os.clock()+25
     while farmEnabled and runId==farmRunId and os.clock()<deadline do
         local cleared=true
@@ -2650,8 +2650,8 @@ local function farmWaitReset(other,runId)
     return false
 end
 
-local farmHoldVelocity=nil
-local function farmFlyTo(root,targetCFrame,runId)
+farmHoldVelocity=nil
+function farmFlyTo(root,targetCFrame,runId)
     if farmHoldVelocity then pcall(function() farmHoldVelocity:Destroy() end) end
     farmHoldVelocity=nil
     if not root or not root.Parent then return false end
@@ -2673,7 +2673,7 @@ local function farmFlyTo(root,targetCFrame,runId)
     connection:Disconnect()
     return finished
 end
-local function farmHold(root)
+function farmHold(root)
     if farmHoldVelocity then pcall(function() farmHoldVelocity:Destroy() end) end
     farmHoldVelocity=nil
     if not root or not root:IsA("BasePart") then return end
@@ -2685,12 +2685,12 @@ local function farmHold(root)
     hold.Parent=root
     farmHoldVelocity=hold
 end
-local function farmRelease()
+function farmRelease()
     if farmHoldVelocity then pcall(function() farmHoldVelocity:Destroy() end) end
     farmHoldVelocity=nil
 end
 
-local function runFarm(runId)
+function runFarm(runId)
     local normal,chest,other,claim,err=farmGet()
     if err then farmLog("STOP:",err); farmEnabled=false; return end
     if not farmWaitAlive(runId,25) then farmLog("Character unavailable"); farmEnabled=false; return end
@@ -2868,7 +2868,7 @@ end)
 label(tools,"Game diagnostics")
 label(tools,"DIAGNOSTICS V3: вывод в консоль F9")
 
-local function printInstanceDetails(obj, prefix)
+function printInstanceDetails(obj, prefix)
     print(prefix, obj:GetFullName(), obj.ClassName)
     local attrs = obj:GetAttributes()
     for k,v in pairs(attrs) do
@@ -2997,7 +2997,7 @@ end)
 label(settings,"Hub settings")
 label(settings,"Window size")
 
-local function setWindowMode(mode)
+function setWindowMode(mode)
     windowMode=mode
     fitToScreen()
     print("[DIAMOND] Window size:",mode)
@@ -3028,15 +3028,15 @@ button(settings,"Restore camera FOV",function()
     Camera.FieldOfView=originalFov
 end)
 label(settings,"Appearance / Внешний вид")
-local themes={
+themes={
     Purple={main=Color3.fromRGB(130,90,255),panel=Color3.fromRGB(27,27,40),dark=Color3.fromRGB(17,17,25)},
     Cyan={main=Color3.fromRGB(0,190,220),panel=Color3.fromRGB(20,38,48),dark=Color3.fromRGB(10,20,28)},
     Red={main=Color3.fromRGB(235,75,90),panel=Color3.fromRGB(48,27,34),dark=Color3.fromRGB(24,14,19)},
     Green={main=Color3.fromRGB(65,190,125),panel=Color3.fromRGB(24,43,36),dark=Color3.fromRGB(13,24,19)},
     Gold={main=Color3.fromRGB(220,170,55),panel=Color3.fromRGB(48,40,25),dark=Color3.fromRGB(25,21,14)}
 }
-local currentTheme="Purple"
-local function applyTheme(name)
+currentTheme="Purple"
+function applyTheme(name)
     local t=themes[name]
     if not t then return end
     currentTheme=name
@@ -3065,15 +3065,15 @@ button(settings,"Style: Modern",function() setButtonStyle("Modern") end)
 button(settings,"Style: Liquid Glass (iPhone)",function() setButtonStyle("Liquid Glass") end)
 button(settings,"Style: Neon",function() setButtonStyle("Neon") end)
 label(settings,"ANIMATED BACKGROUND / ФОН")
-local backgroundMode="Aurora"
-local backgroundPresets={
+backgroundMode="Aurora"
+backgroundPresets={
     Aurora=ColorSequence.new(Color3.fromRGB(15,10,42),Color3.fromRGB(20,75,90)),
     Ocean=ColorSequence.new(Color3.fromRGB(4,24,58),Color3.fromRGB(0,120,145)),
     Sunset=ColorSequence.new(Color3.fromRGB(65,18,55),Color3.fromRGB(210,95,45)),
     Matrix=ColorSequence.new(Color3.fromRGB(0,24,12),Color3.fromRGB(0,100,48)),
     Mono=ColorSequence.new(Color3.fromRGB(8,8,12),Color3.fromRGB(60,60,72))
 }
-local function setBackgroundMode(name)
+function setBackgroundMode(name)
     if not backgroundPresets[name] then return end
     backgroundMode=name
     if backgroundGradient then backgroundGradient.Color=backgroundPresets[name]; backgroundGradient.Enabled=animatedBackground end
@@ -3087,7 +3087,7 @@ button(settings,"Animated background: ON / OFF",function()
     if backgroundGradient then backgroundGradient.Enabled=animatedBackground end
 end)
 label(settings,"PLAYER TAG PREFIX")
-local prefixBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,PlaceholderText="Your prefix",Text=playerPrefix,ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=13},settings)
+prefixBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,PlaceholderText="Your prefix",Text=playerPrefix,ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=13},settings)
 round(prefixBox,9)
 prefixBox.FocusLost:Connect(function()
     playerPrefix=string.sub(prefixBox.Text,1,16)
@@ -3114,7 +3114,7 @@ task.spawn(function()
 end)
 
 -- Local-only overhead labels; executor clients cannot replicate tags to other clients.
-local playerTagConnections={}
+playerTagConnections={}
 refreshPlayerTags=function()
     for _,plr in ipairs(Players:GetPlayers()) do
         local char=plr.Character
@@ -3146,7 +3146,7 @@ refreshPlayerTags=function()
         end
     end
 end
-local function addDiamondPlayerTag(plr)
+function addDiamondPlayerTag(plr)
     if playerTagConnections[plr] then playerTagConnections[plr]:Disconnect() end
     playerTagConnections[plr]=plr.CharacterAdded:Connect(function()
         task.wait(0.25)
@@ -3189,11 +3189,11 @@ label(credits,"DIAMOND BOAT HUB V1 [BETA]")
 -- DRAG
 
 -- Resize grips: bottom-right corner, right edge and bottom edge. Touch and mouse supported.
-local resizing=false
-local resizeStart
-local resizeStartSize
-local resizeGrip
-local function makeResizeGrip(name,size,pos,cursor)
+resizing=false
+resizeStart
+resizeStartSize
+resizeGrip
+function makeResizeGrip(name,size,pos,cursor)
     local grip=create("TextButton",{Name=name,Size=size,Position=pos,BackgroundColor3=PURPLE,BackgroundTransparency=0.12,Text="",AutoButtonColor=false,ZIndex=20,Active=true},Main)
     round(grip,7)
     grip.InputBegan:Connect(function(input)
@@ -3206,10 +3206,10 @@ local function makeResizeGrip(name,size,pos,cursor)
     end)
     return grip
 end
-local cornerGrip=makeResizeGrip("ResizeCorner",UDim2.fromOffset(26,26),UDim2.new(1,-26,1,-26))
-local rightGrip=makeResizeGrip("ResizeRight",UDim2.fromOffset(8,52),UDim2.new(1,-8,0.5,-26))
-local bottomGrip=makeResizeGrip("ResizeBottom",UDim2.new(0.45,0,0,8),UDim2.new(0.275,0,1,-8))
-local function applyResize(inputPosition)
+cornerGrip=makeResizeGrip("ResizeCorner",UDim2.fromOffset(26,26),UDim2.new(1,-26,1,-26))
+rightGrip=makeResizeGrip("ResizeRight",UDim2.fromOffset(8,52),UDim2.new(1,-8,0.5,-26))
+bottomGrip=makeResizeGrip("ResizeBottom",UDim2.new(0.45,0,0,8),UDim2.new(0.275,0,1,-8))
+function applyResize(inputPosition)
     if not resizing or not resizeStart then return end
     local delta=inputPosition-resizeStart
     local cam=Workspace.CurrentCamera
@@ -3232,9 +3232,9 @@ UIS.InputEnded:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then resizing=false; resizeGrip=nil end
 end)
 
-local dragging=false
-local dragStart
-local startAbsolutePosition
+dragging=false
+dragStart
+startAbsolutePosition
 
 DragHandle.InputBegan:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1
@@ -3275,9 +3275,9 @@ end)
 
 -- MINIMIZE / REOPEN
 
-local minimized=false
+minimized=false
 
-local reopen=create("TextButton",{
+reopen=create("TextButton",{
     Size=UDim2.fromOffset(55,55),
     Position=UDim2.new(0,15,.5,-25),
     BackgroundColor3=PURPLE,
@@ -3292,9 +3292,9 @@ reopen.AutoButtonColor=false
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(175,130,255),Color3.fromRGB(70,50,175)),Rotation=45},reopen)
 
 -- Drag the floating reopen button with mouse or touch.
-local reopenDragging=false
-local reopenDragStart
-local reopenStartPosition
+reopenDragging=false
+reopenDragStart
+reopenStartPosition
 reopen.InputBegan:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
         reopenDragging=true
@@ -3319,7 +3319,7 @@ UIS.InputEnded:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then reopenDragging=false end
 end)
 
-local function animateOpen()
+function animateOpen()
     Main.Visible=true
     reopen.Visible=false
     MainScale.Scale=0.88
@@ -3328,7 +3328,7 @@ local function animateOpen()
     TweenService:Create(Main,TweenInfo.new(0.2),{BackgroundTransparency=0}):Play()
 end
 
-local function animateClose()
+function animateClose()
     local tween=TweenService:Create(MainScale,TweenInfo.new(0.16,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{Scale=0.86})
     TweenService:Create(Main,TweenInfo.new(0.16),{BackgroundTransparency=0.2}):Play()
     tween:Play()
@@ -3364,14 +3364,14 @@ Player.CharacterAdded:Connect(function()
 end)
 
 -- FIRST START LANGUAGE MENU + LOCALIZATION
-local CurrentLanguage="en"
-local CurrentTranslations={}
-local function localizeText(value)
+CurrentLanguage="en"
+CurrentTranslations={}
+function localizeText(value)
     if type(value)~="string" then return value end
     return CurrentTranslations[value] or value
 end
 
-local Intro=create("Frame",{
+Intro=create("Frame",{
     Size=UDim2.fromOffset(390,440),
     Position=UDim2.new(0.5,-195,0.5,-220),
     BackgroundColor3=DARK,
@@ -3382,8 +3382,8 @@ round(Intro,18)
 outline(Intro)
 Intro.ClipsDescendants=true
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(18,18,18),Color3.fromRGB(0,0,0)),Rotation=90},Intro)
-local IntroScale=create("UIScale",{Scale=0.92},Intro)
-local function fitIntro()
+IntroScale=create("UIScale",{Scale=0.92},Intro)
+function fitIntro()
     local cam=Workspace.CurrentCamera
     if cam and (isTouchDevice or cam.ViewportSize.X<620) then
         Intro.Size=UDim2.new(1,0,1,0)
@@ -3429,7 +3429,7 @@ create("TextLabel",{
     ZIndex=51
 },Intro)
 
-local function deviceButton(caption,y,mode)
+function deviceButton(caption,y,mode)
     local b=create("TextButton",{
         Size=UDim2.new(1,-44,0,34),Position=UDim2.fromOffset(22,y),
         BackgroundColor3=Color3.fromRGB(35,35,48),Text=caption,
@@ -3455,7 +3455,7 @@ local function deviceButton(caption,y,mode)
     return b
 end
 
-local function languageButton(caption,y,callback)
+function languageButton(caption,y,callback)
     local b=create("TextButton",{
         Size=UDim2.new(1,-44,0,36),
         Position=UDim2.fromOffset(22,y),
@@ -3480,7 +3480,7 @@ local function languageButton(caption,y,callback)
     b.Activated:Connect(callback)
 end
 
-local translations={
+translations={
 ru={
 ["HOME"]="ГЛАВНАЯ",["MOVEMENT"]="ДВИЖЕНИЕ",["VISUALS"]="ГРАФИКА",["TELEPORTS"]="ТЕЛЕПОРТЫ",["AUTO BUILD"]="АВТОСТРОЙКА",["MUSIC"]="МУЗЫКА",["AUTO FARM"]="АВТОФАРМ",["SHOP"]="МАГАЗИН",["TOOLS"]="ИНСТРУМЕНТЫ",["SETTINGS"]="НАСТРОЙКИ",
 ["Welcome to Diamond Boat Hub"]="Добро пожаловать в Diamond Boat Hub",["Build A Boat For Treasure"]="Build A Boat For Treasure",["INSTANT REJOIN"]="БЫСТРЫЙ ПЕРЕЗАХОД",["Player information"]="Информация об игроке",["Character information"]="Информация о персонаже",["Reset character"]="Перезапустить персонажа",
@@ -3502,11 +3502,11 @@ pl={["HOME"]="GŁÓWNA",["MOVEMENT"]="RUCH",["VISUALS"]="GRAFIKA",["TELEPORTS"]=
 zh={["HOME"]="主页",["MOVEMENT"]="移动",["VISUALS"]="画面",["TELEPORTS"]="传送",["AUTO BUILD"]="自动建造",["MUSIC"]="音乐",["AUTO FARM"]="自动刷取",["SHOP"]="商店",["TOOLS"]="工具",["SETTINGS"]="设置",["Welcome to Diamond Boat Hub"]="欢迎使用 Diamond Boat Hub",["Movement controls"]="移动控制",["Visual settings"]="画面设置",["Position manager"]="位置管理",["Base scanner"]="基地扫描",["EASY MIDI IMPORT"]="导入 MIDI",["AUTO FIND + LOAD MIDI"]="自动查找并加载 MIDI",["IMPORT / PARSE MIDI"]="导入 / 解析 MIDI",["BUY SELECTED ITEM × QUANTITY"]="购买所选物品",["Hub settings"]="Hub 设置",["Choose your language / Выбери язык"]="选择语言"}
 }
 
-local languageNames={
+languageNames={
 {"Русский","ru"},{"English","en"},{"Español","es"},{"Deutsch","de"},
 {"Français","fr"},{"Português","pt"},{"Türkçe","tr"},{"Polski","pl"},{"中文","zh"}
 }
-local function applyLanguage(lang)
+function applyLanguage(lang)
     CurrentLanguage=lang
     CurrentTranslations=translations[lang] or {}
     for _,obj in ipairs(GUI:GetDescendants()) do
@@ -3529,14 +3529,14 @@ local function applyLanguage(lang)
     showPage("HOME")
 end
 
-local deviceTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,112),BackgroundTransparency=1,Text="DEVICE / УСТРОЙСТВО",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
-local pcDeviceButton=deviceButton("PC / КОМПЬЮТЕР",136,"pc")
-local phoneDeviceButton=deviceButton("PHONE / ТЕЛЕФОН",174,"phone")
+deviceTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,112),BackgroundTransparency=1,Text="DEVICE / УСТРОЙСТВО",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
+pcDeviceButton=deviceButton("PC / КОМПЬЮТЕР",136,"pc")
+phoneDeviceButton=deviceButton("PHONE / ТЕЛЕФОН",174,"phone")
 pcDeviceButton.Size=UDim2.new(0.5,-26,0,48); pcDeviceButton.Position=UDim2.new(0,16,0,145)
 phoneDeviceButton.Size=UDim2.new(0.5,-26,0,48); phoneDeviceButton.Position=UDim2.new(0.5,10,0,145)
-local languageTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,218),BackgroundTransparency=1,Text="LANGUAGE / ЯЗЫК",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
-local selectedLanguage="en"
-local languageSelect=languageButton("Language: English  ▼",253,function()
+languageTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,218),BackgroundTransparency=1,Text="LANGUAGE / ЯЗЫК",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
+selectedLanguage="en"
+languageSelect=languageButton("Language: English  ▼",253,function()
     local currentIndex=1
     for i,item in ipairs(languageNames) do if item[2]==selectedLanguage then currentIndex=i; break end end
     currentIndex=currentIndex%#languageNames+1
@@ -3544,7 +3544,7 @@ local languageSelect=languageButton("Language: English  ▼",253,function()
     languageSelect.Text="Language: "..languageNames[currentIndex][1].."  ▼"
 end)
 languageSelect.Size=UDim2.new(1,-44,0,42)
-local continueButton=languageButton("CONTINUE",307,function() applyLanguage(selectedLanguage) end)
+continueButton=languageButton("CONTINUE",307,function() applyLanguage(selectedLanguage) end)
 continueButton.Size=UDim2.new(1,-44,0,42)
 continueButton.BackgroundColor3=PURPLE; continueButton.TextColor3=WHITE
 
@@ -3554,20 +3554,20 @@ TweenService:Create(IntroScale,TweenInfo.new(0.28,Enum.EasingStyle.Back,Enum.Eas
 
 showPage("HOME")
 -- DELTA-FRIENDLY CONFIGURATION + RELOAD
-local HttpService=game:GetService("HttpService")
-local CONFIG_FILE="DiamondBoatHub_Config.json"
-local configStatus
-local function setConfigStatus(message)
+HttpService=game:GetService("HttpService")
+CONFIG_FILE="DiamondBoatHub_Config.json"
+configStatus
+function setConfigStatus(message)
     if configStatus and configStatus.Parent then configStatus.Text=message end
     print("[DIAMOND CONFIG]",message)
 end
-local function getSharedConfig()
+function getSharedConfig()
     local env=nil
     if type(getgenv)=="function" then pcall(function() env=getgenv() end) end
     if type(env)=="table" then return env end
     return _G
 end
-local function saveHubConfig()
+function saveHubConfig()
     local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,backgroundMode=backgroundMode,prefix=playerPrefix,speed=configuredSpeed,jump=configuredJump}
     local encoded=HttpService:JSONEncode(data)
     local shared=getSharedConfig()
@@ -3580,7 +3580,7 @@ local function saveHubConfig()
     setConfigStatus("CONFIG: kept in executor session (file API unavailable)")
     return true
 end
-local function loadHubConfig()
+function loadHubConfig()
     local data
     if type(isfile)=="function" and type(readfile)=="function" then
         local ok,result=pcall(function()
