@@ -2765,14 +2765,14 @@ button(settings,"Reset appearance",function() applyTheme("Purple") end)
 
 local dragging=false
 local dragStart
-local startPosition
+local startAbsolutePosition
 
 DragHandle.InputBegan:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1
     or input.UserInputType==Enum.UserInputType.Touch then
         dragging=true
         dragStart=input.Position
-        startPosition=Main.Position
+        startAbsolutePosition=Main.AbsolutePosition
     end
 end)
 
@@ -2784,15 +2784,16 @@ UIS.InputChanged:Connect(function(input)
         local delta=input.Position-dragStart
         local cam=Workspace.CurrentCamera
         local scale=MainScale.Scale
-        local x=startPosition.X.Offset+delta.X/scale
-        local y=startPosition.Y.Offset+delta.Y/scale
+        local x=startAbsolutePosition.X+delta.X
+        local y=startAbsolutePosition.Y+delta.Y
         if cam then
-            local maxX=math.max(0,cam.ViewportSize.X/scale-Main.AbsoluteSize.X/scale)
-            local maxY=math.max(0,cam.ViewportSize.Y/scale-Main.AbsoluteSize.Y/scale)
-            x=math.clamp(x,-Main.AbsoluteSize.X/scale+80,maxX)
-            y=math.clamp(y,0,maxY)
+            local viewport=cam.ViewportSize
+            local renderedSize=Main.AbsoluteSize
+            x=math.clamp(x,0,math.max(0,viewport.X-renderedSize.X))
+            y=math.clamp(y,0,math.max(0,viewport.Y-renderedSize.Y))
         end
-        Main.Position=UDim2.new(startPosition.X.Scale,x,startPosition.Y.Scale,y)
+        -- UIScale scales offsets too, so convert screen pixels back to GUI offsets.
+        Main.Position=UDim2.fromOffset(x/math.max(scale,0.01),y/math.max(scale,0.01))
     end
 end)
 
