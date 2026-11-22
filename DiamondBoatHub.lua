@@ -315,15 +315,54 @@ function setButtonStyle(style)
 end
 
 function toggle(page,text,default,callback)
-    local state=default or false
-    local b
-    b=button(page,text..": "..(state and "ON" or "OFF"),function()
+    local state=default==true
+    local row=create("Frame",{
+        Name="SwitchRow",Size=UDim2.new(1,-8,0,42),
+        BackgroundColor3=Color3.fromRGB(24,24,31),BorderSizePixel=0
+    },page)
+    row:SetAttribute("HubSwitchRow",true)
+    round(row,10)
+    local stroke=outline(row)
+    stroke.Color=Color3.fromRGB(75,75,94); stroke.Transparency=0.55
+    local title=create("TextLabel",{
+        Name="SwitchTitle",Size=UDim2.new(1,-78,1,0),Position=UDim2.fromOffset(12,0),
+        BackgroundTransparency=1,Text=text,TextColor3=Color3.fromRGB(242,242,248),
+        TextSize=13,Font=Enum.Font.GothamSemibold,TextXAlignment=Enum.TextXAlignment.Left
+    },row)
+    local track=create("Frame",{
+        Name="SwitchTrack",Size=UDim2.fromOffset(46,26),AnchorPoint=Vector2.new(1,0.5),
+        Position=UDim2.new(1,-10,0.5,0),
+        BackgroundColor3=state and PURPLE or Color3.fromRGB(75,78,88),BorderSizePixel=0
+    },row)
+    track:SetAttribute("HubSwitchTrack",true)
+    round(track,14)
+    local knob=create("Frame",{
+        Name="SwitchKnob",Size=UDim2.fromOffset(20,20),
+        Position=UDim2.new(0,3,0.5,-10),BackgroundColor3=Color3.fromRGB(255,255,255),
+        BorderSizePixel=0
+    },track)
+    round(knob,12)
+    local hit=create("TextButton",{
+        Name="SwitchHitbox",Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,
+        Text="",AutoButtonColor=false
+    },row)
+    local function render(instant)
+        local pos=state and UDim2.new(1,-23,0.5,-10) or UDim2.new(0,3,0.5,-10)
+        local color=state and PURPLE or Color3.fromRGB(75,78,88)
+        if instant then
+            knob.Position=pos; track.BackgroundColor3=color
+        else
+            TweenService:Create(knob,TweenInfo.new(0.16,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Position=pos}):Play()
+            TweenService:Create(track,TweenInfo.new(0.16),{BackgroundColor3=color}):Play()
+        end
+    end
+    hit.Activated:Connect(function()
         state=not state
-        b.Text=text..": "..(state and "ON" or "OFF")
-        b.BackgroundColor3=state and BUTTON_HOVER or BUTTON_WHITE
-        callback(state)
+        render(false)
+        if callback then callback(state) end
     end)
-    return b
+    row:SetAttribute("SwitchState",state)
+    return row
 end
 
 function getCharacter()
@@ -3142,6 +3181,17 @@ function applyTheme(name)
         local icon=b:FindFirstChild("TabIcon")
         if icon then icon.ImageColor3=WHITE end
     end
+    for _,obj in ipairs(GUI:GetDescendants()) do
+        if obj:GetAttribute("HubSwitchTrack") then
+            local row=obj.Parent
+            local hit=row and row:FindFirstChild("SwitchHitbox")
+            if hit then
+                local knob=obj:FindFirstChild("SwitchKnob")
+                local state=knob and knob.Position.X.Scale>0.5
+                obj.BackgroundColor3=state and PURPLE or Color3.fromRGB(75,78,88)
+            end
+        end
+    end
     Min.BackgroundColor3=PURPLE
     Min.TextColor3=WHITE
     Close.BackgroundColor3=PURPLE
@@ -3174,13 +3224,18 @@ function setBackgroundMode(name)
     if not backgroundPresets[name] then return end
     backgroundMode=name
     seasonalSnow=(name=="Winter" or name=="Christmas")
-    if backgroundGradient then
-        backgroundGradient.Color=backgroundPresets[name]
-        backgroundGradient.Enabled=true
-    end
-    if mainBackgroundGradient then
-        mainBackgroundGradient.Color=backgroundPresets[name]
-        mainBackgroundGradient.Enabled=true
+    -- Recolor every gradient that sits on an opaque panel, not just the snow layer.
+    local preset=backgroundPresets[name]
+    local targets={Main,Top,Sidebar,Content,BackgroundLayer}
+    for _,target in ipairs(targets) do
+        if target then
+            for _,child in ipairs(target:GetChildren()) do
+                if child:IsA("UIGradient") then
+                    child.Color=preset
+                    child.Enabled=true
+                end
+            end
+        end
     end
     if BackgroundLayer then BackgroundLayer.Visible=true end
     if snowLayer then snowLayer.Visible=seasonalSnow end
@@ -3288,16 +3343,24 @@ end
 snowLayer.Visible=seasonalSnow
 task.spawn(function()
     while GUI.Parent do
-        if animatedBackground and mainBackgroundGradient and mainBackgroundGradient.Parent then
-            local first=TweenService:Create(mainBackgroundGradient,TweenInfo.new(7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{
-                Rotation=180,Offset=Vector2.new(0.35,0)
-            })
-            first:Play(); first.Completed:Wait()
-            if not GUI.Parent then break end
-            local second=TweenService:Create(mainBackgroundGradient,TweenInfo.new(7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{
-                Rotation=360,Offset=Vector2.new(-0.35,0)
-            })
-            second:Play(); second.Completed:Wait()
+        if animatedBackground then
+            local gradients={}
+            for _,target in ipairs({Main,Top,Sidebar,Content,BackgroundLayer}) do
+                if target then
+                    for _,child in ipairs(target:GetChildren()) do
+                        if child:IsA("UIGradient") then table.insert(gradients,child) end
+                    end
+                end
+            end
+            for _,grad in ipairs(gradients) do
+                if grad.Parent then
+                    TweenService:Create(grad,TweenInfo.new(7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{
+                        Rotation=grad.Rotation+180,
+                        Offset=Vector2.new(grad.Offset.X==0.35 and -0.35 or 0.35,0)
+                    }):Play()
+                end
+            end
+            task.wait(7)
         else
             task.wait(0.35)
         end
