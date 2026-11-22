@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V30
+-- DIAMOND BOAT HUB V1 [BETA] V31
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -3930,6 +3930,59 @@ function sendGlobalChat()
 end
 chatSendButton.Activated:Connect(sendGlobalChat)
 chatInput.FocusLost:Connect(function(enterPressed) if enterPressed then sendGlobalChat() end end)
+
+-- Display already-filtered Roblox TextChatService messages above the speaker locally.
+local function showOverheadChat(userId, messageText)
+    local plr=Players:GetPlayerByUserId(tonumber(userId) or -1)
+    if not plr or type(messageText)~="string" or messageText=="" then return end
+    local character=plr.Character
+    local head=character and character:FindFirstChild("Head")
+    if not head then return end
+    local old=head:FindFirstChild("DiamondChatBubble")
+    if old then old:Destroy() end
+    local bubble=Instance.new("BillboardGui")
+    bubble.Name="DiamondChatBubble"
+    bubble.Size=UDim2.fromOffset(210,54)
+    bubble.StudsOffset=Vector3.new(0,6.1,0)
+    bubble.AlwaysOnTop=true
+    bubble.MaxDistance=85
+    bubble.Adornee=head
+    bubble.Parent=head
+    local label=Instance.new("TextLabel")
+    label.Size=UDim2.new(1,0,1,0)
+    label.BackgroundColor3=Color3.fromRGB(18,18,24)
+    label.BackgroundTransparency=0.12
+    label.BorderSizePixel=0
+    label.Text=tostring(messageText):sub(1,180)
+    label.TextColor3=Color3.fromRGB(255,255,255)
+    label.TextStrokeTransparency=0.65
+    label.TextSize=13
+    label.Font=Enum.Font.Gotham
+    label.TextWrapped=true
+    label.TextTruncate=Enum.TextTruncate.AtEnd
+    label.Parent=bubble
+    local corner=Instance.new("UICorner")
+    corner.CornerRadius=UDim.new(0,9)
+    corner.Parent=label
+    task.delay(5,function()
+        if bubble and bubble.Parent then bubble:Destroy() end
+    end)
+end
+local overheadChatConnected=false
+pcall(function()
+    local textChat=game:GetService("TextChatService")
+    textChat.MessageReceived:Connect(function(message)
+        local source=message.TextSource
+        if source and source.UserId and message.Status==Enum.TextChatMessageStatus.Success then
+            showOverheadChat(source.UserId,message.Text)
+        end
+    end)
+    overheadChatConnected=true
+end)
+if chatStatus and chatStatus.Parent then
+    chatStatus.Text=overheadChatConnected and "GLOBAL CHAT: CONNECTING... | OVERHEAD CHAT READY" or "GLOBAL CHAT: CONNECTING... | OVERHEAD CHAT UNAVAILABLE"
+end
+
 task.spawn(function()
     task.wait(3)
     while GUI and GUI.Parent do
@@ -3973,19 +4026,21 @@ function refreshHubServers()
             for _,p in ipairs(server.players or {}) do
                 table.insert(names,tostring(p.username or "Player"))
             end
+            local playerCount=tonumber(server.playing) or #(server.players or {})
+            local maxCount=tonumber(server.maxPlayers) or 0
             local row=create("Frame",{
                 Size=UDim2.new(1,-2,0,68),BackgroundColor3=Color3.fromRGB(25,25,32),BorderSizePixel=0
             },serversFeed)
             round(row,8)
             create("TextLabel",{
                 Size=UDim2.new(1,-112,0,25),Position=UDim2.fromOffset(9,5),
-                BackgroundTransparency=1,Text="SERVER  "..tostring(#(server.players or {})).." PLAYER(S)",
+                BackgroundTransparency=1,Text="SERVER  "..tostring(playerCount)..(maxCount>0 and ("/"..tostring(maxCount)) or "").." PLAYER(S)",
                 TextColor3=WHITE,TextSize=12,Font=Enum.Font.GothamBold,
                 TextXAlignment=Enum.TextXAlignment.Left
             },row)
             create("TextLabel",{
                 Size=UDim2.new(1,-112,0,28),Position=UDim2.fromOffset(9,31),
-                BackgroundTransparency=1,Text=table.concat(names,", "),
+                BackgroundTransparency=1,Text=(#names>0 and table.concat(names,", ") or (server.hubUsers==false and "Public Roblox server" or "DiamondBoatHub players")),
                 TextColor3=Color3.fromRGB(175,175,190),TextSize=10,Font=Enum.Font.Gotham,
                 TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left
             },row)
@@ -4527,7 +4582,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=30"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=31"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
