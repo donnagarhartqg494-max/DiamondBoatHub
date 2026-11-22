@@ -385,6 +385,7 @@ farm=makePage("AUTO FARM")
 shop=makePage("SHOP")
 tools=makePage("TOOLS")
 settings=makePage("SETTINGS")
+globalChat=makePage("GLOBAL CHAT")
 
 tabLayout=create("UIListLayout",{
     FillDirection=Enum.FillDirection.Horizontal,
@@ -408,17 +409,18 @@ tabIcons={
     SHOP="rbxassetid://10734952479",
     TOOLS="rbxassetid://10723405749",
     SETTINGS="rbxassetid://10734950309",
-    CREDITS="rbxassetid://10709819149"
+    CREDITS="rbxassetid://10709819149",
+    ["GLOBAL CHAT"]="rbxassetid://10709819149"
 }
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","CREDITS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","CREDITS"
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(0,58,0,56),
         ClipsDescendants=true,
         BackgroundColor3=BUTTON_WHITE,
-        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",CREDITS="CREDITS"})[name] or name,
+        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",CREDITS="CREDITS"})[name] or name,
         TextColor3=TEXT_DARK,
         TextSize=9,
         TextTruncate=Enum.TextTruncate.AtEnd,
@@ -3746,6 +3748,130 @@ end)
 
 -- CHAT tab removed: no in-game chat bypass or duplicate chat UI.
 
+-- GLOBAL CHAT: Cloudflare-backed messages shared by DiamondBoatHub users in this game.
+chatMessagesSeen={}
+chatMessageOrder={}
+chatLastFetch=0
+chatStatus=label(globalChat,"GLOBAL CHAT: CONNECTING...")
+chatFeed=create("ScrollingFrame",{
+    Name="GlobalChatFeed",Size=UDim2.new(1,-8,1,-112),Position=UDim2.fromOffset(4,4),
+    BackgroundColor3=Color3.fromRGB(12,12,16),BorderSizePixel=0,
+    ScrollBarThickness=4,ScrollBarImageColor3=PURPLE,CanvasSize=UDim2.new(0,0,0,0)
+},globalChat)
+round(chatFeed,10); outline(chatFeed)
+chatFeedLayout=create("UIListLayout",{Padding=UDim.new(0,5),SortOrder=Enum.SortOrder.LayoutOrder},chatFeed)
+create("UIPadding",{PaddingTop=UDim.new(0,7),PaddingBottom=UDim.new(0,7),PaddingLeft=UDim.new(0,7),PaddingRight=UDim.new(0,7)},chatFeed)
+chatFeedLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    chatFeed.CanvasSize=UDim2.new(0,0,0,chatFeedLayout.AbsoluteContentSize.Y+16)
+    chatFeed.CanvasPosition=Vector2.new(0,math.max(0,chatFeed.CanvasSize.Y.Offset-chatFeed.AbsoluteSize.Y))
+end)
+chatInput=create("TextBox",{
+    Name="GlobalChatInput",Size=UDim2.new(1,-100,0,40),Position=UDim2.new(0,4,1,-48),
+    BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,
+    PlaceholderColor3=Color3.fromRGB(155,155,165),PlaceholderText="Write a message...",
+    Text="",ClearTextOnFocus=false,TextSize=14,Font=Enum.Font.Gotham,
+    TextXAlignment=Enum.TextXAlignment.Left
+},globalChat)
+round(chatInput,9); outline(chatInput)
+create("UIPadding",{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,8)},chatInput)
+chatSendButton=create("TextButton",{
+    Name="GlobalChatSend",Size=UDim2.new(0,88,0,40),Position=UDim2.new(1,-92,1,-48),
+    BackgroundColor3=PURPLE,Text="SEND",TextColor3=WHITE,TextSize=13,
+    Font=Enum.Font.GothamBold,AutoButtonColor=false
+},globalChat)
+round(chatSendButton,9); outline(chatSendButton)
+function chatHexColor(hex)
+    hex=tostring(hex or "#B9CDFF"):gsub("#","")
+    if #hex~=6 then return Color3.fromRGB(185,205,255) end
+    local rr=tonumber(hex:sub(1,2),16) or 185
+    local gg=tonumber(hex:sub(3,4),16) or 205
+    local bb=tonumber(hex:sub(5,6),16) or 255
+    return Color3.fromRGB(rr,gg,bb)
+end
+function addGlobalChatMessage(record)
+    if type(record)~="table" or type(record.id)~="string" or chatMessagesSeen[record.id] then return end
+    chatMessagesSeen[record.id]=true
+    table.insert(chatMessageOrder,record.id)
+    local row=create("Frame",{
+        Name="ChatMessage",Size=UDim2.new(1,-2,0,0),AutomaticSize=Enum.AutomaticSize.Y,
+        BackgroundColor3=Color3.fromRGB(25,25,32),BorderSizePixel=0
+    },chatFeed)
+    round(row,7)
+    local who=create("TextLabel",{
+        Size=UDim2.new(1,-12,0,19),Position=UDim2.fromOffset(7,4),
+        BackgroundTransparency=1,Text="["..tostring(record.prefix or "Player").."] "..tostring(record.username or "Player"),
+        TextColor3=chatHexColor(record.color),TextSize=12,Font=Enum.Font.GothamBold,
+        TextXAlignment=Enum.TextXAlignment.Left
+    },row)
+    local body=create("TextLabel",{
+        Size=UDim2.new(1,-14,0,0),Position=UDim2.fromOffset(7,25),
+        AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1,
+        Text=tostring(record.message or ""),TextColor3=Color3.fromRGB(240,240,245),
+        TextSize=13,Font=Enum.Font.Gotham,TextWrapped=true,
+        TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top
+    },row)
+    local timeText=os.date("%H:%M",math.floor((tonumber(record.createdAt) or 0)/1000))
+    local stamp=create("TextLabel",{
+        Size=UDim2.new(1,-14,0,14),Position=UDim2.fromOffset(7,0),
+        BackgroundTransparency=1,Text=timeText,TextColor3=Color3.fromRGB(135,135,145),
+        TextSize=9,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Right
+    },row)
+    who.Size=UDim2.new(1,-58,0,19)
+    if #chatMessageOrder>60 then
+        local oldest=table.remove(chatMessageOrder,1)
+        for _,child in ipairs(chatFeed:GetChildren()) do
+            if child:IsA("Frame") and child.Name=="ChatMessage" then
+                local nameLabel=child:FindFirstChildWhichIsA("TextLabel")
+                if nameLabel and nameLabel:GetAttribute("ChatMessageId")==oldest then child:Destroy(); break end
+            end
+        end
+    end
+    who:SetAttribute("ChatMessageId",record.id)
+end
+function fetchGlobalChat()
+    local result,err=relayRequest("GET","/chat?gameId="..tostring(game.PlaceId))
+    if not result or result.ok~=true or type(result.messages)~="table" then
+        if chatStatus and chatStatus.Parent then chatStatus.Text="GLOBAL CHAT: CONNECTION ERROR" end
+        if err then warn("[DIAMOND CHAT] Fetch failed:",tostring(err)) end
+        return false
+    end
+    for _,record in ipairs(result.messages) do addGlobalChatMessage(record) end
+    if chatStatus and chatStatus.Parent then chatStatus.Text="GLOBAL CHAT: CONNECTED" end
+    return true
+end
+function sendGlobalChat()
+    local message=chatInput and chatInput.Text or ""
+    message=string.gsub(message,"^%s+","")
+    message=string.gsub(message,"%s+$","")
+    if message=="" then return end
+    if #message>240 then message=string.sub(message,1,240) end
+    chatSendButton.Active=false
+    local payload={
+        userId=tostring(Player.UserId),gameId=tostring(game.PlaceId),
+        username=Player.Name,prefix=playerPrefix or "Player",
+        color=prefixColorToHex(prefixColor),message=message
+    }
+    local result,err=relayRequest("POST","/chat",payload)
+    chatSendButton.Active=true
+    if result and result.ok then
+        chatInput.Text=""
+        addGlobalChatMessage(result.message)
+        if chatStatus and chatStatus.Parent then chatStatus.Text="GLOBAL CHAT: MESSAGE SENT" end
+    else
+        if chatStatus and chatStatus.Parent then chatStatus.Text="GLOBAL CHAT: SEND FAILED" end
+        warn("[DIAMOND CHAT] Send failed:",tostring(err or (result and result.error)))
+    end
+end
+chatSendButton.Activated:Connect(sendGlobalChat)
+chatInput.FocusLost:Connect(function(enterPressed) if enterPressed then sendGlobalChat() end end)
+task.spawn(function()
+    task.wait(3)
+    while GUI and GUI.Parent do
+        fetchGlobalChat()
+        task.wait(3)
+    end
+end)
+
 -- CREDITS PAGE
 label(credits,"DIAMOND BABFT")
 label(credits,"Script creators")
@@ -4245,7 +4371,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=21"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=22"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
