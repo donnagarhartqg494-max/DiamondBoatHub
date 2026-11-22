@@ -3097,20 +3097,28 @@ button(settings,"Style: Liquid Glass (iPhone)",function() setButtonStyle("Liquid
 button(settings,"Style: Neon",function() setButtonStyle("Neon") end)
 label(settings,"ANIMATED BACKGROUND / ФОН")
 backgroundMode="Aurora"
+seasonalSnow=false
 backgroundPresets={
     Aurora=ColorSequence.new(Color3.fromRGB(15,10,42),Color3.fromRGB(20,75,90)),
     Ocean=ColorSequence.new(Color3.fromRGB(4,24,58),Color3.fromRGB(0,120,145)),
     Sunset=ColorSequence.new(Color3.fromRGB(65,18,55),Color3.fromRGB(210,95,45)),
     Matrix=ColorSequence.new(Color3.fromRGB(0,24,12),Color3.fromRGB(0,100,48)),
-    Mono=ColorSequence.new(Color3.fromRGB(8,8,12),Color3.fromRGB(60,60,72))
+    Mono=ColorSequence.new(Color3.fromRGB(8,8,12),Color3.fromRGB(60,60,72)),
+    Winter=ColorSequence.new(Color3.fromRGB(5,28,58),Color3.fromRGB(75,155,205)),
+    Christmas=ColorSequence.new(Color3.fromRGB(18,55,43),Color3.fromRGB(125,25,42))
 }
 function setBackgroundMode(name)
     if not backgroundPresets[name] then return end
     backgroundMode=name
-    if backgroundGradient then backgroundGradient.Color=backgroundPresets[name]; backgroundGradient.Enabled=animatedBackground end
+    seasonalSnow=(name=="Winter" or name=="Christmas")
+    if backgroundGradient then
+        backgroundGradient.Color=backgroundPresets[name]
+        backgroundGradient.Enabled=animatedBackground
+    end
+    if snowLayer then snowLayer.Visible=seasonalSnow end
     print("[DIAMOND] Background:",name)
 end
-for _,name in ipairs({"Aurora","Ocean","Sunset","Matrix","Mono"}) do
+for _,name in ipairs({"Aurora","Ocean","Sunset","Matrix","Mono","Winter","Christmas"}) do
     button(settings,"Background: "..name,function() setBackgroundMode(name) end)
 end
 button(settings,"Animated background: ON / OFF",function()
@@ -3144,19 +3152,58 @@ label(settings,"PREFIX VISIBILITY")
 label(settings,"Цвет и префикс видны на твоём экране. Для отображения всем игрокам нужна поддержка со стороны сервера игры.")
 
 
--- Animated background layer (kept behind all content).
-backgroundGradient=Main:FindFirstChildOfClass("UIGradient")
-if backgroundGradient then backgroundGradient.Color=backgroundPresets[backgroundMode] or backgroundPresets.Aurora end
+-- Dedicated animated background layer. The old gradient was attached to Main
+-- and hidden behind opaque child panels, so it could not be seen.
+BackgroundLayer=create("Frame",{
+    Name="AnimatedBackground",Size=UDim2.new(1,0,1,0),Position=UDim2.fromOffset(0,0),
+    BackgroundColor3=Color3.fromRGB(8,12,25),BorderSizePixel=0,ZIndex=0
+},Main)
+backgroundGradient=create("UIGradient",{
+    Color=backgroundPresets[backgroundMode] or backgroundPresets.Aurora,
+    Rotation=0
+},BackgroundLayer)
+-- Let the animated layer show softly through the interface panels.
+Main.BackgroundTransparency=0
+Top.BackgroundTransparency=0.16
+Sidebar.BackgroundTransparency=0.18
+Content.BackgroundTransparency=0.20
+snowLayer=create("Frame",{
+    Name="SeasonalSnow",Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,
+    ClipsDescendants=true,Visible=false,ZIndex=1
+},Main)
+for i=1,20 do
+    local flake=create("TextLabel",{
+        Name="Snowflake"..i,BackgroundTransparency=1,Text="❄",
+        TextColor3=Color3.fromRGB(225,242,255),TextTransparency=0.18,
+        TextSize=math.random(10,19),Font=Enum.Font.GothamBold,
+        Size=UDim2.fromOffset(22,22),
+        Position=UDim2.new(math.random(),0,math.random(),0),
+        ZIndex=1
+    },snowLayer)
+    task.spawn(function()
+        while GUI.Parent and flake.Parent do
+            flake.Position=UDim2.new(math.random(),0,-0.08,0)
+            flake.TextTransparency=math.random(5,35)/100
+            local fall=TweenService:Create(flake,TweenInfo.new(math.random(65,115)/10,Enum.EasingStyle.Linear),{
+                Position=UDim2.new(math.clamp(flake.Position.X.Scale+math.random(-12,12)/100,0,1),0,1.08,0)
+            })
+            fall:Play()
+            fall.Completed:Wait()
+            task.wait(math.random(0,12)/10)
+        end
+    end)
+end
+snowLayer.Visible=seasonalSnow
 task.spawn(function()
     while GUI.Parent do
         if animatedBackground and backgroundGradient then
-            local tw=TweenService:Create(backgroundGradient,TweenInfo.new(8,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Rotation=180})
+            local tw=TweenService:Create(backgroundGradient,TweenInfo.new(9,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Rotation=180})
             tw:Play(); tw.Completed:Wait()
             if not GUI.Parent then break end
-            local tw2=TweenService:Create(backgroundGradient,TweenInfo.new(8,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Rotation=360})
+            local tw2=TweenService:Create(backgroundGradient,TweenInfo.new(9,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Rotation=360})
             tw2:Play(); tw2.Completed:Wait()
         else
-            task.wait(0.4)
+            task.wait(0.35)
         end
     end
 end)
