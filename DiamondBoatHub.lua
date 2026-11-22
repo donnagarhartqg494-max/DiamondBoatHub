@@ -3128,8 +3128,27 @@ end)
 label(settings,"PLAYER TAG PREFIX")
 prefixBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,PlaceholderText="Your prefix",Text=playerPrefix,ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=13},settings)
 round(prefixBox,9)
+local function censorPrefixText(value)
+    value=tostring(value or "")
+    value=string.sub(value,1,16)
+    -- Basic client-side profanity mask. This is only a convenience filter,
+    -- not Roblox's official server-side TextService moderation.
+    local blocked={"сука","блять","бляд","хуй","пизд","еба","fuck","shit","bitch","asshole"}
+    local lower=string.lower(value)
+    for _,word in ipairs(blocked) do
+        local startAt=1
+        while true do
+            local a,b=string.find(lower,word,startAt,true)
+            if not a then break end
+            value=string.sub(value,1,a-1)..string.rep("*",b-a+1)..string.sub(value,b+1)
+            lower=string.lower(value)
+            startAt=b+1
+        end
+    end
+    return value
+end
 prefixBox.FocusLost:Connect(function()
-    playerPrefix=string.sub(prefixBox.Text,1,16)
+    playerPrefix=censorPrefixText(prefixBox.Text)
     prefixBox.Text=playerPrefix
     refreshPlayerTags()
 end)
@@ -3148,8 +3167,10 @@ for _,choice in ipairs({
     end)
     colorButton.TextColor3=choice[2]
 end
+label(settings,"PREFIX CENSOR / ЦЕНЗУРА")
+label(settings,"Нецензурные слова в пользовательском префиксе частично заменяются звёздочками. Это локальная базовая проверка, не официальная фильтрация Roblox.")
 label(settings,"PREFIX VISIBILITY")
-label(settings,"Цвет и префикс видны на твоём экране. Для отображения всем игрокам нужна поддержка со стороны сервера игры.")
+label(settings,"Префиксы этого executor видны локально. Чтобы все пользователи скрипта видели друг друга, нужен серверный обмен данными и Roblox TextService; клиентский скрипт не может безопасно создать такую репликацию.")
 
 
 -- Dedicated animated background layer. The old gradient was attached to Main
@@ -3231,6 +3252,29 @@ refreshPlayerTags=function()
             prefixLabel.Text=(role and prefix~="" and prefix or (role and "" or "{"..prefix.."}"))
             prefixLabel.TextColor3=prefixColor or Color3.fromRGB(185,205,255); prefixLabel.TextStrokeTransparency=0.35
             prefixLabel.Font=Enum.Font.GothamBold; prefixLabel.TextSize=13; prefixLabel.Parent=tag
+            if plr.UserId==7162643277 or plr.UserId==4918761384 then
+                prefixLabel.TextColor3=Color3.new(1,1,1)
+                local rainbow=Instance.new("UIGradient")
+                rainbow.Name="DiamondRainbowPrefix"
+                rainbow.Color=ColorSequence.new({
+                    ColorSequenceKeypoint.new(0,Color3.fromRGB(255,55,85)),
+                    ColorSequenceKeypoint.new(0.17,Color3.fromRGB(255,170,45)),
+                    ColorSequenceKeypoint.new(0.34,Color3.fromRGB(255,245,75)),
+                    ColorSequenceKeypoint.new(0.51,Color3.fromRGB(55,235,125)),
+                    ColorSequenceKeypoint.new(0.68,Color3.fromRGB(55,180,255)),
+                    ColorSequenceKeypoint.new(0.85,Color3.fromRGB(175,85,255)),
+                    ColorSequenceKeypoint.new(1,Color3.fromRGB(255,55,170))
+                })
+                rainbow.Parent=prefixLabel
+                task.spawn(function()
+                    while rainbow.Parent and tag.Parent do
+                        local spin=TweenService:Create(rainbow,TweenInfo.new(3,Enum.EasingStyle.Linear),{Rotation=360})
+                        spin:Play()
+                        spin.Completed:Wait()
+                        if rainbow.Parent then rainbow.Rotation=0 end
+                    end
+                end)
+            end
             if role then
                 local roleLabel=Instance.new("TextLabel")
                 roleLabel.Size=UDim2.new(1,0,0,20); roleLabel.Position=UDim2.fromOffset(0,19)
