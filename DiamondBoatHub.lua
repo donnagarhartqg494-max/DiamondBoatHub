@@ -159,7 +159,7 @@ Close.Font=Enum.Font.GothamBold
 Close.AutoButtonColor=false
 
 Sidebar = create("ScrollingFrame",{
-    Size=UDim2.new(1,-14,0,43),
+    Size=UDim2.new(1,-14,0,66),
     Position=UDim2.fromOffset(7,53),
     BackgroundColor3=Color3.fromRGB(0,0,0),
     BorderSizePixel=0,
@@ -370,27 +370,31 @@ for _,name in ipairs({
     "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","CREDITS"
 }) do
     local b=create("TextButton",{
-        Size=UDim2.new(0,58,1,-6),
+        Size=UDim2.new(0,58,0,56),
         BackgroundColor3=BUTTON_WHITE,
         Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",CREDITS="CREDITS"})[name] or name,
         TextColor3=TEXT_DARK,
         TextSize=9,
         Font=Enum.Font.GothamBold,
         TextXAlignment=Enum.TextXAlignment.Center,
+        TextYAlignment=Enum.TextYAlignment.Top,
         AutoButtonColor=false
     },Sidebar)
     round(b,8)
     local tabIcon=Instance.new("ImageLabel")
     tabIcon.Name="TabIcon"; tabIcon.BackgroundTransparency=1
-    tabIcon.Size=UDim2.fromOffset(17,17); tabIcon.Position=UDim2.fromOffset(5,7)
+    tabIcon.AnchorPoint=Vector2.new(0.5,0)
+    tabIcon.Size=UDim2.fromOffset(19,19)
+    tabIcon.Position=UDim2.new(0.5,0,0,30)
     tabIcon.Image=tabIcons[name] or ""; tabIcon.ImageColor3=TEXT_DARK
+    tabIcon.ScaleType=Enum.ScaleType.Fit
     tabIcon.Parent=b
-    b.Text="      "..b.Text
-    b.TextXAlignment=Enum.TextXAlignment.Left
+    b.TextXAlignment=Enum.TextXAlignment.Center
+    b.TextYAlignment=Enum.TextYAlignment.Top
     local tabStroke=outline(b)
     tabStroke.Color=Color3.fromRGB(90,90,90)
     tabStroke.Transparency=0.35
-    create("UIPadding",{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10)},b)
+    create("UIPadding",{PaddingTop=UDim.new(0,7),PaddingLeft=UDim.new(0,2),PaddingRight=UDim.new(0,2)},b)
     local mark=create("Frame",{Name="ActiveMark",Size=UDim2.new(1,-14,0,2),Position=UDim2.new(0,7,1,-3),BackgroundColor3=PURPLE,BorderSizePixel=0,Visible=false},b)
     round(mark,2)
     TabButtons[name]=b
