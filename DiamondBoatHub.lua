@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V27
+-- DIAMOND BOAT HUB V1 [BETA] V28
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -50,6 +50,11 @@ GREEN = Color3.fromRGB(60,180,120)
 function create(class, props, parent)
     local obj = Instance.new(class)
     for k,v in pairs(props or {}) do
+        -- Defensive fix: Position must always be UDim2, even if a UI helper passes UDim.
+        if k == "Position" and typeof(v) == "UDim" then
+            warn("[DiamondBoatHub] Converted invalid UDim Position for " .. tostring(class))
+            v = UDim2.new(v.Scale, v.Offset, 0, 0)
+        end
         obj[k] = v
     end
     obj.Parent = parent
@@ -4497,7 +4502,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=27"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=28"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
