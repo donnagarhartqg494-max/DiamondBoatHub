@@ -85,17 +85,19 @@ local function fitToScreen()
     local cam=Workspace.CurrentCamera
     if not cam then return end
     local viewport=cam.ViewportSize
-    if windowMode=="fullscreen" or isTouchDevice or viewport.X<620 then
+    MainScale.Scale=1
+    if windowMode=="fullscreen" then
         Main.Size=UDim2.new(1,0,1,0)
-        Main.Position=UDim2.fromOffset(0,0)
-        MainScale.Scale=1
-        Main.ClipsDescendants=true
+    elseif isTouchDevice or viewport.X<620 then
+        local w=math.clamp(math.floor(viewport.X*0.92),300,900)
+        local h=math.clamp(math.floor(viewport.Y*0.86),360,1000)
+        Main.Size=UDim2.fromOffset(w,h)
     else
         local size=desktopSizes[windowMode] or desktopSizes.medium
         Main.Size=UDim2.fromOffset(size.X,size.Y)
-        Main.Position=UDim2.new(0.5,-size.X/2,0.5,-size.Y/2)
-        MainScale.Scale=math.clamp(math.min(viewport.X/(size.X+80),viewport.Y/(size.Y+70)),0.68,1)
     end
+    Main.Position=UDim2.new(0.5,-Main.Size.X.Offset/2,0.5,-Main.Size.Y.Offset/2)
+    Main.ClipsDescendants=true
 end
 fitToScreen()
 if Workspace.CurrentCamera then Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitToScreen) end
@@ -236,21 +238,25 @@ end
 
 local function button(page,text,callback)
     local b=create("TextButton",{
-        Size=UDim2.new(1,-8,0,40),BackgroundColor3=BUTTON_WHITE,
-        Text="  "..text,TextColor3=TEXT_DARK,TextSize=12,Font=Enum.Font.GothamSemibold,
-        TextXAlignment=Enum.TextXAlignment.Left,AutoButtonColor=false
+        Size=UDim2.new(1,-8,0,42),BackgroundColor3=Color3.fromRGB(24,24,31),
+        Text="   "..text,TextColor3=Color3.fromRGB(242,242,248),TextSize=13,Font=Enum.Font.GothamSemibold,
+        TextXAlignment=Enum.TextXAlignment.Left,AutoButtonColor=false,BorderSizePixel=0
     },page)
-    round(b,10)
+    round(b,11)
     local stroke=outline(b)
-    stroke.Transparency=0.58
-    create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(255,255,255),Color3.fromRGB(245,245,245)),Rotation=0},b)
+    stroke.Color=Color3.fromRGB(75,75,94)
+    stroke.Transparency=0.55
+    local accent=create("Frame",{Size=UDim2.new(0,3,1,-14),Position=UDim2.fromOffset(0,7),BackgroundColor3=PURPLE,BorderSizePixel=0},b)
+    round(accent,3)
     b.MouseEnter:Connect(function()
-        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=BUTTON_HOVER}):Play()
-        TweenService:Create(stroke,TweenInfo.new(0.14),{Transparency=0.12}):Play()
+        TweenService:Create(b,TweenInfo.new(0.13),{BackgroundColor3=Color3.fromRGB(39,39,51)}):Play()
+        TweenService:Create(stroke,TweenInfo.new(0.13),{Transparency=0.12}):Play()
+        TweenService:Create(accent,TweenInfo.new(0.13),{Size=UDim2.new(0,4,1,-8),Position=UDim2.fromOffset(0,4)}):Play()
     end)
     b.MouseLeave:Connect(function()
-        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=BUTTON_WHITE}):Play()
-        TweenService:Create(stroke,TweenInfo.new(0.14),{Transparency=0.58}):Play()
+        TweenService:Create(b,TweenInfo.new(0.13),{BackgroundColor3=Color3.fromRGB(24,24,31)}):Play()
+        TweenService:Create(stroke,TweenInfo.new(0.13),{Transparency=0.55}):Play()
+        TweenService:Create(accent,TweenInfo.new(0.13),{Size=UDim2.new(0,3,1,-14),Position=UDim2.fromOffset(0,7)}):Play()
     end)
     b.Activated:Connect(callback)
     return b
@@ -2803,14 +2809,10 @@ button(settings,"Window: Small",function() setWindowMode("small") end)
 button(settings,"Window: Medium",function() setWindowMode("medium") end)
 button(settings,"Window: Large",function() setWindowMode("large") end)
 button(settings,"Window: Full screen",function()
-    if Workspace.CurrentCamera then
-        Main.Size=UDim2.new(1,0,1,0)
-        Main.Position=UDim2.fromOffset(0,0)
-        MainScale.Scale=1
-        windowMode="fullscreen"
-    end
+    windowMode="fullscreen"
+    fitToScreen()
 end)
-button(settings,"Reset window size",function() setWindowMode("medium") end)
+button(settings,"Reset window size",function() setWindowMode(isTouchDevice and "large" or "medium") end)
 
 button(settings,"Reset character",function()
     local _,hum=getCharacter()
@@ -2864,6 +2866,50 @@ button(settings,"Reset appearance",function() applyTheme("Purple") end)
 
 
 -- DRAG
+
+-- Resize grips: bottom-right corner, right edge and bottom edge. Touch and mouse supported.
+local resizing=false
+local resizeStart
+local resizeStartSize
+local resizeGrip
+local function makeResizeGrip(name,size,pos,cursor)
+    local grip=create("TextButton",{Name=name,Size=size,Position=pos,BackgroundColor3=PURPLE,BackgroundTransparency=0.12,Text="",AutoButtonColor=false,ZIndex=20,Active=true},Main)
+    round(grip,7)
+    grip.InputBegan:Connect(function(input)
+        if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+            resizing=true
+            resizeGrip=name
+            resizeStart=input.Position
+            resizeStartSize=Vector2.new(Main.AbsoluteSize.X,Main.AbsoluteSize.Y)
+        end
+    end)
+    return grip
+end
+local cornerGrip=makeResizeGrip("ResizeCorner",UDim2.fromOffset(26,26),UDim2.new(1,-26,1,-26))
+local rightGrip=makeResizeGrip("ResizeRight",UDim2.fromOffset(8,52),UDim2.new(1,-8,0.5,-26))
+local bottomGrip=makeResizeGrip("ResizeBottom",UDim2.new(0.45,0,0,8),UDim2.new(0.275,0,1,-8))
+local function applyResize(inputPosition)
+    if not resizing or not resizeStart then return end
+    local delta=inputPosition-resizeStart
+    local cam=Workspace.CurrentCamera
+    local viewport=cam and cam.ViewportSize or Vector2.new(1280,720)
+    local w,h=resizeStartSize.X,resizeStartSize.Y
+    if resizeGrip=="ResizeCorner" or resizeGrip=="ResizeRight" then w=w+delta.X end
+    if resizeGrip=="ResizeCorner" or resizeGrip=="ResizeBottom" then h=h+delta.Y end
+    local minW=isTouchDevice and 280 or 420
+    local minH=isTouchDevice and 340 or 300
+    w=math.clamp(w,minW,math.max(minW,viewport.X-16))
+    h=math.clamp(h,minH,math.max(minH,viewport.Y-16))
+    Main.Size=UDim2.fromOffset(w,h)
+    Main.Position=UDim2.new(0.5,-w/2,0.5,-h/2)
+    windowMode="custom"
+end
+UIS.InputChanged:Connect(function(input)
+    if resizing and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then applyResize(input.Position) end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then resizing=false; resizeGrip=nil end
+end)
 
 local dragging=false
 local dragStart
@@ -3149,41 +3195,60 @@ showPage("HOME")
 -- DELTA-FRIENDLY CONFIGURATION + RELOAD
 local HttpService=game:GetService("HttpService")
 local CONFIG_FILE="DiamondBoatHub_Config.json"
+local configStatus
+local function setConfigStatus(message)
+    if configStatus and configStatus.Parent then configStatus.Text=message end
+    print("[DIAMOND CONFIG]",message)
+end
+local function getSharedConfig()
+    local env=nil
+    if type(getgenv)=="function" then pcall(function() env=getgenv() end) end
+    if type(env)=="table" then return env end
+    return _G
+end
 local function saveHubConfig()
-    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",theme=currentTheme or "Purple"}
-    if type(writefile)~="function" then
-        warn("[DIAMOND CONFIG] writefile is unavailable in this executor.")
-        return false
+    local data={version=1,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple"}
+    local encoded=HttpService:JSONEncode(data)
+    local shared=getSharedConfig()
+    shared.__DIAMOND_BOAT_HUB_CONFIG=data
+    if type(writefile)=="function" then
+        local ok,err=pcall(function() writefile(CONFIG_FILE,encoded) end)
+        if ok then setConfigStatus("CONFIG: saved to "..CONFIG_FILE); return true end
+        warn("[DIAMOND CONFIG] File save failed:",tostring(err))
     end
-    local ok,err=pcall(function() writefile(CONFIG_FILE,HttpService:JSONEncode(data)) end)
-    if not ok then warn("[DIAMOND CONFIG] Save failed:",tostring(err)); return false end
-    print("[DIAMOND CONFIG] Saved:",CONFIG_FILE)
+    setConfigStatus("CONFIG: kept in executor session (file API unavailable)")
     return true
 end
 local function loadHubConfig()
-    if type(readfile)~="function" or type(isfile)~="function" then
-        warn("[DIAMOND CONFIG] readfile/isfile is unavailable in this executor.")
-        return false
+    local data
+    if type(isfile)=="function" and type(readfile)=="function" then
+        local ok,result=pcall(function()
+            if not isfile(CONFIG_FILE) then error("config file not found") end
+            return HttpService:JSONDecode(readfile(CONFIG_FILE))
+        end)
+        if ok and type(result)=="table" then data=result end
     end
-    local ok,data=pcall(function()
-        if not isfile(CONFIG_FILE) then error("No saved config found") end
-        return HttpService:JSONDecode(readfile(CONFIG_FILE))
-    end)
-    if not ok or type(data)~="table" then warn("[DIAMOND CONFIG] Load failed:",tostring(data)); return false end
+    if not data then
+        local shared=getSharedConfig()
+        if type(shared.__DIAMOND_BOAT_HUB_CONFIG)=="table" then data=shared.__DIAMOND_BOAT_HUB_CONFIG end
+    end
+    if type(data)~="table" then setConfigStatus("CONFIG: no saved config found"); return false end
     if type(data.language)=="string" and (data.language=="en" or translations[data.language]) then applyLanguage(data.language) end
     if type(data.windowMode)=="string" then
-        if data.windowMode=="fullscreen" then
-            windowMode="fullscreen"
-            fitToScreen()
-        elseif desktopSizes[data.windowMode] then
-            setWindowMode(data.windowMode)
+        if data.windowMode=="fullscreen" then windowMode="fullscreen"; fitToScreen()
+        elseif desktopSizes[data.windowMode] then setWindowMode(data.windowMode)
+        elseif data.windowMode=="custom" and tonumber(data.width) and tonumber(data.height) then
+            local cam=Workspace.CurrentCamera; local vp=cam and cam.ViewportSize or Vector2.new(1280,720)
+            local w=math.clamp(data.width,280,vp.X-16); local h=math.clamp(data.height,340,vp.Y-16)
+            Main.Size=UDim2.fromOffset(w,h); Main.Position=UDim2.new(0.5,-w/2,0.5,-h/2); windowMode="custom"
         end
     end
     if type(data.theme)=="string" and themes[data.theme] then applyTheme(data.theme) end
-    print("[DIAMOND CONFIG] Loaded:",CONFIG_FILE)
+    setConfigStatus("CONFIG: loaded successfully")
     return true
 end
 
+configStatus=label(settings,"CONFIG: ready")
 button(settings,"SAVE CONFIG",function() saveHubConfig() end)
 button(settings,"LOAD CONFIG",function() loadHubConfig() end)
 button(settings,"RELOAD SCRIPT",function()
