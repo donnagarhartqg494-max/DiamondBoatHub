@@ -38,10 +38,13 @@ GUI.ResetOnSpawn = false
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 GUI.Parent = Parent
 
-local PURPLE = Color3.fromRGB(150,105,255)
-local DARK = Color3.fromRGB(12,13,22)
-local PANEL = Color3.fromRGB(22,23,36)
-local WHITE = Color3.fromRGB(240,240,250)
+local PURPLE = Color3.fromRGB(150,150,150)
+local DARK = Color3.fromRGB(0,0,0)
+local PANEL = Color3.fromRGB(0,0,0)
+local WHITE = Color3.fromRGB(255,255,255)
+local BUTTON_WHITE = Color3.fromRGB(255,255,255)
+local BUTTON_HOVER = Color3.fromRGB(190,190,190)
+local TEXT_DARK = Color3.fromRGB(20,20,20)
 local GREEN = Color3.fromRGB(60,180,120)
 
 local function create(class, props, parent)
@@ -73,7 +76,7 @@ local Main = create("Frame",{
 round(Main,16)
 local mainStroke=outline(Main)
 mainStroke.Thickness=1.4
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(30,25,51),Color3.fromRGB(11,13,22)),Rotation=35},Main)
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(8,8,8)),Rotation=90},Main)
 local MainScale=create("UIScale",{Scale=1},Main)
 local function fitToScreen()
     local cam=Workspace.CurrentCamera
@@ -84,13 +87,17 @@ if Workspace.CurrentCamera then Workspace.CurrentCamera:GetPropertyChangedSignal
 
 local Top = create("Frame",{
     Size=UDim2.new(1,0,0,48),
-    BackgroundColor3=PANEL,
+    BackgroundColor3=Color3.fromRGB(0,0,0),
     BorderSizePixel=0
 },Main)
 round(Top,15)
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(91,57,166),Color3.fromRGB(31,32,53)),Rotation=0},Top)
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(12,12,12),Color3.fromRGB(0,0,0)),Rotation=0},Top)
 
-create("TextLabel",{
+local DragHandle=create("TextButton",{
+    Name="DragHandle",Size=UDim2.new(1,-100,1,0),Position=UDim2.fromOffset(0,0),
+    BackgroundTransparency=1,Text="",AutoButtonColor=false,Active=true,ZIndex=2
+},Top)
+local TitleLabel=create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
@@ -98,14 +105,15 @@ create("TextLabel",{
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
-    TextXAlignment=Enum.TextXAlignment.Left
+    TextXAlignment=Enum.TextXAlignment.Left,
+    Active=false,ZIndex=3
 },Top)
 
 local Min = create("TextButton",{
     Size=UDim2.fromOffset(30,28),
     AnchorPoint=Vector2.new(1,0),
     Position=UDim2.new(1,-46,0,10),
-    BackgroundColor3=PURPLE,
+    BackgroundColor3=BUTTON_WHITE,
     Text="—",
     TextColor3=WHITE,
     TextSize=18
@@ -113,33 +121,34 @@ local Min = create("TextButton",{
 round(Min,8)
 outline(Min)
 Min.Font=Enum.Font.GothamBold
-Min.BackgroundColor3=Color3.fromRGB(226,220,245)
-Min.TextColor3=Color3.fromRGB(48,39,70)
+Min.BackgroundColor3=BUTTON_WHITE
+Min.TextColor3=TEXT_DARK
 Min.AutoButtonColor=false
 
 local Close = create("TextButton",{
     Size=UDim2.fromOffset(30,28),
     AnchorPoint=Vector2.new(1,0),
     Position=UDim2.new(1,-10,0,10),
-    BackgroundColor3=Color3.fromRGB(170,55,75),
+    BackgroundColor3=BUTTON_WHITE,
     Text="X",
     TextColor3=WHITE,
     TextSize=15
 },Top)
 round(Close,8)
 outline(Close)
+Close.TextColor3=TEXT_DARK
 Close.Font=Enum.Font.GothamBold
 Close.AutoButtonColor=false
 
 local Sidebar = create("Frame",{
     Size=UDim2.new(1,-14,0,43),
     Position=UDim2.fromOffset(7,53),
-    BackgroundColor3=Color3.fromRGB(20,21,33),
+    BackgroundColor3=Color3.fromRGB(0,0,0),
     BorderSizePixel=0
 },Main)
 round(Sidebar,10)
 outline(Sidebar)
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(29,28,45),Color3.fromRGB(18,19,30)),Rotation=90},Sidebar)
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(5,5,5)),Rotation=90},Sidebar)
 
 local Content = create("Frame",{
     Size=UDim2.new(1,-14,1,-108),
@@ -149,7 +158,7 @@ local Content = create("Frame",{
 },Main)
 round(Content,12)
 outline(Content)
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(27,27,43),Color3.fromRGB(18,19,30)),Rotation=90},Content)
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(5,5,5)),Rotation=90},Content)
 
 local Pages = {}
 local CurrentPage
@@ -184,12 +193,12 @@ local function showPage(name)
     for n,p in pairs(Pages) do p.Visible=(n==name) end
     for n,b in pairs(TabButtons) do
         local active=(n==name)
-        b.BackgroundColor3=active and Color3.fromRGB(225,218,248) or Color3.fromRGB(32,33,47)
-        b.TextColor3=Color3.fromRGB(35,35,48)
+        b.BackgroundColor3=active and BUTTON_HOVER or BUTTON_WHITE
+        b.TextColor3=TEXT_DARK
         local mark=b:FindFirstChild("ActiveMark")
         if mark then mark.Visible=active end
         local stroke=b:FindFirstChildOfClass("UIStroke")
-        if stroke then stroke.Transparency=active and 0.12 or 0.65 end
+        if stroke then stroke.Transparency=active and 0.08 or 0.35 end
     end
     CurrentPage=name
 end
@@ -199,7 +208,7 @@ local function label(page,text)
         Size=UDim2.new(1,-8,0,30),
         BackgroundTransparency=1,
         Text=text,
-        TextColor3=Color3.fromRGB(55,48,75),
+        TextColor3=Color3.fromRGB(235,235,235),
         TextSize=14,
         Font=Enum.Font.GothamBold,
         TextXAlignment=Enum.TextXAlignment.Left
@@ -208,20 +217,20 @@ end
 
 local function button(page,text,callback)
     local b=create("TextButton",{
-        Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(218,218,229),
-        Text="  "..text,TextColor3=Color3.fromRGB(42,39,55),TextSize=12,Font=Enum.Font.GothamSemibold,
+        Size=UDim2.new(1,-8,0,40),BackgroundColor3=BUTTON_WHITE,
+        Text="  "..text,TextColor3=TEXT_DARK,TextSize=12,Font=Enum.Font.GothamSemibold,
         TextXAlignment=Enum.TextXAlignment.Left,AutoButtonColor=false
     },page)
     round(b,10)
     local stroke=outline(b)
     stroke.Transparency=0.58
-    create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(239,238,246),Color3.fromRGB(211,211,225)),Rotation=0},b)
+    create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(255,255,255),Color3.fromRGB(245,245,245)),Rotation=0},b)
     b.MouseEnter:Connect(function()
-        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=Color3.fromRGB(198,190,220)}):Play()
+        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=BUTTON_HOVER}):Play()
         TweenService:Create(stroke,TweenInfo.new(0.14),{Transparency=0.12}):Play()
     end)
     b.MouseLeave:Connect(function()
-        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=Color3.fromRGB(218,218,229)}):Play()
+        TweenService:Create(b,TweenInfo.new(0.14),{BackgroundColor3=BUTTON_WHITE}):Play()
         TweenService:Create(stroke,TweenInfo.new(0.14),{Transparency=0.58}):Play()
     end)
     b.Activated:Connect(callback)
@@ -234,7 +243,7 @@ local function toggle(page,text,default,callback)
     b=button(page,text..": "..(state and "ON" or "OFF"),function()
         state=not state
         b.Text=text..": "..(state and "ON" or "OFF")
-        b.BackgroundColor3=state and Color3.fromRGB(190,180,215) or Color3.fromRGB(218,218,229)
+        b.BackgroundColor3=state and BUTTON_HOVER or BUTTON_WHITE
         callback(state)
     end)
     return b
@@ -274,10 +283,10 @@ for _,name in ipairs({
     "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS"
 }) do
     local b=create("TextButton",{
-        Size=UDim2.new(0,62,1,-6),
-        BackgroundColor3=Color3.fromRGB(32,33,47),
+        Size=UDim2.new(0,58,1,-6),
+        BackgroundColor3=BUTTON_WHITE,
         Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET"})[name] or name,
-        TextColor3=Color3.fromRGB(35,35,48),
+        TextColor3=TEXT_DARK,
         TextSize=9,
         Font=Enum.Font.GothamBold,
         TextXAlignment=Enum.TextXAlignment.Center,
@@ -285,7 +294,8 @@ for _,name in ipairs({
     },Sidebar)
     round(b,8)
     local tabStroke=outline(b)
-    tabStroke.Transparency=0.65
+    tabStroke.Color=Color3.fromRGB(90,90,90)
+    tabStroke.Transparency=0.35
     create("UIPadding",{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10)},b)
     local mark=create("Frame",{Name="ActiveMark",Size=UDim2.new(1,-14,0,2),Position=UDim2.new(0,7,1,-3),BackgroundColor3=PURPLE,BorderSizePixel=0,Visible=false},b)
     round(mark,2)
@@ -294,7 +304,7 @@ for _,name in ipairs({
         if CurrentPage~=name then TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=Color3.fromRGB(215,213,226)}):Play() end
     end)
     b.MouseLeave:Connect(function()
-        if CurrentPage~=name then TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=Color3.fromRGB(32,33,47)}):Play() end
+        if CurrentPage~=name then TweenService:Create(b,TweenInfo.new(0.12),{BackgroundColor3=BUTTON_WHITE}):Play() end
     end)
     b.Activated:Connect(function() showPage(name) end)
 end
@@ -2735,11 +2745,12 @@ local function applyTheme(name)
     for _,obj in ipairs(GUI:GetDescendants()) do
         if obj:IsA("UIStroke") then
             obj.Color=PURPLE
-        elseif obj:IsA("TextButton") and obj~=Close and obj~=Min then
-            obj.BackgroundColor3=DARK
+        elseif obj:IsA("TextButton") then
+            obj.BackgroundColor3=BUTTON_WHITE
+            obj.TextColor3=TEXT_DARK
         end
     end
-    Min.BackgroundColor3=PURPLE
+    Min.BackgroundColor3=BUTTON_WHITE
     print("[DIAMOND] Theme:",name)
 end
 button(settings,"Theme: Purple",function() applyTheme("Purple") end)
@@ -2756,7 +2767,7 @@ local dragging=false
 local dragStart
 local startPosition
 
-Top.InputBegan:Connect(function(input)
+DragHandle.InputBegan:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1
     or input.UserInputType==Enum.UserInputType.Touch then
         dragging=true
@@ -2771,12 +2782,17 @@ UIS.InputChanged:Connect(function(input)
         or input.UserInputType==Enum.UserInputType.Touch
     ) then
         local delta=input.Position-dragStart
-        Main.Position=UDim2.new(
-            startPosition.X.Scale,
-            startPosition.X.Offset+delta.X,
-            startPosition.Y.Scale,
-            startPosition.Y.Offset+delta.Y
-        )
+        local cam=Workspace.CurrentCamera
+        local scale=MainScale.Scale
+        local x=startPosition.X.Offset+delta.X/scale
+        local y=startPosition.Y.Offset+delta.Y/scale
+        if cam then
+            local maxX=math.max(0,cam.ViewportSize.X/scale-Main.AbsoluteSize.X/scale)
+            local maxY=math.max(0,cam.ViewportSize.Y/scale-Main.AbsoluteSize.Y/scale)
+            x=math.clamp(x,-Main.AbsoluteSize.X/scale+80,maxX)
+            y=math.clamp(y,0,maxY)
+        end
+        Main.Position=UDim2.new(startPosition.X.Scale,x,startPosition.Y.Scale,y)
     end
 end)
 
