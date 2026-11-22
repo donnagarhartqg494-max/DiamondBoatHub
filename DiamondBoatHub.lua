@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V29
+-- DIAMOND BOAT HUB V1 [BETA] V30
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -3596,33 +3596,48 @@ function prefixColorToHex(color)
 end
 function relayRequest(method,path,body)
     local url=PREFIX_RELAY_URL..path
-    local headers={["Content-Type"]="application/json"}
+    local headers={["Content-Type"]="application/json",["Accept"]="application/json"}
     local payload=body and HttpService:JSONEncode(body) or nil
     local methods={}
-    if type(request)=="function" then
-        table.insert(methods,function() return request({Url=url,Method=method,Headers=headers,Body=payload}) end)
+    local function addRequest(fn)
+        if type(fn)=="function" then
+            table.insert(methods,function()
+                return fn({Url=url,URL=url,Method=method,Headers=headers,Body=payload})
+            end)
+        end
     end
-    if type(http_request)=="function" then
-        table.insert(methods,function() return http_request({Url=url,Method=method,Headers=headers,Body=payload}) end)
-    end
-    if syn and type(syn.request)=="function" then
-        table.insert(methods,function() return syn.request({Url=url,Method=method,Headers=headers,Body=payload}) end)
-    end
+    addRequest(request)
+    addRequest(http_request)
+    if type(http)=="table" then addRequest(http.request) end
+    if type(syn)=="table" then addRequest(syn.request) end
+    if type(fluxus)=="table" then addRequest(fluxus.request) end
+    if type(krnl)=="table" then addRequest(krnl.request) end
+    if type(httprequest)=="function" then addRequest(httprequest) end
     if method=="GET" then
         table.insert(methods,function() return {Body=game:HttpGet(url),StatusCode=200} end)
+    else
+        table.insert(methods,function()
+            return HttpService:RequestAsync({Url=url,Method=method,Headers=headers,Body=payload})
+        end)
     end
-    local lastError="No supported HTTP request function"
+    local lastError="No supported HTTP request function (executor must support POST requests)"
     for _,call in ipairs(methods) do
         local ok,result=pcall(call)
-        if ok and type(result)=="table" and type(result.Body)=="string" then
-            local code=tonumber(result.StatusCode or result.Status or 200) or 200
-            if code>=200 and code<300 then
-                local decodedOk,decoded=pcall(function() return HttpService:JSONDecode(result.Body) end)
-                if decodedOk then return decoded end
-                return nil,"Invalid JSON response"
+        if ok and type(result)=="table" then
+            local responseBody=result.Body or result.body
+            local code=tonumber(result.StatusCode or result.Status or result.status_code or 200) or 200
+            if type(responseBody)=="string" then
+                if code>=200 and code<300 then
+                    local decodedOk,decoded=pcall(function() return HttpService:JSONDecode(responseBody) end)
+                    if decodedOk then return decoded end
+                    lastError="Invalid JSON response"
+                else
+                    lastError="HTTP "..tostring(code)..": "..string.sub(responseBody,1,220)
+                end
+            elseif result.Success==true or result.success==true then
+                return result
             end
-            lastError="HTTP "..tostring(code)..": "..string.sub(result.Body,1,180)
-        elseif ok and type(result)=="string" and method=="GET" then
+        elseif ok and type(result)=="string" then
             local decodedOk,decoded=pcall(function() return HttpService:JSONDecode(result) end)
             if decodedOk then return decoded end
             lastError="Invalid JSON response"
@@ -4512,7 +4527,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=29"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=30"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
