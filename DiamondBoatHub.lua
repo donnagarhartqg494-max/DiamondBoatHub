@@ -192,6 +192,7 @@ CurrentPage = nil
 buttonStyle="Modern"
 animatedBackground=true
 playerPrefix="Player"
+prefixColor=Color3.fromRGB(185,205,255)
 backgroundGradient = nil
 credits = nil
 
@@ -3053,17 +3054,35 @@ function applyTheme(name)
     if not t then return end
     currentTheme=name
     PURPLE=t.main; PANEL=t.panel; DARK=t.dark
-    Main.BackgroundColor3=DARK; Top.BackgroundColor3=PANEL
-    Sidebar.BackgroundColor3=PANEL; Content.BackgroundColor3=PANEL
+    Main.BackgroundColor3=DARK
+    Top.BackgroundColor3=DARK
+    Sidebar.BackgroundColor3=PANEL
+    Content.BackgroundColor3=PANEL
     for _,obj in ipairs(GUI:GetDescendants()) do
         if obj:IsA("UIStroke") then
             obj.Color=PURPLE
-        elseif obj:IsA("TextButton") then
-            obj.BackgroundColor3=BUTTON_WHITE
-            obj.TextColor3=TEXT_DARK
+        elseif obj:IsA("ScrollingFrame") then
+            obj.ScrollBarImageColor3=PURPLE
+        elseif obj:IsA("TextButton") and obj:GetAttribute("HubStyledButton") then
+            local stroke=obj:FindFirstChildOfClass("UIStroke")
+            local accent=obj:FindFirstChildWhichIsA("Frame")
+            if stroke then stroke.Color=PURPLE end
+            if accent then accent.BackgroundColor3=PURPLE end
+        elseif obj.Name=="ActiveMark" then
+            obj.BackgroundColor3=PURPLE
         end
     end
-    Min.BackgroundColor3=BUTTON_WHITE
+    for _,b in pairs(TabButtons) do
+        local active=(CurrentPage and b==TabButtons[CurrentPage])
+        b.BackgroundColor3=active and t.main or Color3.fromRGB(35,35,44)
+        b.TextColor3=WHITE
+        local icon=b:FindFirstChild("TabIcon")
+        if icon then icon.ImageColor3=WHITE end
+    end
+    Min.BackgroundColor3=PURPLE
+    Min.TextColor3=WHITE
+    Close.BackgroundColor3=PURPLE
+    Close.TextColor3=WHITE
     print("[DIAMOND] Theme:",name)
 end
 button(settings,"Theme: Purple",function() applyTheme("Purple") end)
@@ -3106,6 +3125,23 @@ prefixBox.FocusLost:Connect(function()
     prefixBox.Text=playerPrefix
     refreshPlayerTags()
 end)
+label(settings,"PREFIX COLOR / ЦВЕТ ПРЕФИКСА")
+for _,choice in ipairs({
+    {"White",Color3.fromRGB(255,255,255)},{"Red",Color3.fromRGB(255,75,75)},
+    {"Orange",Color3.fromRGB(255,150,55)},{"Yellow",Color3.fromRGB(255,225,70)},
+    {"Green",Color3.fromRGB(70,230,120)},{"Cyan",Color3.fromRGB(55,220,255)},
+    {"Blue",Color3.fromRGB(80,130,255)},{"Purple",Color3.fromRGB(180,100,255)},
+    {"Pink",Color3.fromRGB(255,110,190)},{"Gold",Color3.fromRGB(255,195,65)}
+}) do
+    local colorButton=button(settings,"●  "..choice[1],function()
+        prefixColor=choice[2]
+        refreshPlayerTags()
+        print("[DIAMOND] Prefix color:",choice[1])
+    end)
+    colorButton.TextColor3=choice[2]
+end
+label(settings,"PREFIX VISIBILITY")
+label(settings,"Цвет и префикс видны на твоём экране. Для отображения всем игрокам нужна поддержка со стороны сервера игры.")
 
 
 -- Animated background layer (kept behind all content).
@@ -3146,7 +3182,7 @@ refreshPlayerTags=function()
             prefixLabel.Size=UDim2.new(1,0,0,role and 20 or 24)
             prefixLabel.Position=UDim2.fromOffset(0,0); prefixLabel.BackgroundTransparency=1
             prefixLabel.Text=(role and prefix~="" and prefix or (role and "" or "{"..prefix.."}"))
-            prefixLabel.TextColor3=Color3.fromRGB(185,205,255); prefixLabel.TextStrokeTransparency=0.35
+            prefixLabel.TextColor3=prefixColor or Color3.fromRGB(185,205,255); prefixLabel.TextStrokeTransparency=0.35
             prefixLabel.Font=Enum.Font.GothamBold; prefixLabel.TextSize=13; prefixLabel.Parent=tag
             if role then
                 local roleLabel=Instance.new("TextLabel")
@@ -3642,7 +3678,9 @@ function loadHubConfig()
     if data.buttonStyle=="Modern" or data.buttonStyle=="Liquid Glass" or data.buttonStyle=="Neon" then setButtonStyle(data.buttonStyle) end
     if type(data.animatedBackground)=="boolean" then animatedBackground=data.animatedBackground; if backgroundGradient then backgroundGradient.Enabled=animatedBackground end end
     if type(data.backgroundMode)=="string" then setBackgroundMode(data.backgroundMode) end
-    if type(data.prefix)=="string" then playerPrefix=string.sub(data.prefix,1,16); if prefixBox then prefixBox.Text=playerPrefix end; refreshPlayerTags() end
+    if type(data.prefix)=="string" then playerPrefix=string.sub(data.prefix,1,16); if prefixBox then prefixBox.Text=playerPrefix end end
+    if type(data.prefixColor)=="table" and #data.prefixColor==3 then prefixColor=Color3.new(math.clamp(data.prefixColor[1],0,1),math.clamp(data.prefixColor[2],0,1),math.clamp(data.prefixColor[3],0,1)) end
+    refreshPlayerTags()
     if tonumber(data.speed) then configuredSpeed=math.clamp(data.speed,16,250); updateSpeed() end
     if tonumber(data.jump) then configuredJump=math.clamp(data.jump,50,300); updateJump() end
     setConfigStatus("CONFIG: loaded successfully")
