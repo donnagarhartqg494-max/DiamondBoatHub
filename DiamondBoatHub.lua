@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V24
+-- DIAMOND BOAT HUB V1 [BETA] V25
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -3473,6 +3473,7 @@ prefixBox.FocusLost:Connect(function()
     playerPrefix=censorPrefixText(prefixBox.Text)
     prefixBox.Text=playerPrefix
     refreshPlayerTags()
+    if publishPrefix then task.spawn(publishPrefix) end
 end)
 label(settings,"PREFIX COLOR / ЦВЕТ ПРЕФИКСА")
 for _,choice in ipairs({
@@ -3485,6 +3486,7 @@ for _,choice in ipairs({
     local colorButton=button(settings,"●  "..choice[1],function()
         prefixColor=choice[2]
         refreshPlayerTags()
+        if publishPrefix then task.spawn(publishPrefix) end
         print("[DIAMOND] Prefix color:",choice[1])
     end)
     colorButton.TextColor3=choice[2]
@@ -3492,7 +3494,8 @@ end
 label(settings,"PREFIX CENSOR / ЦЕНЗУРА")
 label(settings,"Нецензурные слова в пользовательском префиксе частично заменяются звёздочками. Это локальная базовая проверка, не официальная фильтрация Roblox.")
 label(settings,"PREFIX VISIBILITY")
-label(settings,"Префиксы этого executor видны локально. Чтобы все пользователи скрипта видели друг друга, нужен серверный обмен данными и Roblox TextService; клиентский скрипт не может безопасно создать такую репликацию.")
+label(settings,"Префиксы DiamondBoatHub синхронизируются через Cloudflare. Это общие непроверенные display-данные.")
+prefixRelayStatus=label(settings,"PREFIX RELAY: CONNECTING...")
 
 
 -- Dedicated animated background layer. Keep every large panel translucent
@@ -3564,7 +3567,90 @@ task.spawn(function()
     end
 end)
 
--- Local-only overhead labels; executor clients cannot replicate tags to other clients.
+-- Cloudflare shared prefix relay. Records are display-only and unverified.
+PREFIX_RELAY_URL="https://bitter-scene-6cf4.donnagarhartqg494.workers.dev"
+sharedPrefixRecords={}
+prefixRelayOnline=false
+function prefixColorToHex(color)
+    color=color or Color3.fromRGB(185,205,255)
+    return string.format("#%02X%02X%02X",math.floor(color.R*255+0.5),math.floor(color.G*255+0.5),math.floor(color.B*255+0.5))
+end
+function relayRequest(method,path,body)
+    local url=PREFIX_RELAY_URL..path
+    local headers={["Content-Type"]="application/json"}
+    local payload=body and HttpService:JSONEncode(body) or nil
+    local methods={}
+    if type(request)=="function" then
+        table.insert(methods,function() return request({Url=url,Method=method,Headers=headers,Body=payload}) end)
+    end
+    if type(http_request)=="function" then
+        table.insert(methods,function() return http_request({Url=url,Method=method,Headers=headers,Body=payload}) end)
+    end
+    if syn and type(syn.request)=="function" then
+        table.insert(methods,function() return syn.request({Url=url,Method=method,Headers=headers,Body=payload}) end)
+    end
+    if method=="GET" then
+        table.insert(methods,function() return {Body=game:HttpGet(url),StatusCode=200} end)
+    end
+    local lastError="No supported HTTP request function"
+    for _,call in ipairs(methods) do
+        local ok,result=pcall(call)
+        if ok and type(result)=="table" and type(result.Body)=="string" then
+            local code=tonumber(result.StatusCode or result.Status or 200) or 200
+            if code>=200 and code<300 then
+                local decodedOk,decoded=pcall(function() return HttpService:JSONDecode(result.Body) end)
+                if decodedOk then return decoded end
+                return nil,"Invalid JSON response"
+            end
+            lastError="HTTP "..tostring(code)..": "..string.sub(result.Body,1,180)
+        elseif ok and type(result)=="string" and method=="GET" then
+            local decodedOk,decoded=pcall(function() return HttpService:JSONDecode(result) end)
+            if decodedOk then return decoded end
+            lastError="Invalid JSON response"
+        elseif not ok then
+            lastError=tostring(result)
+        end
+    end
+    return nil,lastError
+end
+function publishPrefix()
+    local data={
+        userId=tostring(Player.UserId),
+        gameId=tostring(game.PlaceId),
+        username=Player.Name,
+        prefix=playerPrefix or "Player",
+        color=prefixColorToHex(prefixColor)
+    }
+    local result,err=relayRequest("POST","/prefix",data)
+    prefixRelayOnline=result and result.ok==true
+    if prefixRelayStatus and prefixRelayStatus.Parent then
+        prefixRelayStatus.Text=prefixRelayOnline and "PREFIX RELAY: CONNECTED" or ("PREFIX RELAY: SEND FAILED")
+    end
+    if not result then warn("[DIAMOND PREFIX RELAY] Publish failed:",tostring(err)) end
+    return prefixRelayOnline
+end
+function fetchSharedPrefixes()
+    local result,err=relayRequest("GET","/players?gameId="..tostring(game.PlaceId))
+    if not result or result.ok~=true or type(result.players)~="table" then
+        if prefixRelayStatus and prefixRelayStatus.Parent then prefixRelayStatus.Text="PREFIX RELAY: CONNECTION ERROR" end
+        if err then warn("[DIAMOND PREFIX RELAY] Fetch failed:",tostring(err)) end
+        return false
+    end
+    local nextRecords={}
+    for _,record in ipairs(result.players) do
+        if type(record)=="table" and tostring(record.userId or ""):match("^%d+$")
+            and type(record.prefix)=="string" and type(record.color)=="string"
+            and record.color:match("^#%x%x%x%x%x%x$") then
+            nextRecords[tostring(record.userId)]=record
+        end
+    end
+    sharedPrefixRecords=nextRecords
+    if prefixRelayStatus and prefixRelayStatus.Parent then prefixRelayStatus.Text="PREFIX RELAY: CONNECTED | "..tostring(#result.players).." USERS" end
+    refreshPlayerTags()
+    return true
+end
+
+-- Local overhead labels use local player data plus shared Cloudflare display records.
 playerTagConnections={}
 refreshPlayerTags=function()
     for _,plr in ipairs(Players:GetPlayers()) do
@@ -3576,7 +3662,18 @@ refreshPlayerTags=function()
             local role,roleColor
             if plr.UserId==7162643277 then role,roleColor="OWNER",Color3.fromRGB(255,65,65)
             elseif plr.UserId==4918761384 then role,roleColor="SCRIPT DEV",Color3.fromRGB(255,205,45) end
-            local prefix=(plr.UserId==Player.UserId and playerPrefix or "Player")
+            local sharedRecord=sharedPrefixRecords[tostring(plr.UserId)]
+            local prefix=(plr.UserId==Player.UserId and playerPrefix or (sharedRecord and sharedRecord.prefix or "Player"))
+            local displayColor=prefixColor or Color3.fromRGB(185,205,255)
+            if plr.UserId~=Player.UserId and sharedRecord and type(sharedRecord.color)=="string" then
+                local hex=sharedRecord.color:gsub("#","")
+                if #hex==6 then
+                    local rr=tonumber(string.sub(hex,1,2),16)
+                    local gg=tonumber(string.sub(hex,3,4),16)
+                    local bb=tonumber(string.sub(hex,5,6),16)
+                    if rr and gg and bb then displayColor=Color3.fromRGB(rr,gg,bb) end
+                end
+            end
             local tag=Instance.new("BillboardGui")
             tag.Name="DiamondPlayerTag"; tag.Size=UDim2.fromOffset(170,role and 42 or 24)
             tag.StudsOffset=Vector3.new(0,role and 3.1 or 2.8,0)
@@ -3585,7 +3682,7 @@ refreshPlayerTags=function()
             prefixLabel.Size=UDim2.new(1,0,0,role and 20 or 24)
             prefixLabel.Position=UDim2.fromOffset(0,0); prefixLabel.BackgroundTransparency=1
             prefixLabel.Text=(role and prefix~="" and prefix or (role and "" or "{"..prefix.."}"))
-            prefixLabel.TextColor3=prefixColor or Color3.fromRGB(185,205,255); prefixLabel.TextStrokeTransparency=0.35
+            prefixLabel.TextColor3=displayColor; prefixLabel.TextStrokeTransparency=0.35
             prefixLabel.Font=Enum.Font.GothamBold; prefixLabel.TextSize=13; prefixLabel.Parent=tag
             if plr.UserId==7162643277 or plr.UserId==4918761384 then
                 prefixLabel.TextColor3=Color3.new(1,1,1)
@@ -3633,6 +3730,19 @@ Players.PlayerAdded:Connect(addDiamondPlayerTag)
 Players.PlayerRemoving:Connect(function(plr)
     if playerTagConnections[plr] then playerTagConnections[plr]:Disconnect(); playerTagConnections[plr]=nil end
 end)
+
+-- Publish own prefix and refresh other DiamondBoatHub users periodically.
+task.spawn(function()
+    task.wait(2)
+    publishPrefix()
+    fetchSharedPrefixes()
+    while GUI and GUI.Parent do
+        task.wait(15)
+        publishPrefix() -- refresh the 24-hour KV expiry
+        fetchSharedPrefixes()
+    end
+end)
+
 
 -- CHAT tab removed: no in-game chat bypass or duplicate chat UI.
 
