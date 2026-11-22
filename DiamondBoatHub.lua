@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V28
+-- DIAMOND BOAT HUB V1 [BETA] V29
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -50,12 +50,22 @@ GREEN = Color3.fromRGB(60,180,120)
 function create(class, props, parent)
     local obj = Instance.new(class)
     for k,v in pairs(props or {}) do
-        -- Defensive fix: Position must always be UDim2, even if a UI helper passes UDim.
-        if k == "Position" and typeof(v) == "UDim" then
-            warn("[DiamondBoatHub] Converted invalid UDim Position for " .. tostring(class))
-            v = UDim2.new(v.Scale, v.Offset, 0, 0)
+        if k == "Position" then
+            -- Position is always a UDim2 property. Normalize unexpected values safely.
+            if typeof(v) == "UDim" then
+                v = UDim2.new(v.Scale, v.Offset, 0, 0)
+            elseif typeof(v) ~= "UDim2" then
+                warn("[DiamondBoatHub] Invalid Position value for " .. tostring(class) .. ": " .. typeof(v) .. "; using zero offset")
+                v = UDim2.fromOffset(0, 0)
+            end
         end
-        obj[k] = v
+        local ok, err = pcall(function() obj[k] = v end)
+        if not ok and k == "Position" then
+            warn("[DiamondBoatHub] Position assignment recovered for " .. tostring(class) .. ": " .. tostring(err))
+            obj.Position = UDim2.fromOffset(0, 0)
+        elseif not ok then
+            error(err)
+        end
     end
     obj.Parent = parent
     return obj
@@ -4502,7 +4512,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=28"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=29"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
