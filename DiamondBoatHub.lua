@@ -78,9 +78,24 @@ local mainStroke=outline(Main)
 mainStroke.Thickness=1.4
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(8,8,8)),Rotation=90},Main)
 local MainScale=create("UIScale",{Scale=1},Main)
+local isTouchDevice=UIS.TouchEnabled
+local windowMode="medium"
+local desktopSizes={small=Vector2.new(560,390),medium=Vector2.new(680,470),large=Vector2.new(800,560)}
 local function fitToScreen()
     local cam=Workspace.CurrentCamera
-    if cam then MainScale.Scale=math.clamp(math.min(cam.ViewportSize.X/760,cam.ViewportSize.Y/540),0.68,1) end
+    if not cam then return end
+    local viewport=cam.ViewportSize
+    if isTouchDevice or viewport.X<620 then
+        Main.Size=UDim2.new(1,0,1,0)
+        Main.Position=UDim2.fromOffset(0,0)
+        MainScale.Scale=1
+        Main.ClipsDescendants=true
+    else
+        local size=desktopSizes[windowMode] or desktopSizes.medium
+        Main.Size=UDim2.fromOffset(size.X,size.Y)
+        Main.Position=UDim2.new(0.5,-size.X/2,0.5,-size.Y/2)
+        MainScale.Scale=math.clamp(math.min(viewport.X/(size.X+80),viewport.Y/(size.Y+70)),0.68,1)
+    end
 end
 fitToScreen()
 if Workspace.CurrentCamera then Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitToScreen) end
@@ -140,11 +155,15 @@ Close.TextColor3=TEXT_DARK
 Close.Font=Enum.Font.GothamBold
 Close.AutoButtonColor=false
 
-local Sidebar = create("Frame",{
+local Sidebar = create("ScrollingFrame",{
     Size=UDim2.new(1,-14,0,43),
     Position=UDim2.fromOffset(7,53),
     BackgroundColor3=Color3.fromRGB(0,0,0),
-    BorderSizePixel=0
+    BorderSizePixel=0,
+    ScrollingDirection=Enum.ScrollingDirection.X,
+    ScrollBarThickness=2,
+    CanvasSize=UDim2.new(0,0,0,0),
+    ClipsDescendants=true
 },Main)
 round(Sidebar,10)
 outline(Sidebar)
@@ -277,6 +296,9 @@ local tabLayout=create("UIListLayout",{
     VerticalAlignment=Enum.VerticalAlignment.Center
 },Sidebar)
 create("UIPadding",{PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),PaddingTop=UDim.new(0,3),PaddingBottom=UDim.new(0,3)},Sidebar)
+tabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    Sidebar.CanvasSize=UDim2.new(0,tabLayout.AbsoluteContentSize.X+16,0,0)
+end)
 
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
@@ -2771,6 +2793,25 @@ end)
 -- SETTINGS
 
 label(settings,"Hub settings")
+label(settings,"Window size")
+
+local function setWindowMode(mode)
+    windowMode=mode
+    fitToScreen()
+    print("[DIAMOND] Window size:",mode)
+end
+button(settings,"Window: Small",function() setWindowMode("small") end)
+button(settings,"Window: Medium",function() setWindowMode("medium") end)
+button(settings,"Window: Large",function() setWindowMode("large") end)
+button(settings,"Window: Full screen",function()
+    if Workspace.CurrentCamera then
+        Main.Size=UDim2.new(1,0,1,0)
+        Main.Position=UDim2.fromOffset(0,0)
+        MainScale.Scale=1
+        windowMode="fullscreen"
+    end
+end)
+button(settings,"Reset window size",function() setWindowMode("medium") end)
 
 button(settings,"Reset character",function()
     local _,hum=getCharacter()
@@ -2974,6 +3015,20 @@ outline(Intro)
 Intro.ClipsDescendants=true
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(18,18,18),Color3.fromRGB(0,0,0)),Rotation=90},Intro)
 local IntroScale=create("UIScale",{Scale=0.92},Intro)
+local function fitIntro()
+    local cam=Workspace.CurrentCamera
+    if cam and (isTouchDevice or cam.ViewportSize.X<620) then
+        Intro.Size=UDim2.new(1,0,1,0)
+        Intro.Position=UDim2.fromOffset(0,0)
+        IntroScale.Scale=1
+    else
+        Intro.Size=UDim2.fromOffset(390,440)
+        Intro.Position=UDim2.new(0.5,-195,0.5,-220)
+        IntroScale.Scale=math.clamp(math.min(cam.ViewportSize.X/430,cam.ViewportSize.Y/480),0.75,1)
+    end
+end
+fitIntro()
+if Workspace.CurrentCamera then Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitIntro) end
 
 create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
@@ -3090,4 +3145,4 @@ Main.Visible=false
 TweenService:Create(IntroScale,TweenInfo.new(0.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Scale=1}):Play()
 
 showPage("HOME")
-print("DIAMOND BOAT HUB V30 LOADED")
+print("DIAMOND BOAT HUB V31 LOADED")
