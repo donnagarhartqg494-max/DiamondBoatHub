@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V34
+-- DIAMOND BOAT HUB V1 [BETA] V35
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -3946,9 +3946,16 @@ end
 chatSendButton.Activated:Connect(sendGlobalChat)
 chatInput.FocusLost:Connect(function(enterPressed) if enterPressed then sendGlobalChat() end end)
 
--- Local overhead chat bubbles. Listen to both modern TextChatService and legacy Player.Chatted.
+-- Overhead chat: prefer Roblox's native bubble, with a BillboardGui fallback.
 local overheadLastMessage={}
-local function showOverheadChat(userId, messageText)
+local overheadTextChat=nil
+pcall(function()
+    overheadTextChat=game:GetService("TextChatService")
+    local bubbleConfig=overheadTextChat:FindFirstChildOfClass("BubbleChatConfiguration")
+    if bubbleConfig then bubbleConfig.Enabled=true end
+end)
+
+local function showOverheadChat(userId,messageText)
     local plr=Players:GetPlayerByUserId(tonumber(userId) or -1)
     if not plr or type(messageText)~="string" or messageText=="" then return end
     messageText=string.sub(messageText,1,180)
@@ -3956,32 +3963,45 @@ local function showOverheadChat(userId, messageText)
     local previous=overheadLastMessage[plr.UserId]
     if previous and previous.text==messageText and now-previous.time<0.8 then return end
     overheadLastMessage[plr.UserId]={text=messageText,time=now}
+
     local character=plr.Character
     local head=character and character:FindFirstChild("Head")
-    for _=1,10 do
-        if head and head.Parent then break end
+    for _=1,15 do
+        if character and character.Parent and head and head.Parent then break end
         task.wait(0.1)
         character=plr.Character
         head=character and character:FindFirstChild("Head")
     end
-    if not head or not head.Parent then return end
-    local playerGui=Player:FindFirstChildOfClass("PlayerGui")
-    if not playerGui then return end
-    local old=playerGui:FindFirstChild("DiamondChatBubble_"..tostring(plr.UserId))
+    if not character or not head then return end
+
+    -- DisplayBubble creates the standard Roblox chat cloud above the character.
+    local nativeShown=false
+    if overheadTextChat then
+        local ok=pcall(function()
+            overheadTextChat:DisplayBubble(character,messageText)
+        end)
+        nativeShown=ok
+    end
+    if nativeShown then return end
+
+    -- Fallback for clients/executors where DisplayBubble is unavailable.
+    local old=head:FindFirstChild("DiamondChatBubble")
     if old then old:Destroy() end
     local bubble=Instance.new("BillboardGui")
-    bubble.Name="DiamondChatBubble_"..tostring(plr.UserId)
+    bubble.Name="DiamondChatBubble"
     bubble.Size=UDim2.fromOffset(240,64)
-    bubble.StudsOffset=Vector3.new(0,4.5,0)
+    bubble.StudsOffset=Vector3.new(0,3.8,0)
     bubble.AlwaysOnTop=true
-    bubble.MaxDistance=150
+    bubble.Enabled=true
+    bubble.MaxDistance=250
     bubble.LightInfluence=0
     bubble.Adornee=head
-    bubble.Parent=playerGui
+    bubble.Parent=head
+
     local label=Instance.new("TextLabel")
-    label.Size=UDim2.new(1,0,1,0)
+    label.Size=UDim2.fromScale(1,1)
     label.BackgroundColor3=Color3.fromRGB(18,18,24)
-    label.BackgroundTransparency=0.12
+    label.BackgroundTransparency=0.08
     label.BorderSizePixel=0
     label.Text=messageText
     label.TextColor3=Color3.fromRGB(255,255,255)
@@ -3989,7 +4009,6 @@ local function showOverheadChat(userId, messageText)
     label.TextSize=14
     label.Font=Enum.Font.Gotham
     label.TextWrapped=true
-    label.TextTruncate=Enum.TextTruncate.AtEnd
     label.Parent=bubble
     local corner=Instance.new("UICorner")
     corner.CornerRadius=UDim.new(0,9)
@@ -4006,10 +4025,10 @@ local function connectOverheadPlayer(plr)
     end)
 end
 pcall(function()
-    local textChat=game:GetService("TextChatService")
-    textChat.MessageReceived:Connect(function(message)
+    overheadTextChat=overheadTextChat or game:GetService("TextChatService")
+    overheadTextChat.MessageReceived:Connect(function(message)
         local source=message and message.TextSource
-        if source and source.UserId then
+        if source and source.UserId and message.Status==Enum.TextChatMessageStatus.Success then
             showOverheadChat(source.UserId,message.Text)
         end
     end)
@@ -4021,7 +4040,7 @@ pcall(function()
     overheadChatConnected=true
 end)
 if chatStatus and chatStatus.Parent then
-    chatStatus.Text=overheadChatConnected and "GLOBAL CHAT: CONNECTING... | OVERHEAD CHAT READY" or "GLOBAL CHAT: CONNECTING... | OVERHEAD CHAT UNAVAILABLE"
+    chatStatus.Text=overheadChatConnected and "GLOBAL CHAT: CONNECTING... | OVERHEAD CHAT READY" or "GLOBAL CHAT: OVERHEAD CHAT UNAVAILABLE"
 end
 
 task.spawn(function()
@@ -4639,7 +4658,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=34"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=35"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
