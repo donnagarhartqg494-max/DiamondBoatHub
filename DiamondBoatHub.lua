@@ -3449,7 +3449,13 @@ function deviceButton(caption,y,mode)
             end
         end
         b.BackgroundColor3=PURPLE
-        print("[DIAMOND] Device layout selected:",mode)
+        if deviceTitle then deviceTitle.Visible=false end
+        if pcDeviceButton then pcDeviceButton.Visible=false end
+        if phoneDeviceButton then phoneDeviceButton.Visible=false end
+        if languageTitle then languageTitle.Visible=true end
+        if languageList then languageList.Visible=true end
+        if continueButton then continueButton.Visible=true end
+        print("[DIAMOND] Device layout selected:",mode,"Choose a language from the scrolling list.")
     end)
     b.Name=(mode=="phone" and "DevicePhone" or "DevicePC")
     return b
@@ -3535,17 +3541,29 @@ pcDeviceButton=deviceButton("PC / КОМПЬЮТЕР",136,"pc")
 phoneDeviceButton=deviceButton("PHONE / ТЕЛЕФОН",174,"phone")
 pcDeviceButton.Size=UDim2.new(0.5,-26,0,48); pcDeviceButton.Position=UDim2.new(0,16,0,145)
 phoneDeviceButton.Size=UDim2.new(0.5,-26,0,48); phoneDeviceButton.Position=UDim2.new(0.5,10,0,145)
-languageTitle=create("TextLabel",{Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,218),BackgroundTransparency=1,Text="LANGUAGE / ЯЗЫК",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
-selectedLanguage="en"
-languageSelect=languageButton("Language: English  ▼",253,function()
-    local currentIndex=1
-    for i,item in ipairs(languageNames) do if item[2]==selectedLanguage then currentIndex=i; break end end
-    currentIndex=currentIndex%#languageNames+1
-    selectedLanguage=languageNames[currentIndex][2]
-    languageSelect.Text="Language: "..languageNames[currentIndex][1].."  ▼"
-end)
-languageSelect.Size=UDim2.new(1,-44,0,42)
-continueButton=languageButton("CONTINUE",307,function() applyLanguage(selectedLanguage) end)
+languageTitle=create("TextLabel",{Visible=false,Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,218),BackgroundTransparency=1,Text="LANGUAGE / ЯЗЫК — ВЫБЕРИ ЯЗЫК",TextColor3=Color3.fromRGB(190,190,205),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=51},Intro)
+selectedLanguage="ru"
+languageList=create("ScrollingFrame",{Visible=false,Size=UDim2.new(1,-44,0,205),Position=UDim2.fromOffset(22,246),BackgroundColor3=Color3.fromRGB(18,18,24),BorderSizePixel=0,ScrollBarThickness=5,ScrollBarImageColor3=PURPLE,CanvasSize=UDim2.new(0,0,0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollingDirection=Enum.ScrollingDirection.Y,ZIndex=52},Intro)
+round(languageList,10); outline(languageList)
+languageLayout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},languageList)
+create("UIPadding",{PaddingTop=UDim.new(0,7),PaddingBottom=UDim.new(0,7),PaddingLeft=UDim.new(0,7),PaddingRight=UDim.new(0,7)},languageList)
+for index,item in ipairs(languageNames) do
+    local langButton=create("TextButton",{Name="Language_"..item[2],Size=UDim2.new(1,-4,0,34),BackgroundColor3=(item[2]==selectedLanguage and PURPLE or Color3.fromRGB(38,38,48)),Text=item[1]..(item[2]==selectedLanguage and "  ✓" or ""),TextColor3=WHITE,TextSize=14,Font=Enum.Font.GothamSemibold,AutoButtonColor=false,LayoutOrder=index,ZIndex=53},languageList)
+    round(langButton,8)
+    langButton.Activated:Connect(function()
+        selectedLanguage=item[2]
+        for _,entry in ipairs(languageList:GetChildren()) do
+            if entry:IsA("TextButton") then
+                local active=entry.Name=="Language_"..selectedLanguage
+                entry.BackgroundColor3=active and PURPLE or Color3.fromRGB(38,38,48)
+                entry.Text=entry.Text:gsub("  ✓$","")..(active and "  ✓" or "")
+            end
+        end
+    end)
+end
+continueButton=languageButton("CONTINUE / ПРОДОЛЖИТЬ",462,function() applyLanguage(selectedLanguage) end)
+continueButton.Visible=false
+continueButton.Position=UDim2.fromOffset(22,462)
 continueButton.Size=UDim2.new(1,-44,0,42)
 continueButton.BackgroundColor3=PURPLE; continueButton.TextColor3=WHITE
 
