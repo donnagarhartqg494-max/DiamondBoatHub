@@ -3251,6 +3251,15 @@ end
 configStatus=label(settings,"CONFIG: ready")
 button(settings,"SAVE CONFIG",function() saveHubConfig() end)
 button(settings,"LOAD CONFIG",function() loadHubConfig() end)
+button(settings,"DESTROY HUB",function()
+    -- Stop active loops and release any movement/input state before removing the UI.
+    farmEnabled=false
+    farmRunId+=1
+    pcall(function() farmRelease() end)
+    pcall(function() clearPreview() end)
+    pcall(function() GUI:Destroy() end)
+    print("[DIAMOND BOAT HUB] Destroyed. Run the loader again to reopen.")
+end)
 button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
