@@ -52,9 +52,15 @@ export default {
         return reply({ error: "Invalid userId, gameId, username, message, or color" }, 400);
       }
       const rateKey = "chat-rate:" + gameId + ":" + userId;
-      if (await env.PREFIXES.get(rateKey)) return reply({ error: "Please wait before sending another message" }, 429);
-      await env.PREFIXES.put(rateKey, "1", { expirationTtl: 2 });
-      const createdAt = Date.now();
+      const now = Date.now();
+      const previousSend = Number(await env.PREFIXES.get(rateKey) || 0);
+      if (previousSend > 0 && now - previousSend < 2000) {
+        return reply({ error: "Please wait before sending another message" }, 429);
+      }
+      // Cloudflare KV requires expirationTtl >= 60 seconds.
+      // Enforce the 2-second interval using the stored timestamp instead.
+      await env.PREFIXES.put(rateKey, String(now), { expirationTtl: 60 });
+      const createdAt = now;
       const messageId = (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") ? globalThis.crypto.randomUUID() : (String(createdAt) + "-" + Math.random().toString(36).slice(2));
       const record = { id: messageId, userId, username, prefix, color: color.toUpperCase(), message, createdAt };
       await env.PREFIXES.put("chat:" + gameId + ":" + String(createdAt).padStart(13, "0") + ":" + record.id, JSON.stringify(record), { expirationTtl: 86400 });
