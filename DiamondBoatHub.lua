@@ -1935,9 +1935,100 @@ local function loadAndBuildSong(title, sequenceId)
     end)
 end
 label(music,"READY SONGS — CLICK TO BUILD ON YOUR BASE")
-button(music,"BUILD HOLY WAR — URAL GAYSIN",function()
-    loadAndBuildSong("Holy War — Ural Gaysin", 5435907)
-end)
+-- Quaver chart loader. This is a 4-lane rhythm chart, not a piano transcription:
+-- each lane is mapped to one BABFT pitch. It reproduces the chart rhythm, not the
+-- original song's full melodic pitches.
+local function loadQuaverHolyWar()
+    local url="https://api.quavergame.com/d/web/map/190014"
+    local body
+    local methods={
+        function() return game:HttpGet(url) end,
+        function()
+            if type(request)=="function" then
+                local r=request({Url=url,Method="GET"})
+                if r and r.Body and (not r.StatusCode or r.StatusCode==200) then return r.Body end
+                error("HTTP "..tostring(r and r.StatusCode))
+            end
+        end,
+        function()
+            if type(http_request)=="function" then
+                local r=http_request({Url=url,Method="GET"})
+                if r and r.Body and (not r.StatusCode or r.StatusCode==200) then return r.Body end
+                error("HTTP "..tostring(r and r.StatusCode))
+            end
+        end,
+        function()
+            if syn and type(syn.request)=="function" then
+                local r=syn.request({Url=url,Method="GET"})
+                if r and r.Body and (not r.StatusCode or r.StatusCode==200) then return r.Body end
+                error("HTTP "..tostring(r and r.StatusCode))
+            end
+        end
+    }
+    local lastError="No supported HTTP method"
+    for _,fn in ipairs(methods) do
+        local ok,result=pcall(fn)
+        if ok and type(result)=="string" and #result>100 then body=result; break end
+        if not ok then lastError=tostring(result) end
+    end
+    if not body then error("Quaver map download failed: "..lastError) end
+    if body:sub(1,2)=="PK" or body:byte(1)==31 then
+        error("Quaver returned a compressed package; this executor cannot parse it as plain .qua text")
+    end
+    local hitSection=body:match("HitObjects:%s*\r?\n([%s%S]+)")
+    if not hitSection then error("Downloaded Quaver file has no HitObjects section") end
+    local notes={}
+    local current=nil
+    local function finish()
+        if current and current.time and current.lane then
+            local pitches={54,57,60,62}
+            local pitch=pitches[current.lane]
+            if pitch then
+                notes[#notes+1]={
+                    time=current.time/1000,
+                    duration=math.max(0.05,((current.finish or 0)-current.time)/1000),
+                    pitch=pitch,velocity=100,channel=0
+                }
+            end
+        end
+        current=nil
+    end
+    for line in hitSection:gmatch("[^\r\n]+") do
+        local start=line:match("^%s*%-%s*StartTime:%s*(%-?%d+)")
+        if start then
+            finish()
+            current={time=tonumber(start)}
+        elseif current then
+            local lane=line:match("^%s*Lane:%s*(%d+)")
+            local ending=line:match("^%s*EndTime:%s*(%-?%d+)")
+            if lane then current.lane=tonumber(lane) end
+            if ending then current.finish=tonumber(ending) end
+        end
+    end
+    finish()
+    if #notes==0 then error("Quaver file downloaded, but no supported 4-lane hit objects were parsed") end
+    table.sort(notes,function(a,b) return a.time<b.time end)
+    return {notes=notes,bpm=150,tracks=1,source="Quaver map 190014 (4-lane rhythm approximation)"}
+end
+
+local function loadAndBuildQuaverHolyWar()
+    if midiBuildRunning then warn("[DIAMOND MUSIC] Builder is already running"); return end
+    midiBuildStatus.Text="Downloading Holy War chart from Quaver..."
+    task.spawn(function()
+        local ok,parsed=pcall(loadQuaverHolyWar)
+        if not ok then
+            midiBuildStatus.Text="Holy War chart load failed — see F9"
+            warn("[DIAMOND MUSIC] Quaver Holy War load failed:",parsed)
+            return
+        end
+        parsedMidi=parsed
+        midiStatus.Text=string.format("Holy War rhythm chart: %d hits | 94 sec | 150 BPM",#parsed.notes)
+        print("[DIAMOND MUSIC] Loaded Quaver map 190014:",#parsed.notes,"rhythm hits. Lanes are mapped to four pitches; this is NOT a full piano transcription.")
+        startMidiBuild()
+    end)
+end
+
+button(music,"BUILD HOLY WAR — QUAVER RHYTHM",loadAndBuildQuaverHolyWar)
 button(music,"BUILD RUSH E",function()
     loadAndBuildSong("Rush E", 5775937)
 end)
