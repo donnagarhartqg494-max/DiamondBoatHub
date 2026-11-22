@@ -3676,7 +3676,7 @@ refreshPlayerTags=function()
             end
             local tag=Instance.new("BillboardGui")
             tag.Name="DiamondPlayerTag"; tag.Size=UDim2.fromOffset(170,role and 42 or 24)
-            tag.StudsOffset=Vector3.new(0,role and 3.1 or 2.8,0)
+            tag.StudsOffset=Vector3.new(0,role and 4.5 or 4.2,0)
             tag.AlwaysOnTop=true; tag.MaxDistance=120; tag.Adornee=head; tag.Parent=head
             local prefixLabel=Instance.new("TextLabel")
             prefixLabel.Size=UDim2.new(1,0,0,role and 20 or 24)
@@ -4245,7 +4245,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=20"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=21"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
