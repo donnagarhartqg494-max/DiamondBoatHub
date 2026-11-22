@@ -233,6 +233,7 @@ local teleport=makePage("TELEPORTS")
 local build=makePage("AUTO BUILD")
 local music=makePage("MUSIC")
 local farm=makePage("AUTO FARM")
+local shop=makePage("SHOP")
 local tools=makePage("TOOLS")
 local settings=makePage("SETTINGS")
 
@@ -243,7 +244,7 @@ local tabLayout=create("UIListLayout",{
 
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","TOOLS","SETTINGS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS"
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(1,-12,0,38),
@@ -2150,6 +2151,43 @@ button(music,"PRINT TARGET SLOT + DUPLICATION STEPS",function()
     print("2) Confirm it is the slot you intend to overwrite; make a backup elsewhere.")
     print("3) Follow the documented glitch only if it still works on this server; the hub does not automate save/load.")
 end)
+
+-- SHOP AUTO BUY V1
+label(shop,"AUTO BUY — BUILD A BOAT FOR TREASURE")
+label(shop,"Enter the exact item name shown in the in-game shop. Bulk purchase supports up to 1000 per request.")
+local shopItemInput=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=DARK,Text="Note",PlaceholderText="Exact shop item name (e.g. Note)",TextColor3=WHITE,TextSize=14,Font=Enum.Font.Gotham,ClearTextOnFocus=false},shop)
+round(shopItemInput,8)
+outline(shopItemInput)
+label(shop,"QUANTITY (1–1000)")
+local shopQuantityInput=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=DARK,Text="100",PlaceholderText="Quantity",TextColor3=WHITE,TextSize=14,Font=Enum.Font.Gotham,ClearTextOnFocus=false},shop)
+round(shopQuantityInput,8)
+outline(shopQuantityInput)
+local shopBuyStatus=label(shop,"SHOP: ready")
+local shopBuying=false
+button(shop,"BUY SELECTED ITEM × QUANTITY",function()
+    if shopBuying then shopBuyStatus.Text="SHOP: purchase already in progress"; return end
+    local itemName=shopItemInput.Text:gsub("^%s+",""):gsub("%s+$","")
+    local quantity=tonumber(shopQuantityInput.Text)
+    if itemName=="" then shopBuyStatus.Text="SHOP: enter an item name"; return end
+    if not quantity or quantity%1~=0 or quantity<1 or quantity>1000 then shopBuyStatus.Text="SHOP: quantity must be a whole number from 1 to 1000"; return end
+    local remote=Workspace:FindFirstChild("ItemBoughtFromShop")
+    if not remote then shopBuyStatus.Text="SHOP: purchase remote not found"; warn("[DIAMOND SHOP] ItemBoughtFromShop not found"); return end
+    if not remote:IsA("RemoteFunction") then shopBuyStatus.Text="SHOP: unexpected remote type"; warn("[DIAMOND SHOP] Unexpected remote class:",remote.ClassName); return end
+    shopBuying=true
+    shopBuyStatus.Text=string.format("SHOP: buying %d × %s...",quantity,itemName)
+    task.spawn(function()
+        local ok,result=pcall(function() return remote:InvokeServer(itemName,quantity) end)
+        shopBuying=false
+        if ok then
+            shopBuyStatus.Text=string.format("SHOP: request sent — %d × %s",quantity,itemName)
+            print("[DIAMOND SHOP] Purchase request:",itemName,"quantity:",quantity,"server response:",tostring(result))
+        else
+            shopBuyStatus.Text="SHOP: purchase failed — see F9"
+            warn("[DIAMOND SHOP] Purchase failed:",tostring(result))
+        end
+    end)
+end)
+label(shop,"The game server checks the item, price and your gold. One bulk request is sent; this does not bypass payment or guarantee stock.")
 
 -- AUTO FARM V10
 label(farm,"AUTO FARM GOLD V10")
