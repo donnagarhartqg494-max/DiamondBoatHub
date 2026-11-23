@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V38
+-- DIAMOND BOAT HUB V1 [BETA] V39
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -1227,18 +1227,32 @@ local function getZoneForeignOwner(zone)
     return nil
 end
 
-local function getSafeOwnPlotCFrame()
-    local ownZone = getPlayerZone(Player)
-    if not ownZone then return nil end
-    if ownZone:IsA("BasePart") then
-        return ownZone.CFrame * CFrame.new(0, math.max(ownZone.Size.Y/2 + 8, 12), 0)
+local function getOutsideIsolationEdgeCFrame(zone, root)
+    if not zone or not root then return nil end
+    local boxCFrame, boxSize
+    if zone:IsA("BasePart") then
+        boxCFrame, boxSize = zone.CFrame, zone.Size
+    elseif zone:IsA("Model") then
+        boxCFrame, boxSize = zone:GetBoundingBox()
+    else
+        local part = zone:FindFirstChildWhichIsA("BasePart",true)
+        if not part then return nil end
+        boxCFrame, boxSize = part.CFrame, part.Size
     end
-    if ownZone:IsA("Model") then
-        local cf,size = ownZone:GetBoundingBox()
-        return cf * CFrame.new(0, size.Y/2 + 8, 0)
-    end
-    local part = ownZone:FindFirstChildWhichIsA("BasePart",true)
-    return part and (part.CFrame * CFrame.new(0, part.Size.Y/2 + 8, 0)) or nil
+
+    -- Find the nearest horizontal edge of the isolated plot and move just outside it.
+    local localPos = boxCFrame:PointToObjectSpace(root.Position)
+    local halfX, halfZ = boxSize.X/2, boxSize.Z/2
+    local distances = {
+        {distance = math.abs(halfX - localPos.X), x = halfX + 7, z = math.clamp(localPos.Z,-halfZ+3,halfZ-3)},
+        {distance = math.abs(-halfX - localPos.X), x = -halfX - 7, z = math.clamp(localPos.Z,-halfZ+3,halfZ-3)},
+        {distance = math.abs(halfZ - localPos.Z), x = math.clamp(localPos.X,-halfX+3,halfX-3), z = halfZ + 7},
+        {distance = math.abs(-halfZ - localPos.Z), x = math.clamp(localPos.X,-halfX+3,halfX-3), z = -halfZ - 7}
+    }
+    table.sort(distances,function(a,b) return a.distance < b.distance end)
+    local edge = distances[1]
+    local worldPosition = boxCFrame:PointToWorldSpace(Vector3.new(edge.x, boxSize.Y/2 + 5, edge.z))
+    return CFrame.new(worldPosition, worldPosition + boxCFrame.LookVector)
 end
 
 toggle(teleport,"ANTI-ISOLATION",false,function(enabled)
@@ -1262,7 +1276,7 @@ toggle(teleport,"ANTI-ISOLATION",false,function(enabled)
                     local _,hum,root = getCharacter()
                     if root and hum and hum.Health > 0 then
                         local returnCFrame = root.CFrame
-                        local safeCFrame = getSafeOwnPlotCFrame()
+                        local safeCFrame = getOutsideIsolationEdgeCFrame(activeZone,root)
                         if safeCFrame then
                             antiIsolationLabel.Text = "ANTI-ISOLATION: avoiding "..activeOwner.Name
                             root.CFrame = safeCFrame
@@ -1275,7 +1289,7 @@ toggle(teleport,"ANTI-ISOLATION",false,function(enabled)
                             end
                             task.wait(0.35)
                         else
-                            antiIsolationLabel.Text = "ANTI-ISOLATION: own plot not found"
+                            antiIsolationLabel.Text = "ANTI-ISOLATION: plot edge not found"
                             task.wait(1)
                         end
                     else
@@ -5083,7 +5097,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=38"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=39"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
