@@ -514,7 +514,7 @@ for _,name in ipairs(tabNames) do
 end
 
 -- BUG REPORT: local report composer; copies text for the user to send.
-safeLabel(credits,"BUG REPORT • СООБЩИТЬ ОБ ОШИБКЕ")
+label(credits,"BUG REPORT • СООБЩИТЬ ОБ ОШИБКЕ")
 label(credits,"Опиши, что произошло. Отправка не происходит автоматически.")
 local bugDescription=create("TextBox",{
     Name="BugReportDescription",Size=UDim2.new(1,-8,0,110),
@@ -525,7 +525,7 @@ local bugDescription=create("TextBox",{
     TextYAlignment=Enum.TextYAlignment.Top,Font=Enum.Font.Gotham,TextSize=13
 },credits)
 round(bugDescription,10); outline(bugDescription)
-local bugReportStatus=safeLabel(credits,"Отчёт будет скопирован в буфер обмена.")
+local bugReportStatus=label(credits,"Отчёт будет скопирован в буфер обмена.")
 button(credits,"COPY BUG REPORT",function()
     local description=bugDescription.Text:gsub("^%s+",""):gsub("%s+$","")
     if description=="" then bugReportStatus.Text="Сначала опиши ошибку."; return end
