@@ -546,7 +546,7 @@ if isPluginStaff and development then
         PlaceholderColor3=Color3.fromRGB(125,130,145),
         PlaceholderText="Напиши команды на русском языке...",
         Text="уведомление(""Привет из BABFTDIAMONDRUSLUA!"")\nсообщение(""Мой первый скрипт"")",
-        ClearTextOnFocus=false,
+        Text='уведомление("Привет из BABFTDIAMONDRUSLUA!")\nсообщение("Мой первый скрипт")',
         MultiLine=true,
         TextWrapped=false,
         TextXAlignment=Enum.TextXAlignment.Left,
