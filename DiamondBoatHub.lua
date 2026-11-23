@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V44
+-- DIAMOND BOAT HUB V1 [BETA] V45
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -484,35 +484,58 @@ end
 label(home,"Welcome to Diamond Boat Hub")
 label(home,"Build A Boat For Treasure")
 
-label(home,"QUICK COMMANDS")
-label(home,"Search a feature and tap a result to open or run it")
-local quickSearch=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=Color3.fromRGB(245,245,250),PlaceholderColor3=Color3.fromRGB(145,145,155),PlaceholderText="Search commands...",Text="",ClearTextOnFocus=false,Font=Enum.Font.GothamSemibold,TextSize=14},home)
+label(home,"SCRIPT SEARCH")
+label(home,"Find features inside Diamond Boat Hub. Example: fly → Fly toggle")
+local quickSearch=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=Color3.fromRGB(245,245,250),PlaceholderColor3=Color3.fromRGB(145,145,155),PlaceholderText="Search scripts / features (fly, speed, noclip)...",Text="",ClearTextOnFocus=false,Font=Enum.Font.GothamSemibold,TextSize=14},home)
 round(quickSearch,9); outline(quickSearch)
 local quickResults=create("Frame",{Size=UDim2.new(1,-8,0,0),BackgroundTransparency=1,AutomaticSize=Enum.AutomaticSize.Y},home)
 local quickLayout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},quickResults)
 local function refreshQuickCommands()
-    for _,child in ipairs(quickResults:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+    for _,child in ipairs(quickResults:GetChildren()) do
+        if child:IsA("GuiObject") and child.Name~="UIListLayout" then child:Destroy() end
+    end
     local query=string.lower(string.gsub(quickSearch.Text or "","^%s*(.-)%s*$","%1"))
     if query=="" then return end
     local matches={}
-    for _,obj in ipairs(GUI:GetDescendants()) do
-        if obj:IsA("TextButton") and obj:GetAttribute("HubStyledButton")==true and obj.Parent and obj.Visible then
-            local title=string.gsub(obj.Text,"^%s+","")
-            if string.find(string.lower(title),query,1,true) then table.insert(matches,{button=obj,title=title}) end
+    local seen={}
+    for pageName,page in pairs(Pages) do
+        for _,obj in ipairs(page:GetDescendants()) do
+            if obj:IsA("Frame") and obj.Name=="SwitchRow" then
+                local titleObj=obj:FindFirstChild("SwitchTitle")
+                local hit=obj:FindFirstChild("SwitchHitbox")
+                local title=titleObj and titleObj.Text or ""
+                if hit and string.find(string.lower(title),query,1,true) and not seen[obj] then
+                    seen[obj]=true
+                    table.insert(matches,{title=title,page=pageName,target=obj,kind="toggle"})
+                end
+            elseif obj:IsA("TextButton") and obj:GetAttribute("HubStyledButton")==true and not obj:GetAttribute("QuickCommandResult") then
+                local title=string.gsub(obj.Text,"^%s+","")
+                if string.find(string.lower(title),query,1,true) and not seen[obj] then
+                    seen[obj]=true
+                    table.insert(matches,{title=title,page=pageName,target=obj,kind="button"})
+                end
+            end
         end
     end
-    table.sort(matches,function(a,b) return a.title<b.title end)
-    for i=1,math.min(#matches,8) do
-        local target=matches[i].button
-        local result=button(quickResults,matches[i].title,function()
-            local page=target:FindFirstAncestorOfClass("ScrollingFrame")
-            if page then for name,p in pairs(Pages) do if p==page then showPage(name); break end end end
-            if target.Parent then target:Activate() end
+    table.sort(matches,function(a,b)
+        if a.kind~=b.kind then return a.kind=="toggle" end
+        return a.title<b.title
+    end)
+    for i=1,math.min(#matches,10) do
+        local item=matches[i]
+        local result=button(quickResults,(item.kind=="toggle" and "⚡ " or "▶ ")..item.title.."  •  "..item.page,function()
+            showPage(item.page)
+            if item.kind=="toggle" then
+                local hit=item.target:FindFirstChild("SwitchHitbox")
+                if hit and hit.Parent then hit:Activate() end
+            elseif item.target and item.target.Parent then
+                item.target:Activate()
+            end
         end)
         result:SetAttribute("QuickCommandResult",true)
     end
     if #matches==0 then
-        local empty=label(quickResults,"No matching commands")
+        local empty=label(quickResults,"No matching features found")
         empty.Size=UDim2.new(1,-8,0,24)
     end
 end
@@ -5109,7 +5132,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=44"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=45"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
