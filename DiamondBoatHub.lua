@@ -153,7 +153,7 @@ TitleLabel=create("TextLabel",{
     Size=UDim2.new(1,-150,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="💎  DIAMOND BOAT HUB V1 [BETA]",
+    Text="DIAMOND BOAT HUB V1 [BETA]",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -162,10 +162,10 @@ TitleLabel=create("TextLabel",{
 },Top)
 
 PhoneModeButton=create("TextButton",{
-    Name="PhoneModeButton",Size=UDim2.fromOffset(30,28),
+    Name="PhoneModeButton",Size=UDim2.fromOffset(34,30),ZIndex=10,
     AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-82,0,10),
     BackgroundColor3=Color3.fromRGB(235,242,255),BackgroundTransparency=0.18,
-    Text="▦",TextColor3=Color3.fromRGB(45,50,70),TextSize=18,
+    Text="▣",TextColor3=Color3.fromRGB(45,50,70),TextSize=19,
     Font=Enum.Font.GothamBold,AutoButtonColor=false,BorderSizePixel=0
 },Top)
 round(PhoneModeButton,9)
@@ -302,7 +302,7 @@ end
 
 ButtonActions=ButtonActions or setmetatable({}, {__mode='k'})
 
-function button(page,text,callback)
+local function button(page,text,callback)
     local b=create("TextButton",{
         Size=UDim2.new(1,-8,0,44),BackgroundColor3=Color3.fromRGB(24,24,31),
         Text="   "..text,TextColor3=Color3.fromRGB(242,242,248),TextSize=13,Font=Enum.Font.GothamSemibold,
@@ -496,7 +496,7 @@ if not isPluginStaff then
 end
 -- Original DiamondBoatHub line icons, drawn from Roblox GUI primitives (no emoji or external image assets).
 local function drawTabIcon(parent,name,color)
-    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(32,30),Position=UDim2.new(0.5,-16,0,2),BackgroundTransparency=1},parent)
+    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(34,32),Position=UDim2.new(0.5,-17,0,1),BackgroundTransparency=1},parent)
     local function strokeLine(x,y,w,h,rotation,thickness)
         local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),AnchorPoint=Vector2.new(0.5,0.5),Rotation=rotation or 0,BackgroundColor3=color,BorderSizePixel=0},root)
         round(p,thickness or 3)
@@ -513,8 +513,8 @@ local function drawTabIcon(parent,name,color)
         round(p,size)
     end
     if name=="HOME" then
-        strokeLine(14,5,16,2,-38); strokeLine(14,5,16,2,38)
-        strokeLine(7,14,2,11,0); strokeLine(21,14,2,11,0); strokeLine(14,19,2,8,0)
+        strokeLine(14,5,17,3,-38); strokeLine(14,5,17,3,38)
+        strokeLine(7,14,3,12,0); strokeLine(21,14,3,12,0); strokeLine(14,19,3,9,0)
         strokeLine(14,23,16,2,0)
     elseif name=="MOVEMENT" then
         strokeLine(7,12,18,3,0); strokeLine(17,6,3,12,45); strokeLine(17,18,3,12,-45)
@@ -587,7 +587,7 @@ for _,name in ipairs(tabNames) do
     tabIcon.Position=UDim2.new(0.5,0,0,5)
     tabIcon.Image=tabIcons[name] or ""; tabIcon.ImageColor3=TEXT_DARK
     tabIcon.Visible=false
-    drawTabIcon(b,name,TEXT_DARK)
+    drawTabIcon(b,name,Color3.fromRGB(72,82,112))
     local tabCaption=create("TextLabel",{Name="TabCaption",Size=UDim2.new(1,-4,0,25),Position=UDim2.new(0,2,0,30),BackgroundTransparency=1,Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",["PLUGIN CATALOG"]="CATALOG",CREDITS="CREDITS"})[name] or name,TextColor3=TEXT_DARK,TextSize=9,TextWrapped=true,Font=Enum.Font.GothamBold},b)
     tabIcon.ScaleType=Enum.ScaleType.Fit
     tabIcon.Parent=b
