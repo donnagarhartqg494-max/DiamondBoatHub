@@ -3817,7 +3817,17 @@ RunService.Heartbeat:Connect(function(dt)
         speed,ping,memory,formatElapsed(os.clock()-analyticsStarted))
 end)
 
-local safeLabel = label
+local function safeLabel(page, text)
+    return create("TextLabel", {
+        Size=UDim2.new(1,-8,0,30),
+        BackgroundTransparency=1,
+        Text=tostring(text or ""),
+        TextColor3=Color3.fromRGB(235,235,235),
+        TextSize=14,
+        Font=Enum.Font.GothamBold,
+        TextXAlignment=Enum.TextXAlignment.Left
+    }, page)
+end
 
 -- MACRO RECORDER: record a route and replay it using normal Humanoid movement.
 safeLabel(tools,"MACRO RECORDER")
