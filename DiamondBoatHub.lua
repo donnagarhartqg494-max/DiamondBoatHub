@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V55
+-- DIAMOND BOAT HUB V1 [BETA] V56
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -574,8 +574,35 @@ local russianKeywords={
     {"функция","function"},{"если","if"},{"тогда","then"},{"иначе","else"},
     {"конец","end"},{"пока","while"},{"для","for"},{"вернуть","return"},
     {"прервать","break"},{"истина","true"},{"ложь","false"},{"ничего","nil"},
-    {"и","and"},{"или","or"},{"не","not"},{"в","in"},{"до","until"}
+    {"и","and"},{"или","or"},{"не","not"},{"делать","do"},{"в","in"},{"до","until"}
 }
+local russianIdentifiers={
+    ["игра"]="game",["игроки"]="players",["игрок"]="player",
+    ["уведомить"]="notify",["сказать"]="notify",["вкинуть"]="notify",
+    ["добавитьКнопку"]="addButton",["добавитьПереключатель"]="addToggle",
+    ["печать"]="print",["имба"]="imba",["рофл"]="rofl",["жёстко"]="zhestko",
+    ["топ"]="top",["включен"]="enabled",["число"]="numberValue"
+}
+local transliteration={
+    ["а"]="a",["б"]="b",["в"]="v",["г"]="g",["д"]="d",["е"]="e",["ё"]="yo",
+    ["ж"]="zh",["з"]="z",["и"]="i",["й"]="y",["к"]="k",["л"]="l",["м"]="m",
+    ["н"]="n",["о"]="o",["п"]="p",["р"]="r",["с"]="s",["т"]="t",["у"]="u",
+    ["ф"]="f",["х"]="h",["ц"]="ts",["ч"]="ch",["ш"]="sh",["щ"]="sch",
+    ["ъ"]="",["ы"]="y",["ь"]="",["э"]="e",["ю"]="yu",["я"]="ya",
+    ["А"]="A",["Б"]="B",["В"]="V",["Г"]="G",["Д"]="D",["Е"]="E",["Ё"]="Yo",
+    ["Ж"]="Zh",["З"]="Z",["И"]="I",["Й"]="Y",["К"]="K",["Л"]="L",["М"]="M",
+    ["Н"]="N",["О"]="O",["П"]="P",["Р"]="R",["С"]="S",["Т"]="T",["У"]="U",
+    ["Ф"]="F",["Х"]="H",["Ц"]="Ts",["Ч"]="Ch",["Ш"]="Sh",["Щ"]="Sch",
+    ["Ъ"]="",["Ы"]="Y",["Ь"]="",["Э"]="E",["Ю"]="Yu",["Я"]="Ya"
+}
+local function transliterateIdentifier(token)
+    if russianIdentifiers[token] then return russianIdentifiers[token] end
+    for letter,latin in pairs(transliteration) do token=token:gsub(letter,latin) end
+    return token
+end
+local function isIdentifierByte(value)
+    return value and (value>=128 or (value>=48 and value<=57) or (value>=65 and value<=90) or (value>=97 and value<=122) or value==95)
+end
 local function translateRussianLua(source)
     local out={}
     local i=1
@@ -599,16 +626,23 @@ local function translateRussianLua(source)
             for _,entry in ipairs(russianKeywords) do
                 local word,luaWord=entry[1],entry[2]
                 if source:sub(i,i+#word-1)==word then
-                    local before=i>1 and source:sub(i-1,i-1) or " "
-                    local after=source:sub(i+#word,i+#word)
-                    local leftOk=before:match("[%w_]")==nil
-                    local rightOk=after=="" or after:match("[%w_]")==nil
-                    if leftOk and rightOk then
+                    local before=i>1 and source:byte(i-1) or 32
+                    local after=source:byte(i+#word)
+                    if not isIdentifierByte(before) and not isIdentifierByte(after) then
                         table.insert(out,luaWord); i=i+#word; replaced=true; break
                     end
                 end
             end
-            if not replaced then table.insert(out,ch); i=i+1 end
+            if not replaced then
+                local byte=source:byte(i)
+                if byte and byte>=128 then
+                    local start=i
+                    while i<=#source and isIdentifierByte(source:byte(i)) do i=i+1 end
+                    table.insert(out,transliterateIdentifier(source:sub(start,i-1)))
+                else
+                    table.insert(out,ch); i=i+1
+                end
+            end
         end
     end
     return table.concat(out)
@@ -5628,7 +5662,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=55"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=56"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
@@ -5646,13 +5680,12 @@ print("DIAMOND BOAT HUB V1 [BETA] LOADED")
         local body=source:sub(math.min(firstLineEnd+1,#source+1))
         local translated=translateRussianLua(body)
         local wrapped='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
-            'local игра=game; local игроки=game:GetService("Players"); local игрок=игроки.LocalPlayer\n'..
-            'local печать=print; local уведомить=api.Notify; local сказать=api.Notify; local вкинуть=api.Notify\n'..
-            'local добавитьКнопку=api.AddButton; local добавитьПереключатель=api.AddToggle\n'..
-            'local имба=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
-            'local рофл=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
-            'local жёстко=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
-            'local топ=function(x) api.Notify("🏆 "..tostring(x or "Топ!")) end\n'..
+            'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
+            'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle\n'..
+            'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
+            'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
+            'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
+            'local top=function(x) api.Notify("🏆 "..tostring(x or "Топ!")) end\n'..
             translated..'\nend}'
         local compileOk,chunk=pcall(loadstring,wrapped)
         if not compileOk or type(chunk)~="function" then return nil,"Ошибка перевода Diamond Script: "..tostring(chunk) end
@@ -10735,7 +10768,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=55"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=56"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
