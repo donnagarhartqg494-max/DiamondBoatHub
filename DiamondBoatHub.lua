@@ -1,5 +1,5 @@
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V61
+-- DIAMOND BOAT HUB V1 [BETA] V62
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -99,6 +99,7 @@ create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRG
 MainScale=create("UIScale",{Scale=1},Main)
 isTouchDevice=UIS.TouchEnabled
 deviceMode=isTouchDevice and "phone" or "pc"
+deviceSelected=false
 windowMode="medium"
 desktopSizes={small=Vector2.new(620,440),medium=Vector2.new(760,520),large=Vector2.new(880,620)}
 function fitToScreen()
@@ -5128,6 +5129,7 @@ function deviceButton(caption,y,mode)
     b.Activated:Connect(function()
         deviceMode=mode
         isTouchDevice=(mode=="phone")
+        deviceSelected=true
         fitToScreen()
         fitIntro()
         for tabName,tabButton in pairs(TabButtons) do
@@ -5767,7 +5769,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=61"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=62"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
@@ -5909,9 +5911,13 @@ if isPluginStaff then
 end
 
 
--- iOS-style centered welcome toast
+-- iOS-style welcome toast: shown at the TOP after device selection.
 task.spawn(function()
-    task.wait(0.8)
+    while not deviceSelected do task.wait(0.1) end
+    task.wait(0.15)
+    fitToScreen()
+    local camera=Workspace.CurrentCamera
+    local viewport=camera and camera.ViewportSize or Vector2.new(1280,720)
     local role
     if isPluginOwner then role="OWNER"
     elseif Player.UserId==DIAMOND_SCRIPT_DEV_ID then role="SCRIPT DEV" end
@@ -5923,8 +5929,8 @@ task.spawn(function()
         welcomeText="Приветствуем, "..tostring(Player.DisplayName or Player.Name).." ("..prefix..")"
     end
     local toast=create("Frame",{
-        Name="DiamondWelcomeToast",AnchorPoint=Vector2.new(0.5,0.5),
-        Position=UDim2.new(0.5,0,0.5,0),Size=UDim2.new(0,360,0,104),
+        Name="DiamondWelcomeToast",AnchorPoint=Vector2.new(0.5,0),
+        Position=UDim2.new(0.5,0,0,12),Size=UDim2.fromOffset(math.clamp(viewport.X-32,240,420),104),
         BackgroundColor3=Color3.fromRGB(28,28,32),BackgroundTransparency=0.08,
         BorderSizePixel=0,ZIndex=100
     },GUI)
@@ -5944,17 +5950,17 @@ task.spawn(function()
         TextXAlignment=Enum.TextXAlignment.Center,TextYAlignment=Enum.TextYAlignment.Center,ZIndex=101
     },toast)
     toast.BackgroundTransparency=1
-    toast.Size=UDim2.new(0,340,0,88)
+    toast.Size=UDim2.fromOffset(math.clamp(viewport.X-48,224,400),88)
     TweenService:Create(toast,TweenInfo.new(0.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{
-        BackgroundTransparency=0.08,Size=UDim2.new(0,360,0,104)
+        BackgroundTransparency=0.08,Size=UDim2.fromOffset(math.clamp(viewport.X-32,240,420),104)
     }):Play()
     task.wait(4)
     if toast and toast.Parent then
-        local fade=TweenService:Create(toast,TweenInfo.new(0.25),{BackgroundTransparency=1,Size=UDim2.new(0,340,0,88)})
+        local fade=TweenService:Create(toast,TweenInfo.new(0.25),{BackgroundTransparency=1,Size=UDim2.fromOffset(math.clamp(viewport.X-48,224,400),88)})
         fade:Play()
         task.wait(0.3)
         if toast then toast:Destroy() end
     end
 end)
 
-print("DIAMOND BOAT HUB V61 [RUSSIAN COMMANDS + DISPLAY NAME WELCOME] LOADED")
+print("DIAMOND BOAT HUB V62 [DEVICE-AWARE TOP WELCOME] LOADED")
