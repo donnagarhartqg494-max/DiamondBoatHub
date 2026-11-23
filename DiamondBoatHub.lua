@@ -4144,7 +4144,7 @@ RunService.Heartbeat:Connect(function(dt)
     analyticsLabel.Text=string.format("PLAYER: %s\nPLAYERS: %d/%d\nHEALTH: %s\nSPEED: %d studs/s\nPING: %s  •  MEMORY: %s\nSESSION: %s",
         Player.Name,#Players:GetPlayers(),Players.MaxPlayers,
         hum and (math.floor(hum.Health).."/"..math.floor(hum.MaxHealth)) or "--",
-        speed,ping,memory,formatElapsed(os.clock()-analyticsStarted))
+        speed,ping,memory,string.format("%02d:%02d",math.floor((os.clock()-analyticsStarted)/60),math.floor((os.clock()-analyticsStarted)%60)))
 end)
 
 local function safeLabel(page, text)
