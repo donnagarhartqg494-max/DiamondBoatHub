@@ -609,83 +609,125 @@ for _,name in ipairs(tabNames) do
     b.Activated:Connect(function() showPage(name) end)
 end
 
--- iPhone-like app launcher. Apps open the existing hub pages; no feature logic is duplicated.
+-- iPhone-style tab launcher with persistent wallpaper and in-place app window.
 local PhoneLauncher=create("Frame",{
     Name="DiamondPhoneLauncher",Visible=false,Size=UDim2.fromScale(1,1),
-    BackgroundColor3=Color3.fromRGB(19,22,34),BackgroundTransparency=0.08,
-    BorderSizePixel=0,ZIndex=80
+    BackgroundColor3=Color3.fromRGB(0,0,0),BorderSizePixel=0,ZIndex=80
 },GUI)
 round(PhoneLauncher,24)
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(35,45,68),Color3.fromRGB(12,15,26)),Rotation=90},PhoneLauncher)
+
+-- Approximation of the supplied pink/purple/black/blue iPhone wallpaper using native GUI gradients.
+local upperGlow=create("Frame",{Size=UDim2.new(1,0,0.58,0),Position=UDim2.fromScale(0,0),BackgroundColor3=Color3.fromRGB(255,155,225),BorderSizePixel=0,ZIndex=80},PhoneLauncher)
+create("UIGradient",{Color=ColorSequence.new({
+    ColorSequenceKeypoint.new(0,Color3.fromRGB(255,190,232)),
+    ColorSequenceKeypoint.new(0.34,Color3.fromRGB(170,30,220)),
+    ColorSequenceKeypoint.new(0.72,Color3.fromRGB(28,0,65)),
+    ColorSequenceKeypoint.new(1,Color3.fromRGB(0,0,0))
+}),Transparency=NumberSequence.new(0),Rotation=90},upperGlow)
+local lowerGlow=create("Frame",{Size=UDim2.new(1,0,0.58,0),Position=UDim2.new(0,0,0.42,0),BackgroundColor3=Color3.fromRGB(0,0,0),BorderSizePixel=0,ZIndex=80},PhoneLauncher)
+create("UIGradient",{Color=ColorSequence.new({
+    ColorSequenceKeypoint.new(0,Color3.fromRGB(0,0,0)),
+    ColorSequenceKeypoint.new(0.48,Color3.fromRGB(4,12,32)),
+    ColorSequenceKeypoint.new(0.82,Color3.fromRGB(80,155,205)),
+    ColorSequenceKeypoint.new(1,Color3.fromRGB(225,238,248))
+}),Rotation=90},lowerGlow)
+local island=create("Frame",{Name="DynamicIsland",Size=UDim2.fromOffset(112,25),Position=UDim2.new(0.5,-56,0,12),BackgroundColor3=Color3.fromRGB(0,0,0),BorderSizePixel=0,ZIndex=86},PhoneLauncher)
+round(island,14)
+
 local phoneTitle=create("TextLabel",{
-    Size=UDim2.new(1,-30,0,42),Position=UDim2.fromOffset(15,16),
-    BackgroundTransparency=1,Text="DIAMOND • APPS",
-    TextColor3=Color3.fromRGB(245,248,255),TextSize=20,
-    Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=81
+    Size=UDim2.new(1,-30,0,38),Position=UDim2.fromOffset(15,52),
+    BackgroundTransparency=1,Text="DIAMOND • TABS",
+    TextColor3=Color3.fromRGB(255,255,255),TextSize=21,
+    Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Center,ZIndex=86
 },PhoneLauncher)
 local phoneSubtitle=create("TextLabel",{
-    Size=UDim2.new(1,-30,0,24),Position=UDim2.fromOffset(15,55),
-    BackgroundTransparency=1,Text="Выбери приложение",
-    TextColor3=Color3.fromRGB(180,190,215),TextSize=12,
-    Font=Enum.Font.Gotham,ZIndex=81
+    Size=UDim2.new(1,-30,0,22),Position=UDim2.fromOffset(15,88),
+    BackgroundTransparency=1,Text="Выбери вкладку",
+    TextColor3=Color3.fromRGB(230,225,255),TextSize=12,
+    Font=Enum.Font.Gotham,ZIndex=86
 },PhoneLauncher)
 local appGrid=create("Frame",{
-    Size=UDim2.new(1,-28,1,-126),Position=UDim2.fromOffset(14,92),
-    BackgroundTransparency=1,ZIndex=81
+    Size=UDim2.new(1,-28,1,-160),Position=UDim2.fromOffset(14,120),
+    BackgroundTransparency=1,ZIndex=86
 },PhoneLauncher)
 local gridLayout=create("UIGridLayout",{
-    CellSize=UDim2.new(0,92,0,100),CellPadding=UDim2.fromOffset(10,12),
+    CellSize=UDim2.new(0,76,0,82),CellPadding=UDim2.fromOffset(12,12),
     SortOrder=Enum.SortOrder.LayoutOrder,HorizontalAlignment=Enum.HorizontalAlignment.Center,
     VerticalAlignment=Enum.VerticalAlignment.Top
 },appGrid)
+
 local appOrder=0
-for _,appName in ipairs(tabNames) do
+local phoneHomeControls={phoneTitle,phoneSubtitle,appGrid}
+for _,tabName in ipairs(tabNames) do
     local app=create("TextButton",{
-        Name="App_"..appName,BackgroundColor3=Color3.fromRGB(225,235,255),
-        BackgroundTransparency=0.78,Text="",AutoButtonColor=false,
-        BorderSizePixel=0,LayoutOrder=appOrder,ZIndex=82
+        Name="Tab_"..tabName,BackgroundColor3=Color3.fromRGB(255,255,255),
+        BackgroundTransparency=0.84,Text="",AutoButtonColor=false,
+        BorderSizePixel=0,LayoutOrder=appOrder,ZIndex=87
     },appGrid)
     appOrder+=1
-    round(app,20)
+    round(app,19)
     local appStroke=outline(app)
-    appStroke.Color=Color3.fromRGB(255,255,255); appStroke.Transparency=0.55
+    appStroke.Color=Color3.fromRGB(255,255,255); appStroke.Transparency=0.35
     local iconPlate=create("Frame",{
-        Size=UDim2.fromOffset(52,52),Position=UDim2.new(0.5,-26,0,8),
-        BackgroundColor3=Color3.fromRGB(225,232,255),BackgroundTransparency=0.18,
-        BorderSizePixel=0,ZIndex=83
+        Size=UDim2.fromOffset(48,48),Position=UDim2.new(0.5,-24,0,5),
+        BackgroundColor3=Color3.fromRGB(255,255,255),BackgroundTransparency=0.78,
+        BorderSizePixel=0,ZIndex=88
     },app)
-    round(iconPlate,16)
-    local iconStroke=outline(iconPlate)
-    iconStroke.Color=Color3.fromRGB(255,255,255); iconStroke.Transparency=0.25
-    drawTabIcon(iconPlate,appName,Color3.fromRGB(55,65,95))
+    round(iconPlate,15)
+    drawTabIcon(iconPlate,tabName,Color3.fromRGB(255,255,255))
     local caption=create("TextLabel",{
-        Size=UDim2.new(1,-4,0,28),Position=UDim2.new(0,2,1,-32),
-        BackgroundTransparency=1,Text=({HOME="Home",MOVEMENT="Movement",VISUALS="Visuals",TELEPORTS="Teleport",["AUTO BUILD"]="Build",MUSIC="Music",["AUTO FARM"]="Farm",SHOP="Shop",TOOLS="Tools",SETTINGS="Settings",["GLOBAL CHAT"]="Chat",SERVERS="Servers",PLUGINS="Plugins",["PLUGIN CATALOG"]="Catalog",CREDITS="Credits"})[appName] or appName,
-        TextColor3=Color3.fromRGB(245,247,255),TextSize=11,
-        Font=Enum.Font.GothamSemibold,TextWrapped=true,ZIndex=83
+        Size=UDim2.new(1,-4,0,23),Position=UDim2.new(0,2,1,-25),
+        BackgroundTransparency=1,Text=({HOME="Home",MOVEMENT="Move",VISUALS="Visual",TELEPORTS="Teleport",["AUTO BUILD"]="Build",MUSIC="Music",["AUTO FARM"]="Farm",SHOP="Shop",TOOLS="Tools",SETTINGS="Settings",["GLOBAL CHAT"]="Chat",SERVERS="Servers",PLUGINS="Plugins",["PLUGIN CATALOG"]="Catalog",CREDITS="Credits"})[tabName] or tabName,
+        TextColor3=Color3.fromRGB(255,255,255),TextSize=10,
+        Font=Enum.Font.GothamSemibold,TextWrapped=true,ZIndex=88
     },app)
     app.Activated:Connect(function()
-        PhoneLauncher.Visible=false
+        showPage(tabName)
         Main.Visible=true
-        showPage(appName)
+        Main.ZIndex=100
+        -- Keep the wallpaper visible behind the selected tab; only hide the home-screen icons.
+        for _,control in ipairs(phoneHomeControls) do control.Visible=false end
+        phoneHomeButton.Visible=false
+        phoneAppClose.Visible=true
     end)
 end
-local phoneBack=create("TextButton",{
-    Size=UDim2.fromOffset(150,38),AnchorPoint=Vector2.new(0.5,1),
-    Position=UDim2.new(0.5,0,1,-16),BackgroundColor3=Color3.fromRGB(225,235,255),
-    BackgroundTransparency=0.78,Text="←  ВЕРНУТЬСЯ В HUB",
-    TextColor3=Color3.fromRGB(245,247,255),TextSize=12,
-    Font=Enum.Font.GothamBold,AutoButtonColor=false,ZIndex=83
+
+phoneHomeButton=create("TextButton",{
+    Size=UDim2.fromOffset(142,34),AnchorPoint=Vector2.new(0.5,1),
+    Position=UDim2.new(0.5,0,1,-16),BackgroundColor3=Color3.fromRGB(255,255,255),
+    BackgroundTransparency=0.82,Text="ВСЕ ВКЛАДКИ",
+    TextColor3=Color3.fromRGB(255,255,255),TextSize=11,
+    Font=Enum.Font.GothamBold,AutoButtonColor=false,ZIndex=89
 },PhoneLauncher)
-round(phoneBack,18)
-outline(phoneBack)
-phoneBack.Activated:Connect(function()
-    PhoneLauncher.Visible=false
-    Main.Visible=true
+round(phoneHomeButton,17); outline(phoneHomeButton)
+phoneHomeButton.Activated:Connect(function()
+    Main.Visible=false
+    for _,control in ipairs(phoneHomeControls) do control.Visible=true end
+    phoneHomeButton.Visible=true
+    phoneAppClose.Visible=false
 end)
+
+-- Close the currently opened tab like closing an iPhone app; it returns to the tab launcher.
+phoneAppClose=create("TextButton",{
+    Name="ClosePhoneApp",Size=UDim2.fromOffset(34,34),
+    Position=UDim2.new(1,-44,0,8),BackgroundColor3=Color3.fromRGB(255,255,255),
+    BackgroundTransparency=0.16,Text="×",TextColor3=Color3.fromRGB(30,25,45),
+    TextSize=25,Font=Enum.Font.GothamBold,Visible=false,ZIndex=120
+},Main)
+round(phoneAppClose,17)
+phoneAppClose.Activated:Connect(function()
+    Main.Visible=false
+    for _,control in ipairs(phoneHomeControls) do control.Visible=true end
+    phoneHomeButton.Visible=true
+    phoneAppClose.Visible=false
+end)
+
 PhoneModeButton.Activated:Connect(function()
     Main.Visible=false
     PhoneLauncher.Visible=true
+    for _,control in ipairs(phoneHomeControls) do control.Visible=true end
+    phoneHomeButton.Visible=true
+    phoneAppClose.Visible=false
 end)
 
 -- BUG REPORT: local report composer; copies text for the user to send.
