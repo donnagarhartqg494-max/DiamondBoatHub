@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V40
+-- DIAMOND BOAT HUB V1 [BETA] V41
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -1187,122 +1187,6 @@ function getPlayerZone(plr)
     end
     return nil
 end
-
--- ANTI-ISOLATION: briefly leave a foreign team's isolated plot, then return.
-local antiIsolationRunning = false
-local antiIsolationLabel = label(teleport,"ANTI-ISOLATION: waiting for foreign isolation")
-
-local function zoneIsolationActive(zone)
-    if not zone then return false end
-    local function matches(name)
-        name = string.lower(tostring(name or ""))
-        return string.find(name,"isolation",1,true) ~= nil
-            or name == "isolated"
-            or name == "isolate"
-    end
-    for name,value in pairs(zone:GetAttributes()) do
-        if matches(name) and value == true then return true end
-    end
-    for _,obj in ipairs(zone:GetDescendants()) do
-        if obj:IsA("BoolValue") and matches(obj.Name) and obj.Value == true then
-            return true
-        end
-        for name,value in pairs(obj:GetAttributes()) do
-            if matches(name) and value == true then return true end
-        end
-    end
-    return false
-end
-
-local function getZoneForeignOwner(zone)
-    if not zone then return nil end
-    local teamColor = zone:FindFirstChild("TeamColor")
-    if not teamColor then return nil end
-    for _,candidate in ipairs(Players:GetPlayers()) do
-        if candidate ~= Player and candidate.TeamColor == teamColor.Value
-            and candidate.TeamColor ~= Player.TeamColor then
-            return candidate
-        end
-    end
-    return nil
-end
-
-local function getOutsideIsolationEdgeCFrame(zone, root)
-    if not zone or not root then return nil end
-    local boxCFrame, boxSize
-    if zone:IsA("BasePart") then
-        boxCFrame, boxSize = zone.CFrame, zone.Size
-    elseif zone:IsA("Model") then
-        boxCFrame, boxSize = zone:GetBoundingBox()
-    else
-        local part = zone:FindFirstChildWhichIsA("BasePart",true)
-        if not part then return nil end
-        boxCFrame, boxSize = part.CFrame, part.Size
-    end
-
-    -- Find the nearest horizontal edge of the isolated plot and move just outside it.
-    local localPos = boxCFrame:PointToObjectSpace(root.Position)
-    local halfX, halfZ = boxSize.X/2, boxSize.Z/2
-    local distances = {
-        {distance = math.abs(halfX - localPos.X), x = halfX + 7, z = math.clamp(localPos.Z,-halfZ+3,halfZ-3)},
-        {distance = math.abs(-halfX - localPos.X), x = -halfX - 7, z = math.clamp(localPos.Z,-halfZ+3,halfZ-3)},
-        {distance = math.abs(halfZ - localPos.Z), x = math.clamp(localPos.X,-halfX+3,halfX-3), z = halfZ + 7},
-        {distance = math.abs(-halfZ - localPos.Z), x = math.clamp(localPos.X,-halfX+3,halfX-3), z = -halfZ - 7}
-    }
-    table.sort(distances,function(a,b) return a.distance < b.distance end)
-    local edge = distances[1]
-    local worldPosition = boxCFrame:PointToWorldSpace(Vector3.new(edge.x, boxSize.Y/2 + 5, edge.z))
-    return CFrame.new(worldPosition, worldPosition + boxCFrame.LookVector)
-end
-
-toggle(teleport,"ANTI-ISOLATION",false,function(enabled)
-    antiIsolationRunning = enabled
-    if not enabled then
-        antiIsolationLabel.Text = "ANTI-ISOLATION: OFF"
-    else
-        antiIsolationLabel.Text = "ANTI-ISOLATION: watching other teams"
-        task.spawn(function()
-            while antiIsolationRunning do
-                local activeZone, activeOwner = nil, nil
-                for _,zone in ipairs(Workspace:GetChildren()) do
-                    local owner = getZoneForeignOwner(zone)
-                    if owner and zoneIsolationActive(zone) then
-                        activeZone, activeOwner = zone, owner
-                        break
-                    end
-                end
-
-                if activeZone and activeOwner then
-                    local _,hum,root = getCharacter()
-                    if root and hum and hum.Health > 0 then
-                        local returnCFrame = root.CFrame
-                        local safeCFrame = getOutsideIsolationEdgeCFrame(activeZone,root)
-                        if safeCFrame then
-                            antiIsolationLabel.Text = "ANTI-ISOLATION: avoiding "..activeOwner.Name
-                            root.CFrame = safeCFrame
-                            task.wait(2)
-                            if antiIsolationRunning and zoneIsolationActive(activeZone)
-                                and activeZone.Parent and hum.Health > 0
-                                and root.Parent then
-                                root.CFrame = returnCFrame
-                                antiIsolationLabel.Text = "ANTI-ISOLATION: returned to plot"
-                            end
-                            task.wait(0.35)
-                        else
-                            antiIsolationLabel.Text = "ANTI-ISOLATION: plot edge not found"
-                            task.wait(1)
-                        end
-                    else
-                        task.wait(0.5)
-                    end
-                else
-                    antiIsolationLabel.Text = "ANTI-ISOLATION: no foreign isolation"
-                    task.wait(0.35)
-                end
-            end
-        end)
-    end
-end)
 
 function getBuildTool()
     local char,hum=getCharacter()
@@ -5142,7 +5026,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=40"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=41"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
