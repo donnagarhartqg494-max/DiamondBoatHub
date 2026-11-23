@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V45
+-- DIAMOND BOAT HUB V1 [BETA] V46
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -267,7 +267,10 @@ function label(page,text)
     },page)
 end
 
+ButtonActions=ButtonActions or setmetatable({}, {__mode='k'})
+
 function button(page,text,callback)
+    ButtonActions[b]=callback
     local b=create("TextButton",{
         Size=UDim2.new(1,-8,0,44),BackgroundColor3=Color3.fromRGB(24,24,31),
         Text="   "..text,TextColor3=Color3.fromRGB(242,242,248),TextSize=13,Font=Enum.Font.GothamSemibold,
@@ -526,10 +529,16 @@ local function refreshQuickCommands()
         local result=button(quickResults,(item.kind=="toggle" and "⚡ " or "▶ ")..item.title.."  •  "..item.page,function()
             showPage(item.page)
             if item.kind=="toggle" then
-                local hit=item.target:FindFirstChild("SwitchHitbox")
-                if hit and hit.Parent then hit:Activate() end
+                local setter=ToggleSetters[item.title]
+                if setter and item.target and item.target.Parent then
+                    setter(not (item.target:GetAttribute("SwitchState")==true),false)
+                end
             elseif item.target and item.target.Parent then
-                item.target:Activate()
+                local action=ButtonActions[item.target]
+                if action then
+                    local ok,err=pcall(action)
+                    if not ok then warn("[DIAMOND SEARCH] Command failed:",tostring(err)) end
+                end
             end
         end)
         result:SetAttribute("QuickCommandResult",true)
@@ -5132,7 +5141,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=45"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=46"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
