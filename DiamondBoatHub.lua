@@ -456,10 +456,10 @@ if not isPluginStaff then
 end
 for _,name in ipairs(tabNames) do
     local b=create("TextButton",{
-        Size=UDim2.new(0,68,0,58),
+        Size=UDim2.new(0,72,0,64),
         ClipsDescendants=true,
         BackgroundColor3=BUTTON_WHITE,
-        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",["PLUGIN CATALOG"]="CATALOG",CREDITS="CREDITS"})[name] or name,
+        Text="",
         TextColor3=TEXT_DARK,
         TextSize=10,
         TextTruncate=Enum.TextTruncate.AtEnd,
@@ -473,9 +473,13 @@ for _,name in ipairs(tabNames) do
     local tabIcon=Instance.new("ImageLabel")
     tabIcon.Name="TabIcon"; tabIcon.BackgroundTransparency=1
     tabIcon.AnchorPoint=Vector2.new(0.5,0)
-    tabIcon.Size=UDim2.fromOffset(20,20)
-    tabIcon.Position=UDim2.new(0.5,0,0,29)
+    tabIcon.Size=UDim2.fromOffset(22,22)
+    tabIcon.Position=UDim2.new(0.5,0,0,5)
     tabIcon.Image=tabIcons[name] or ""; tabIcon.ImageColor3=TEXT_DARK
+    tabIcon.Visible=false
+    local emojiIcons={HOME="🏠",MOVEMENT="🏃",VISUALS="👁️",TELEPORTS="📍",["AUTO BUILD"]="🧱",MUSIC="🎵",["AUTO FARM"]="🌾",SHOP="🛒",TOOLS="🛠️",SETTINGS="⚙️",["GLOBAL CHAT"]="💬",SERVERS="🌐",PLUGINS="🧩",["PLUGIN CATALOG"]="📚",CREDITS="💎"}
+    local fallbackIcon=create("TextLabel",{Name="TabEmojiIcon",Size=UDim2.fromOffset(26,24),Position=UDim2.new(0.5,-13,0,3),BackgroundTransparency=1,Text=emojiIcons[name] or "◆",TextSize=18,Font=Enum.Font.Gotham,TextColor3=TEXT_DARK},b)
+    local tabCaption=create("TextLabel",{Name="TabCaption",Size=UDim2.new(1,-4,0,25),Position=UDim2.new(0,2,0,30),BackgroundTransparency=1,Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",["PLUGIN CATALOG"]="CATALOG",CREDITS="CREDITS"})[name] or name,TextColor3=TEXT_DARK,TextSize=9,TextWrapped=true,Font=Enum.Font.GothamBold},b)
     tabIcon.ScaleType=Enum.ScaleType.Fit
     tabIcon.Parent=b
     b.TextXAlignment=Enum.TextXAlignment.Center
@@ -495,6 +499,40 @@ for _,name in ipairs(tabNames) do
     end)
     b.Activated:Connect(function() showPage(name) end)
 end
+
+-- BUG REPORT: local report composer; copies text for the user to send.
+safeLabel(credits,"BUG REPORT • СООБЩИТЬ ОБ ОШИБКЕ")
+label(credits,"Опиши, что произошло. Отправка не происходит автоматически.")
+local bugDescription=create("TextBox",{
+    Name="BugReportDescription",Size=UDim2.new(1,-8,0,110),
+    BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,
+    PlaceholderText="Что сломалось? Какие действия привели к ошибке?",
+    Text="",ClearTextOnFocus=false,MultiLine=true,
+    TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,
+    TextYAlignment=Enum.TextYAlignment.Top,Font=Enum.Font.Gotham,TextSize=13
+},credits)
+round(bugDescription,10); outline(bugDescription)
+local bugReportStatus=safeLabel(credits,"Отчёт будет скопирован в буфер обмена.")
+button(credits,"COPY BUG REPORT",function()
+    local description=bugDescription.Text:gsub("^%s+",""):gsub("%s+$","")
+    if description=="" then bugReportStatus.Text="Сначала опиши ошибку."; return end
+    local reportText=table.concat({
+        "DIAMOND BOAT HUB • BUG REPORT",
+        "Version: V62",
+        "Player: "..tostring(Player.Name).." ("..tostring(Player.UserId)..")",
+        "PlaceId: "..tostring(game.PlaceId),
+        "JobId: "..tostring(game.JobId),
+        "Device: "..tostring(deviceMode),
+        "Viewport: "..tostring(Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or "unknown"),
+        "Description: "..description
+    },"\\n")
+    local copied=false
+    for _,fn in ipairs({setclipboard,toclipboard}) do
+        if type(fn)=="function" then local ok=pcall(fn,reportText); if ok then copied=true; break end end
+    end
+    if copied then bugReportStatus.Text="Отчёт скопирован! Отправь его разработчику."
+    else bugReportStatus.Text="Буфер недоступен. Отчёт выведен в консоль."; print(reportText) end
+end)
 
 -- ВСТРОЕННЫЙ ПЛАГИН: АНТИ-ФЛИНГ (доступен всем)
 label(plugins,"ВСТРОЕННЫЕ ПЛАГИНЫ")
