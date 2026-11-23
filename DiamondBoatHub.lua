@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V52
+-- DIAMOND BOAT HUB V1 [BETA] V53
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -488,6 +488,69 @@ for _,name in ipairs(tabNames) do
     end)
     b.Activated:Connect(function() showPage(name) end)
 end
+
+-- ВСТРОЕННЫЙ ПЛАГИН: АНТИ-ФЛИНГ (доступен всем)
+label(plugins,"ВСТРОЕННЫЕ ПЛАГИНЫ")
+local antiFlingConnection=nil
+local antiFlingLastNotice=0
+toggle(plugins,"АНТИ-ФЛИНГ / защита от резких толчков",false,function(enabled)
+    if antiFlingConnection then
+        antiFlingConnection:Disconnect()
+        antiFlingConnection=nil
+    end
+    if not enabled then return end
+    antiFlingConnection=RunService.Heartbeat:Connect(function()
+        local character=Player.Character
+        local root=character and character:FindFirstChild("HumanoidRootPart")
+        local humanoid=character and character:FindFirstChildOfClass("Humanoid")
+        if not root or not root:IsA("BasePart") then return end
+        local linear=root.AssemblyLinearVelocity
+        local angular=root.AssemblyAngularVelocity
+        if linear.Magnitude>115 or angular.Magnitude>95 then
+            pcall(function()
+                root.AssemblyLinearVelocity=Vector3.zero
+                root.AssemblyAngularVelocity=Vector3.zero
+                if humanoid and humanoid.Health>0 then
+                    humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+                end
+            end)
+            local now=os.clock()
+            if now-antiFlingLastNotice>3 then
+                antiFlingLastNotice=now
+                print("[DIAMOND ANTI-FLING] Сброшена аномальная скорость персонажа")
+            end
+        end
+    end)
+end)
+label(plugins,"СОЗДАНИЕ СВОИХ ПЛАГИНОВ")
+label(plugins,"Плагины используют Lua. Названия, подсказки и комментарии можно писать на русском языке.")
+local pluginTemplate=[[
+-- Пример плагина Diamond Boat Hub
+return {
+    Name = "Мой плагин",
+    Init = function(api)
+        api.Notify("Плагин успешно запущен!")
+        api.AddButton("Нажми меня", function()
+            api.Notify("Привет! Кнопка работает.")
+        end)
+        api.AddToggle("Мой переключатель", false, function(включено)
+            if включено then
+                api.Notify("Функция включена")
+            else
+                api.Notify("Функция выключена")
+            end
+        end)
+    end
+}
+]]
+button(plugins,"СКОПИРОВАТЬ ШАБЛОН ПЛАГИНА",function()
+    if type(setclipboard)=="function" then
+        local ok=pcall(setclipboard,pluginTemplate)
+        pluginMessage(ok and "Шаблон на Lua скопирован" or "Не удалось скопировать шаблон")
+    else
+        pluginMessage("В этом executor нет setclipboard. Шаблон: смотри в исходнике скрипта")
+    end
+end)
 
 -- PLUGIN MANAGER: everyone may run listed plugins; only owner may add/remove them.
 label(plugins,"PLUGIN MANAGER")
@@ -5512,7 +5575,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=52"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=53"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
