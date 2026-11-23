@@ -1,5 +1,5 @@
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V62
+-- DIAMOND BOAT HUB V1 [BETA] V65
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -514,8 +514,16 @@ for _,name in ipairs(tabNames) do
 end
 
 -- BUG REPORT: local report composer; copies text for the user to send.
-label(credits,"BUG REPORT • СООБЩИТЬ ОБ ОШИБКЕ")
-label(credits,"Опиши, что произошло. Отправка не происходит автоматически.")
+local function bugReportLabel(text)
+    return create("TextLabel",{
+        Size=UDim2.new(1,-8,0,30),BackgroundTransparency=1,
+        Text=tostring(text or ""),TextColor3=Color3.fromRGB(235,235,235),
+        TextSize=14,Font=Enum.Font.GothamBold,
+        TextXAlignment=Enum.TextXAlignment.Left
+    },credits)
+end
+bugReportLabel("BUG REPORT • СООБЩИТЬ ОБ ОШИБКЕ")
+bugReportLabel("Опиши, что произошло. Отправка не происходит автоматически.")
 local bugDescription=create("TextBox",{
     Name="BugReportDescription",Size=UDim2.new(1,-8,0,110),
     BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,
@@ -525,13 +533,13 @@ local bugDescription=create("TextBox",{
     TextYAlignment=Enum.TextYAlignment.Top,Font=Enum.Font.Gotham,TextSize=13
 },credits)
 round(bugDescription,10); outline(bugDescription)
-local bugReportStatus=label(credits,"Отчёт будет скопирован в буфер обмена.")
+local bugReportStatus=bugReportLabel("Отчёт будет скопирован в буфер обмена.")
 button(credits,"COPY BUG REPORT",function()
     local description=bugDescription.Text:gsub("^%s+",""):gsub("%s+$","")
     if description=="" then bugReportStatus.Text="Сначала опиши ошибку."; return end
     local reportText=table.concat({
         "DIAMOND BOAT HUB • BUG REPORT",
-        "Version: V62",
+        "Version: V65",
         "Player: "..tostring(Player.Name).." ("..tostring(Player.UserId)..")",
         "PlaceId: "..tostring(game.PlaceId),
         "JobId: "..tostring(game.JobId),
@@ -5820,7 +5828,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=62"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=65"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
