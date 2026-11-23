@@ -587,7 +587,7 @@ local russianIdentifiers={
     ["уведомить"]="notify",["сказать"]="notify",["вкинуть"]="notify",
     ["добавитьКнопку"]="addButton",["добавитьПереключатель"]="addToggle",
     ["печать"]="print",["имба"]="imba",["рофл"]="rofl",["жёстко"]="zhestko",
-    ["топ"]="top",["включен"]="enabled",["число"]="numberValue",["прыгнуть"]="jumpPlayer"
+    ["топ"]="top",["включен"]="enabled",["число"]="numberValue",["прыгнуть"]="jumpPlayer",["скорость"]="setWalkSpeed",["силаПрыжка"]="setJumpPower",["бесконечныйПрыжок"]="setInfiniteJump"
 }
 local transliteration={
     ["а"]="a",["б"]="b",["в"]="v",["г"]="g",["д"]="d",["е"]="e",["ё"]="yo",
@@ -665,7 +665,7 @@ local function compilePluginSource(source)
         code='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
             'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
             'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
-            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer\n'..
+            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
             'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
             'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
             'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
@@ -726,6 +726,24 @@ local function makePluginApi(key)
         humanoid.Jump=true
         pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
         return true
+    end
+    api.SetWalkSpeed=function(value)
+        value=math.clamp(tonumber(value) or 45,16,200)
+        configuredSpeed=value
+        speedOn=value>16
+        updateSpeed()
+        return true
+    end
+    api.SetJumpPower=function(value)
+        value=math.clamp(tonumber(value) or 100,50,300)
+        configuredJump=value
+        jumpOn=value>50
+        updateJump()
+        return true
+    end
+    api.SetInfiniteJump=function(enabled)
+        infiniteJump=enabled~=false
+        return infiniteJump
     end
     api.GetPlayers=function() return Players:GetPlayers() end
     api.GetCharacter=function(target)
@@ -5766,7 +5784,7 @@ executePluginSource=function(source,api)
         local wrapped='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
             'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
             'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
-            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer\n'..
+            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
             'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
             'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
             'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
@@ -5785,7 +5803,7 @@ executePluginSource=function(source,api)
     local translated=translateRussianLua(source)
     local wrapped='local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
         'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
-        'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer\n'..
+        'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
         translated
     local compileOk,chunk=pcall(loadstring,wrapped)
     if not compileOk or type(chunk)~="function" then return nil,"Plugin compile failed: "..tostring(chunk) end
@@ -5845,6 +5863,10 @@ if isPluginStaff then
     button(plugins,"БЛОК • функция",function() insertRussianBlock('функция мояФункция()\n    уведомить("Функция работает!")\nконец') end)
     button(plugins,"БЛОК • кнопка",function() insertRussianBlock('добавитьКнопку("Моя кнопка", функция()\n    уведомить("Нажато!")\nконец)') end)
     button(plugins,"БЛОК • команда",function() insertRussianBlock('добавитьКоманду("Моя команда", функция()\n    уведомить("Команда выполнена!")\nконец)') end)
+    button(plugins,"БЛОК • прыгнуть",function() insertRussianBlock('прыгнуть()') end)
+    button(plugins,"БЛОК • скорость",function() insertRussianBlock('скорость(45)') end)
+    button(plugins,"БЛОК • сила прыжка",function() insertRussianBlock('силаПрыжка(100)') end)
+    button(plugins,"БЛОК • бесконечный прыжок",function() insertRussianBlock('бесконечныйПрыжок(истина)') end)
     button(plugins,"БЛОК • список игроков",function() insertRussianBlock('пусть список = получитьИгроков()\nуведомить("Игроков: ".. #список)') end)
     button(plugins,"БЛОК • переключатель",function() insertRussianBlock('добавитьПереключатель("Мой переключатель", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено!")\n    иначе\n        уведомить("Выключено!")\n    конец\nконец)') end)
     button(plugins,"БЛОК • цикл",function() insertRussianBlock('для число = 1, 3 делать\n    печать(число)\nконец') end)
@@ -5856,6 +5878,7 @@ if isPluginStaff then
     safeLabel(plugins,"ПОДСКАЗКИ • пусть=local, функция=function, если=if, тогда=then, иначе=else, конец=end, вернуть=return, и=and, или=or, не=not")
     safeLabel(plugins,"МОЛОДЁЖНЫЕ КОМАНДЫ • имба(), рофл(), жёстко(), топ(), сказать(), вкинуть() — показывают уведомление")
     safeLabel(plugins,"КОМАНДЫ API: добавитьКнопку(), добавитьПереключатель(), добавитьКоманду(), добавитьНадпись(), получитьИгроков(), получитьПерсонажа(), журнал(), статус().")
+    safeLabel(plugins,"ДВИЖЕНИЕ: прыгнуть(), скорость(45), силаПрыжка(100), бесконечныйПрыжок(истина).")
     safeLabel(plugins,"Roblox: игра=game, игроки=Players, игрок=LocalPlayer. TEST проверяет синтаксис и не запускает код.")
     button(plugins,"ЗАПУСТИТЬ РУССКИЙ КОД",function()
         local key="__diamond_russian_editor"
@@ -5877,4 +5900,52 @@ if isPluginStaff then
 end
 
 
-print("DIAMOND BOAT HUB V58 [PLUGIN TEST] LOADED")
+-- iOS-style centered welcome toast
+task.spawn(function()
+    task.wait(0.8)
+    local role
+    if isPluginOwner then role="OWNER"
+    elseif Player.UserId==DIAMOND_SCRIPT_DEV_ID then role="SCRIPT DEV" end
+    local welcomeText
+    if role then
+        welcomeText="Приветствуем, уважаемый "..Player.Name.." ("..role..")"
+    else
+        local prefix=tostring(playerPrefix or "Player")
+        welcomeText="Приветствуем, "..Player.Name.." ("..prefix..")"
+    end
+    local toast=create("Frame",{
+        Name="DiamondWelcomeToast",AnchorPoint=Vector2.new(0.5,0.5),
+        Position=UDim2.new(0.5,0,0.5,0),Size=UDim2.new(0,360,0,104),
+        BackgroundColor3=Color3.fromRGB(28,28,32),BackgroundTransparency=0.08,
+        BorderSizePixel=0,ZIndex=100
+    },GUI)
+    round(toast,22)
+    local stroke=Instance.new("UIStroke")
+    stroke.Color=Color3.fromRGB(105,105,115); stroke.Transparency=0.55; stroke.Thickness=1
+    stroke.Parent=toast
+    create("TextLabel",{
+        BackgroundTransparency=1,Position=UDim2.fromOffset(18,12),Size=UDim2.new(1,-36,0,24),
+        Text="DIAMOND BOAT HUB",TextColor3=Color3.fromRGB(190,160,255),
+        Font=Enum.Font.GothamBold,TextSize=13,TextXAlignment=Enum.TextXAlignment.Center,ZIndex=101
+    },toast)
+    create("TextLabel",{
+        BackgroundTransparency=1,Position=UDim2.fromOffset(16,39),Size=UDim2.new(1,-32,0,48),
+        Text=welcomeText,TextColor3=Color3.fromRGB(250,250,255),
+        Font=Enum.Font.GothamSemibold,TextSize=16,TextWrapped=true,
+        TextXAlignment=Enum.TextXAlignment.Center,TextYAlignment=Enum.TextYAlignment.Center,ZIndex=101
+    },toast)
+    toast.BackgroundTransparency=1
+    toast.Size=UDim2.new(0,340,0,88)
+    TweenService:Create(toast,TweenInfo.new(0.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{
+        BackgroundTransparency=0.08,Size=UDim2.new(0,360,0,104)
+    }):Play()
+    task.wait(4)
+    if toast and toast.Parent then
+        local fade=TweenService:Create(toast,TweenInfo.new(0.25),{BackgroundTransparency=1,Size=UDim2.new(0,340,0,88)})
+        fade:Play()
+        task.wait(0.3)
+        if toast then toast:Destroy() end
+    end
+end)
+
+print("DIAMOND BOAT HUB V60 [WELCOME + RUSSIAN MOVEMENT API] LOADED")
