@@ -5811,9 +5811,14 @@ if isPluginStaff then
     button(plugins,"БЛОК • переключатель",function() insertRussianBlock('добавитьПереключатель("Мой переключатель", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено!")\n    иначе\n        уведомить("Выключено!")\n    конец\nконец)') end)
     button(plugins,"БЛОК • цикл",function() insertRussianBlock('для число = 1, 3 делать\n    печать(число)\nконец') end)
     button(plugins,"ОЧИСТИТЬ РЕДАКТОР",function() russianEditor.Text="" end)
+    button(plugins,"TEST • ПРОВЕРИТЬ СИНТАКСИС",function()
+        local passed,message=compilePluginSource(russianEditor.Text or "")
+        pluginMessage(message)
+    end)
     safeLabel(plugins,"ПОДСКАЗКИ • пусть=local, функция=function, если=if, тогда=then, иначе=else, конец=end, вернуть=return, и=and, или=or, не=not")
     safeLabel(plugins,"МОЛОДЁЖНЫЕ КОМАНДЫ • имба(), рофл(), жёстко(), топ(), сказать(), вкинуть() — показывают уведомление")
-    safeLabel(plugins,"Roblox: игра=game, игроки=Players, игрок=LocalPlayer. API: добавитьКнопку(), добавитьПереключатель(), уведомить().")
+    safeLabel(plugins,"КОМАНДЫ API: добавитьКнопку(), добавитьПереключатель(), добавитьКоманду(), добавитьНадпись(), получитьИгроков(), получитьПерсонажа(), журнал(), статус().")
+    safeLabel(plugins,"Roblox: игра=game, игроки=Players, игрок=LocalPlayer. TEST проверяет синтаксис и не запускает код.")
     button(plugins,"ЗАПУСТИТЬ РУССКИЙ КОД",function()
         local key="__diamond_russian_editor"
         if loadedPlugins[key] then
@@ -5834,4 +5839,4 @@ if isPluginStaff then
 end
 
 
-print("DIAMOND BOAT HUB V57 [BETA] LOADED")
+print("DIAMOND BOAT HUB V58 [PLUGIN TEST] LOADED")
