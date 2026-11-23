@@ -494,77 +494,72 @@ local tabNames={
 if not isPluginStaff then
     for i=#tabNames,1,-1 do if tabNames[i]=="PLUGINS" or tabNames[i]=="PLUGIN CATALOG" then table.remove(tabNames,i) end end
 end
--- DiamondBoatHub custom icon set v2: consistent bold geometry, no emoji/assets.
+-- Original DiamondBoatHub line icons, drawn from Roblox GUI primitives (no emoji or external image assets).
 local function drawTabIcon(parent,name,color)
-    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(36,36),Position=UDim2.new(0.5,-18,0,0),BackgroundTransparency=1},parent)
-    local function line(x,y,w,h,rotation,thick)
+    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(34,32),Position=UDim2.new(0.5,-17,0,1),BackgroundTransparency=1},parent)
+    local function strokeLine(x,y,w,h,rotation,thickness)
         local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),AnchorPoint=Vector2.new(0.5,0.5),Rotation=rotation or 0,BackgroundColor3=color,BorderSizePixel=0},root)
-        round(p,math.max(2,math.floor((thick or 3)/2)))
+        round(p,thickness or 3)
         return p
     end
     local function ring(x,y,w,h,thick)
         local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),BackgroundTransparency=1,BorderSizePixel=0},root)
         round(p,math.floor(math.min(w,h)/2))
-        local st=outline(p); st.Color=color; st.Thickness=thick or 2.8
+        local st=outline(p); st.Color=color; st.Thickness=thick or 2.5
         return p
     end
     local function dot(x,y,size)
         local p=create("Frame",{Size=UDim2.fromOffset(size,size),Position=UDim2.fromOffset(x,y),BackgroundColor3=color,BorderSizePixel=0},root)
         round(p,size)
-        return p
     end
     if name=="HOME" then
-        line(18,8,22,3,-35); line(18,8,22,3,35)
-        line(9,17,3,15,0); line(27,17,3,15,0)
-        line(18,22,3,10,0); line(18,31,21,3,0)
-        line(13,25,3,7,0)
+        strokeLine(14,5,17,3,-38); strokeLine(14,5,17,3,38)
+        strokeLine(7,14,3,12,0); strokeLine(21,14,3,12,0); strokeLine(14,19,3,9,0)
+        strokeLine(14,23,16,2,0)
     elseif name=="MOVEMENT" then
-        line(8,18,22,3,0); line(22,18,10,3,0)
-        line(25,12,10,3,45); line(25,24,10,3,-45)
-        line(7,12,3,7,0); line(7,24,3,7,0)
+        strokeLine(7,12,18,3,0); strokeLine(17,6,3,12,45); strokeLine(17,18,3,12,-45)
+        strokeLine(7,6,2,6,0); strokeLine(7,18,2,6,0)
     elseif name=="VISUALS" then
-        ring(4,9,28,18,3); ring(13,13,10,10,2.8); dot(17,17,3)
+        ring(2,5,24,14,2); ring(10,8,8,8,2); dot(13,11,2)
     elseif name=="TELEPORTS" then
-        ring(10,3,16,16,3); dot(16,9,4)
-        line(18,23,3,9,0); line(18,31,12,3,0)
+        ring(7,1,14,14,2); dot(12,6,4); strokeLine(14,18,2,7,0); strokeLine(14,22,10,2,0)
     elseif name=="AUTO BUILD" then
-        ring(4,5,12,12,2.8); ring(20,5,12,12,2.8); ring(12,21,12,12,2.8)
-        line(14,17,3,7,-35); line(22,17,3,7,35)
+        ring(2,3,10,9,2); ring(15,3,10,9,2); ring(8,14,12,9,2)
+        strokeLine(7,12,2,5,0); strokeLine(21,12,2,5,0)
     elseif name=="MUSIC" then
-        line(23,5,3,20,0); line(23,5,12,3,0); line(32,5,3,14,0)
-        ring(6,22,11,9,2.8); ring(22,18,11,9,2.8)
+        strokeLine(18,4,2,15,0); strokeLine(18,4,10,2,0); strokeLine(23,4,2,11,0)
+        ring(5,15,8,7,2); ring(18,12,8,7,2)
     elseif name=="AUTO FARM" then
-        line(18,19,3,20,0); line(18,17,14,3,-35); line(18,17,14,3,35)
-        ring(4,4,12,10,2.8); ring(20,4,12,10,2.8)
+        strokeLine(14,22,2,17,0); strokeLine(14,11,13,2,-35); strokeLine(14,14,12,2,35)
+        ring(3,2,10,8,2); ring(15,2,10,8,2)
     elseif name=="SHOP" then
-        line(7,14,22,3,0); line(9,15,3,16,0); line(27,15,3,16,0)
-        line(18,5,3,12,0); line(18,7,12,3,-35); line(18,7,12,3,35)
-        line(12,31,15,3,0)
+        strokeLine(5,9,18,2,0); strokeLine(7,9,2,13,0); strokeLine(21,9,2,13,0)
+        strokeLine(14,4,2,8,0); strokeLine(14,5,12,2,-35); strokeLine(14,5,12,2,35)
+        strokeLine(8,22,12,2,0)
     elseif name=="TOOLS" then
-        ring(4,4,15,15,3); line(21,21,17,4,45); line(29,29,7,5,-45)
-        line(7,7,7,3,45)
+        ring(3,3,9,9,2); strokeLine(14,14,14,3,45); strokeLine(20,20,5,3,-45)
     elseif name=="SETTINGS" then
-        ring(9,9,18,18,3); ring(15,15,6,6,2.8)
-        for a=0,7 do local rad=math.rad(a*45); line(18+math.cos(rad)*13,18+math.sin(rad)*13,7,3,a*45) end
+        ring(7,4,14,14,2); ring(11,8,6,6,2)
+        for a=0,7 do local rad=math.rad(a*45); strokeLine(14+math.cos(rad)*11,11+math.sin(rad)*11,5,2,a*45,2) end
     elseif name=="GLOBAL CHAT" then
-        ring(4,4,28,21,3); line(10,25,3,8,-35); line(10,29,10,3,0)
-        dot(11,13,3); dot(17,13,3); dot(23,13,3)
+        ring(2,2,24,17,2); strokeLine(8,19,2,6,-35); strokeLine(8,19,8,2,0)
+        strokeLine(8,9,3,2,0); strokeLine(14,9,3,2,0); strokeLine(20,9,3,2,0)
     elseif name=="SERVERS" then
         for i=0,2 do
-            local p=create("Frame",{Size=UDim2.fromOffset(24,7),Position=UDim2.fromOffset(6,5+i*10),BackgroundTransparency=1,BorderSizePixel=0},root)
-            round(p,3); local st=outline(p); st.Color=color; st.Thickness=2.6
-            dot(10,7+i*10,3); line(24,8+i*10,6,2,0)
+            local p=create("Frame",{Size=UDim2.fromOffset(20,5),Position=UDim2.fromOffset(4,2+i*8),BackgroundTransparency=1},root)
+            round(p,3); local st=outline(p); st.Color=color; st.Thickness=2
+            dot(7,4+i*8,2)
         end
     elseif name=="PLUGINS" then
-        ring(4,4,12,12,2.8); ring(20,4,12,12,2.8); ring(4,20,12,12,2.8); ring(20,20,12,12,2.8)
-        dot(16,16,5)
+        ring(3,3,10,10,2); ring(15,3,10,10,2); ring(3,15,10,8,2); ring(15,15,10,8,2)
+        dot(12,10,4)
     elseif name=="PLUGIN CATALOG" then
-        ring(4,4,14,28,2.8); ring(18,4,14,28,2.8)
-        line(18,5,3,27,0); line(9,12,6,2,0); line(27,12,6,2,0); line(9,19,6,2,0); line(27,19,6,2,0)
+        ring(3,2,10,20,2); ring(15,2,10,20,2); strokeLine(14,3,2,18,0)
+        strokeLine(6,8,4,2,0); strokeLine(20,8,4,2,0)
     elseif name=="CREDITS" then
-        line(18,4,17,3,45); line(18,4,17,3,-45)
-        line(18,32,17,3,45); line(18,32,17,3,-45)
-        line(8,18,20,3,0); line(18,8,3,20,0)
+        strokeLine(14,2,15,2,45); strokeLine(14,2,15,2,-45)
+        strokeLine(14,22,15,2,45); strokeLine(14,22,15,2,-45)
+        strokeLine(7,12,14,2,0); strokeLine(14,5,2,14,0)
     end
     return root
 end
