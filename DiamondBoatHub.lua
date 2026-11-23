@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V48
+-- DIAMOND BOAT HUB V1 [BETA] V49
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -16,6 +16,7 @@ Workspace = game:GetService("Workspace")
 ReplicatedStorage = game:GetService("ReplicatedStorage")
 TweenService = game:GetService("TweenService")
 TeleportService = game:GetService("TeleportService")
+Stats = game:GetService("Stats")
 
 Player = Players.LocalPlayer
 Camera = Workspace.CurrentCamera
@@ -3465,6 +3466,177 @@ button(tools,"Print game information",function()
     print("Player:",Player.Name)
 end)
 
+-- DIAMOND EXPANSION PACK V2: RADAR / ANALYTICS / MACROS / PERFORMANCE
+
+-- RADAR SYSTEM: local player-only proximity radar.
+label(tools,"RADAR SYSTEM")
+label(tools,"Nearby players • local display only")
+local radarEnabled=false
+local radarRange=180
+local radarFrame=create("Frame",{Name="DiamondRadar",Size=UDim2.fromOffset(156,156),Position=UDim2.new(1,-170,0,54),
+    BackgroundColor3=Color3.fromRGB(10,14,22),BackgroundTransparency=0.12,Visible=false,ZIndex=120},GUI)
+round(radarFrame,14); outline(radarFrame)
+create("TextLabel",{Size=UDim2.new(1,0,0,20),BackgroundTransparency=1,Text="PLAYER RADAR",
+    TextColor3=WHITE,Font=Enum.Font.GothamBold,TextSize=10,ZIndex=122},radarFrame)
+local radarCenter=create("Frame",{Size=UDim2.fromOffset(6,6),AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.56),
+    BackgroundColor3=Color3.fromRGB(80,220,150),BorderSizePixel=0,ZIndex=123},radarFrame)
+round(radarCenter,8)
+local radarDots={}
+local function clearRadarDots()
+    for plr,dot in pairs(radarDots) do if dot and dot.Parent then dot:Destroy() end radarDots[plr]=nil end
+end
+toggle(tools,"Show player radar",false,function(v)
+    radarEnabled=v; radarFrame.Visible=v
+    if not v then clearRadarDots() end
+end)
+addNumericSetting(tools,"RADAR RANGE (50–500)",radarRange,50,500,function(v) radarRange=v end)
+local radarTick=0
+RunService.RenderStepped:Connect(function(dt)
+    if not radarEnabled then return end
+    radarTick+=dt
+    if radarTick<0.12 then return end
+    radarTick=0
+    local cam=Workspace.CurrentCamera
+    if not cam then return end
+    local present={}
+    for _,plr in ipairs(Players:GetPlayers()) do
+        if plr~=Player then
+            local root=plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                present[plr]=true
+                local localPos=cam.CFrame:PointToObjectSpace(root.Position)
+                local x=math.clamp(localPos.X/radarRange,-1,1)*62
+                local y=math.clamp(localPos.Z/radarRange,-1,1)*62
+                local dot=radarDots[plr]
+                if not dot or not dot.Parent then
+                    dot=create("Frame",{Size=UDim2.fromOffset(9,9),AnchorPoint=Vector2.new(0.5,0.5),
+                        BackgroundColor3=Color3.fromRGB(255,105,105),BorderSizePixel=0,ZIndex=124},radarFrame)
+                    round(dot,8); radarDots[plr]=dot
+                end
+                dot.Position=UDim2.new(0.5,x,0.56,y)
+                dot.Visible=math.abs(localPos.X)<=radarRange and math.abs(localPos.Z)<=radarRange
+            end
+        end
+    end
+    for plr,dot in pairs(radarDots) do if not present[plr] then if dot then dot:Destroy() end radarDots[plr]=nil end end
+end)
+
+-- PLAYER ANALYTICS: live session statistics.
+label(tools,"PLAYER ANALYTICS")
+local analyticsLabel=label(tools,"Loading player statistics...")
+local analyticsStarted=os.clock()
+local analyticsTick=0
+RunService.Heartbeat:Connect(function(dt)
+    analyticsTick+=dt
+    if analyticsTick<1 then return end
+    analyticsTick=0
+    local _,hum,root=getCharacter()
+    local speed=root and math.floor(root.AssemblyLinearVelocity.Magnitude) or 0
+    local ping="--"
+    pcall(function()
+        local item=Stats.Network.ServerStatsItem["Data Ping"]
+        if item then ping=item:GetValueString() end
+    end)
+    local memory="--"
+    pcall(function() memory=string.format("%.0f MB",Stats:GetTotalMemoryUsageMb()) end)
+    analyticsLabel.Text=string.format("PLAYER: %s\nPLAYERS: %d/%d\nHEALTH: %s\nSPEED: %d studs/s\nPING: %s  •  MEMORY: %s\nSESSION: %s",
+        Player.Name,#Players:GetPlayers(),Players.MaxPlayers,
+        hum and (math.floor(hum.Health).."/"..math.floor(hum.MaxHealth)) or "--",
+        speed,ping,memory,formatElapsed(os.clock()-analyticsStarted))
+end)
+
+-- MACRO RECORDER: record a route and replay it using normal Humanoid movement.
+label(tools,"MACRO RECORDER")
+label(tools,"Records your walking route. Playback uses MoveTo, not teleporting.")
+local macroStatus=label(tools,"Macro: idle")
+local macroPoints={}
+local macroRecording=false
+local macroPlaying=false
+local macroRepeat=false
+local macroRecordId=0
+local macroPlaybackId=0
+local function stopMacroPlayback()
+    macroPlaying=false; macroPlaybackId+=1
+    local _,hum,root=getCharacter()
+    if hum and root then hum:MoveTo(root.Position) end
+    macroStatus.Text="Macro playback stopped"
+end
+toggle(tools,"Repeat macro route",false,function(v) macroRepeat=v end)
+button(tools,"START RECORDING ROUTE",function()
+    if macroPlaying then stopMacroPlayback() end
+    macroPoints={}; macroRecording=true; macroRecordId+=1
+    local myId=macroRecordId
+    macroStatus.Text="Recording route..."
+    task.spawn(function()
+        while macroRecording and macroRecordId==myId do
+            local _,_,root=getCharacter()
+            if root then
+                local pos=root.Position
+                local last=macroPoints[#macroPoints]
+                if not last or (last-pos).Magnitude>=2 then
+                    if #macroPoints<500 then table.insert(macroPoints,pos) end
+                end
+            end
+            if #macroPoints>=500 then macroRecording=false; break end
+            task.wait(0.4)
+        end
+        if macroRecordId==myId then macroStatus.Text="Recorded "..#macroPoints.." route points" end
+    end)
+end)
+button(tools,"STOP / SAVE RECORDING",function()
+    macroRecording=false; macroRecordId+=1
+    macroStatus.Text="Route saved in session: "..#macroPoints.." points"
+end)
+button(tools,"PLAY RECORDED ROUTE",function()
+    if macroRecording then macroRecording=false; macroRecordId+=1 end
+    if #macroPoints<2 then macroStatus.Text="Record a route first"; return end
+    if macroPlaying then stopMacroPlayback() end
+    macroPlaying=true; macroPlaybackId+=1
+    local myId=macroPlaybackId
+    task.spawn(function()
+        repeat
+            for _,pos in ipairs(macroPoints) do
+                if not macroPlaying or macroPlaybackId~=myId then return end
+                local _,hum,root=getCharacter()
+                if not hum or not root then macroPlaying=false; macroStatus.Text="Character unavailable"; return end
+                hum:MoveTo(pos)
+                local started=os.clock()
+                while macroPlaying and macroPlaybackId==myId and root.Parent and (root.Position-pos).Magnitude>4 and os.clock()-started<8 do
+                    task.wait(0.1)
+                end
+                if not macroPlaying or macroPlaybackId~=myId then return end
+            end
+        until not macroRepeat
+        macroPlaying=false
+        macroStatus.Text="Route playback complete"
+    end)
+    macroStatus.Text="Playing "..#macroPoints.." points"
+end)
+button(tools,"STOP MACRO PLAYBACK",stopMacroPlayback)
+button(tools,"CLEAR RECORDED ROUTE",function()
+    stopMacroPlayback(); macroRecording=false; macroRecordId+=1
+    table.clear(macroPoints); macroStatus.Text="Macro route cleared"
+end)
+
+-- PERFORMANCE MONITOR: live FPS, ping and memory.
+label(tools,"PERFORMANCE MODE")
+local performanceLabel=label(tools,"FPS: --  •  PING: --  •  MEMORY: --")
+local performanceFrames,performanceTime,performanceTick=0,0,0
+RunService.RenderStepped:Connect(function(dt)
+    performanceFrames+=1; performanceTime+=dt; performanceTick+=dt
+    if performanceTick>=1 then
+        local fps=performanceTime>0 and math.floor(performanceFrames/performanceTime+0.5) or 0
+        local ping="--"; pcall(function() ping=Stats.Network.ServerStatsItem["Data Ping"]:GetValueString() end)
+        local memory="--"; pcall(function() memory=string.format("%.0f MB",Stats:GetTotalMemoryUsageMb()) end)
+        performanceLabel.Text=string.format("FPS: %d  •  PING: %s  •  MEMORY: %s",fps,ping,memory)
+        performanceFrames,performanceTime,performanceTick=0,0,0
+    end
+end)
+button(tools,"TOGGLE LOW GRAPHICS / FPS BOOST",function()
+    local setter=ToggleSetters["Low graphics / FPS boost"]
+    if setter then setter(not lowGraphicsOn,false) end
+end)
+
 -- SETTINGS
 
 label(settings,"Hub settings")
@@ -5221,7 +5393,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=48"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=49"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
