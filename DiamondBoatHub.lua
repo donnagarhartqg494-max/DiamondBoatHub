@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V43
+-- DIAMOND BOAT HUB V1 [BETA] V44
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -483,6 +483,42 @@ end
 
 label(home,"Welcome to Diamond Boat Hub")
 label(home,"Build A Boat For Treasure")
+
+label(home,"QUICK COMMANDS")
+label(home,"Search a feature and tap a result to open or run it")
+local quickSearch=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=Color3.fromRGB(245,245,250),PlaceholderColor3=Color3.fromRGB(145,145,155),PlaceholderText="Search commands...",Text="",ClearTextOnFocus=false,Font=Enum.Font.GothamSemibold,TextSize=14},home)
+round(quickSearch,9); outline(quickSearch)
+local quickResults=create("Frame",{Size=UDim2.new(1,-8,0,0),BackgroundTransparency=1,AutomaticSize=Enum.AutomaticSize.Y},home)
+local quickLayout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},quickResults)
+local function refreshQuickCommands()
+    for _,child in ipairs(quickResults:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+    local query=string.lower(string.gsub(quickSearch.Text or "","^%s*(.-)%s*$","%1"))
+    if query=="" then return end
+    local matches={}
+    for _,obj in ipairs(GUI:GetDescendants()) do
+        if obj:IsA("TextButton") and obj:GetAttribute("HubStyledButton")==true and obj.Parent and obj.Visible then
+            local title=string.gsub(obj.Text,"^%s+","")
+            if string.find(string.lower(title),query,1,true) then table.insert(matches,{button=obj,title=title}) end
+        end
+    end
+    table.sort(matches,function(a,b) return a.title<b.title end)
+    for i=1,math.min(#matches,8) do
+        local target=matches[i].button
+        local result=button(quickResults,matches[i].title,function()
+            local page=target:FindFirstAncestorOfClass("ScrollingFrame")
+            if page then for name,p in pairs(Pages) do if p==page then showPage(name); break end end end
+            if target.Parent then target:Activate() end
+        end)
+        result:SetAttribute("QuickCommandResult",true)
+    end
+    if #matches==0 then
+        local empty=label(quickResults,"No matching commands")
+        empty.Size=UDim2.new(1,-8,0,24)
+    end
+end
+quickSearch:GetPropertyChangedSignal("Text"):Connect(refreshQuickCommands)
+quickSearch.FocusLost:Connect(refreshQuickCommands)
+
 rejoinBusy=false
 button(home,"⚡ INSTANT REJOIN",function()
     if rejoinBusy then return end
@@ -1173,6 +1209,97 @@ button(build,"AUTO BUILD PREVIEW ON MY PLOT",function()
 end)
 
 button(build,"REMOVE LOCAL PREVIEW",clearPreview)
+
+-- BLUEPRINT MANAGER: saves a selected base as local geometry data and restores it as a ghost preview only.
+label(build,"BLUEPRINT MANAGER")
+label(build,"Save selected base layouts and load them as local previews. No server blocks are placed.")
+local blueprintNameBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=Color3.fromRGB(245,245,250),PlaceholderColor3=Color3.fromRGB(145,145,155),PlaceholderText="Blueprint name",Text="My Blueprint",ClearTextOnFocus=false,Font=Enum.Font.GothamSemibold,TextSize=14},build)
+round(blueprintNameBox,9); outline(blueprintNameBox)
+local blueprintStatus=label(build,"Blueprints: ready")
+local blueprintFolder="DiamondBoatHub/Blueprints"
+local blueprintStore=_G
+if type(getgenv)=="function" then pcall(function() local env=getgenv(); if type(env)=="table" then blueprintStore=env end end) end
+blueprintStore.__DIAMOND_BLUEPRINTS=blueprintStore.__DIAMOND_BLUEPRINTS or {}
+local function cleanBlueprintName(name)
+    name=string.gsub(tostring(name or ""),"[^%w _%-]","")
+    name=string.sub(name,1,32)
+    return name~="" and name or "Blueprint"
+end
+local function blueprintPath(name) return blueprintFolder.."/"..cleanBlueprintName(name)..".json" end
+local function encodeCFrame(cf) return {cf:GetComponents()} end
+local function decodeCFrame(a)
+    if type(a)~="table" or #a~=12 then return CFrame.new() end
+    return CFrame.new(table.unpack(a))
+end
+button(build,"SAVE SELECTED BASE BLUEPRINT",function()
+    if not selectedBase or not selectedBase.Parent or not selectedBase:IsA("Folder") then
+        blueprintStatus.Text="Select a base with SCAN BASES first"; return
+    end
+    local parts={}
+    local pivot=CFrame.new()
+    local sourceModel=Instance.new("Model")
+    for _,obj in ipairs(selectedBase:GetChildren()) do
+        if obj:IsA("Model") then
+            for _,part in ipairs(obj:GetDescendants()) do
+                if part:IsA("BasePart") and #parts<1500 then
+                    local cf=part.CFrame
+                    table.insert(parts,{name=string.sub(part.Name,1,80),cf=encodeCFrame(cf),size={part.Size.X,part.Size.Y,part.Size.Z},color={part.Color.R,part.Color.G,part.Color.B},material=part.Material.Name,transparency=part.Transparency})
+                end
+            end
+        end
+    end
+    if #parts==0 then blueprintStatus.Text="No parts found in selected base"; return end
+    local data={version=1,parts=parts}
+    local name=cleanBlueprintName(blueprintNameBox.Text)
+    blueprintStore.__DIAMOND_BLUEPRINTS[name]=data
+    local saved=false
+    if type(makefolder)=="function" and type(writefile)=="function" then
+        local ok=pcall(function()
+            if type(isfolder)~="function" or not isfolder("DiamondBoatHub") then makefolder("DiamondBoatHub") end
+            if type(isfolder)~="function" or not isfolder(blueprintFolder) then makefolder(blueprintFolder) end
+            writefile(blueprintPath(name),HttpService:JSONEncode(data))
+        end)
+        saved=ok
+    end
+    blueprintStatus.Text="Saved "..name.." ("..#parts.." parts)"..(saved and " • file" or " • session only")
+end)
+button(build,"LOAD BLUEPRINT AS LOCAL PREVIEW",function()
+    local name=cleanBlueprintName(blueprintNameBox.Text)
+    local data=blueprintStore.__DIAMOND_BLUEPRINTS[name]
+    if not data and type(isfile)=="function" and type(readfile)=="function" then
+        local ok,result=pcall(function() return HttpService:JSONDecode(readfile(blueprintPath(name))) end)
+        if ok and type(result)=="table" then data=result end
+    end
+    if type(data)~="table" or type(data.parts)~="table" or #data.parts==0 then
+        blueprintStatus.Text="Blueprint not found: "..name; return
+    end
+    if #data.parts>1500 then blueprintStatus.Text="Blueprint exceeds 1500 parts"; return end
+    clearPreview()
+    local model=Instance.new("Model"); model.Name="DIAMOND_BLUEPRINT_GHOST"
+    local _,_,root=getCharacter()
+    local origin=root and (root.CFrame*CFrame.new(0,0,-25)) or CFrame.new()
+    for _,entry in ipairs(data.parts) do
+        if type(entry)=="table" and type(entry.size)=="table" and type(entry.color)=="table" then
+            local p=Instance.new("Part"); p.Name=tostring(entry.name or "BlueprintPart")
+            p.Size=Vector3.new(math.clamp(tonumber(entry.size[1]) or 1,0.05,2048),math.clamp(tonumber(entry.size[2]) or 1,0.05,2048),math.clamp(tonumber(entry.size[3]) or 1,0.05,2048))
+            p.Color=Color3.new(math.clamp(tonumber(entry.color[1]) or 1,0,1),math.clamp(tonumber(entry.color[2]) or 1,0,1),math.clamp(tonumber(entry.color[3]) or 1,0,1))
+            local material=Enum.Material[tostring(entry.material or "Plastic")]
+            if material then p.Material=material end
+            p.Transparency=math.clamp(tonumber(entry.transparency) or 0,0,0.85)
+            p.Anchored=true; p.CanCollide=false; p.CanTouch=false; p.CanQuery=false
+            p.CFrame=origin*decodeCFrame(entry.cf)
+            p.Parent=model
+        end
+    end
+    model.Parent=Workspace; previewModel=model
+    blueprintStatus.Text="Loaded "..name.." as local ghost ("..#model:GetChildren().." parts)"
+end)
+button(build,"DELETE SAVED BLUEPRINT",function()
+    local name=cleanBlueprintName(blueprintNameBox.Text)
+    blueprintStore.__DIAMOND_BLUEPRINTS[name]=nil
+    if type(isfile)=="function" and type(delfile)=="function" then pcall(function() if isfile(blueprintPath(name)) then delfile(blueprintPath(name)) end end) end
+    blueprintStatus.Text="Deleted blueprint: "..name
+end)
 
 -- REAL AUTO BUILD V4
 buildRunning=false
@@ -4982,7 +5109,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=43"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=44"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
