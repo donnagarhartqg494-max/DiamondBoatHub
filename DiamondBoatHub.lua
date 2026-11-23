@@ -545,7 +545,6 @@ if isPluginStaff and development then
         TextColor3=Color3.fromRGB(225,235,255),
         PlaceholderColor3=Color3.fromRGB(125,130,145),
         PlaceholderText="Напиши команды на русском языке...",
-        Text="уведомление(""Привет из BABFTDIAMONDRUSLUA!"")\nсообщение(""Мой первый скрипт"")",
         Text='уведомление("Привет из BABFTDIAMONDRUSLUA!")\nсообщение("Мой первый скрипт")',
         MultiLine=true,
         TextWrapped=false,
