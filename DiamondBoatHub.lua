@@ -246,7 +246,7 @@ credits=makePage("CREDITS")
 TabButtons={}
 ToggleSetters={}
 function showPage(name)
-    if name=="PLUGINS" and not isPluginStaff then name="HOME" end
+    if (name=="PLUGINS" or name=="PLUGIN CATALOG") and not isPluginStaff then name="HOME" end
     for n,p in pairs(Pages) do p.Visible=(n==name) end
     for n,b in pairs(TabButtons) do
         local active=(n==name)
@@ -416,6 +416,7 @@ settings=makePage("SETTINGS")
 globalChat=makePage("GLOBAL CHAT")
 servers=makePage("SERVERS")
 plugins=makePage("PLUGINS")
+pluginCatalog=makePage("PLUGIN CATALOG")
 
 tabLayout=create("UIListLayout",{
     FillDirection=Enum.FillDirection.Horizontal,
@@ -442,21 +443,22 @@ tabIcons={
     CREDITS="rbxassetid://10709819149",
     ["GLOBAL CHAT"]="rbxassetid://10709819149",
     SERVERS="rbxassetid://10734906744",
-    PLUGINS="rbxassetid://10723384394"
+    PLUGINS="rbxassetid://10723384394",
+    ["PLUGIN CATALOG"]="rbxassetid://10723384394"
 }
 local tabNames={
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","PLUGINS","CREDITS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","PLUGINS","PLUGIN CATALOG","CREDITS"
 }
 if not isPluginStaff then
-    for i=#tabNames,1,-1 do if tabNames[i]=="PLUGINS" then table.remove(tabNames,i) end end
+    for i=#tabNames,1,-1 do if tabNames[i]=="PLUGINS" or tabNames[i]=="PLUGIN CATALOG" then table.remove(tabNames,i) end end
 end
 for _,name in ipairs(tabNames) do
     local b=create("TextButton",{
         Size=UDim2.new(0,68,0,58),
         ClipsDescendants=true,
         BackgroundColor3=BUTTON_WHITE,
-        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",CREDITS="CREDITS"})[name] or name,
+        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",["PLUGIN CATALOG"]="CATALOG",CREDITS="CREDITS"})[name] or name,
         TextColor3=TEXT_DARK,
         TextSize=10,
         TextTruncate=Enum.TextTruncate.AtEnd,
@@ -5794,6 +5796,25 @@ if isPluginStaff then
         Font=Enum.Font.Code,TextSize=13
     },plugins)
     round(russianEditor,9); outline(russianEditor)
+    label(pluginCatalog,"PLUGIN CATALOG • ГОТОВЫЕ ШАБЛОНЫ")
+    label(pluginCatalog,"Выбери шаблон и вставь его в редактор.")
+    local function catalogCard(title,description,code)
+        local card=create("Frame",{Size=UDim2.new(1,-8,0,78),BackgroundColor3=Color3.fromRGB(24,24,31),BorderSizePixel=0},pluginCatalog)
+        round(card,10); outline(card)
+        create("TextLabel",{Size=UDim2.new(1,-16,0,24),Position=UDim2.fromOffset(10,5),BackgroundTransparency=1,Text=title,TextColor3=WHITE,TextSize=14,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left},card)
+        create("TextLabel",{Size=UDim2.new(1,-16,0,20),Position=UDim2.fromOffset(10,28),BackgroundTransparency=1,Text=description,TextColor3=Color3.fromRGB(175,175,190),TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left},card)
+        local use=button(card,"ВСТАВИТЬ В РЕДАКТОР",function()
+            russianEditor.Text=code
+            showPage("PLUGINS")
+            pluginMessage("Шаблон загружен: "..title)
+        end)
+        use.Size=UDim2.new(1,-16,0,24)
+        use.Position=UDim2.new(0,8,1,-27)
+        use.TextSize=10
+    end
+    catalogCard("HELLO DIAMOND","Пример уведомления", 'плагин "Hello Diamond"\nуведомить("Привет!")')
+    catalogCard("COMMAND DEMO","Плагин с собственной командой", 'плагин "Command Demo"\nдобавитьКоманду("Тест команды", функция()\n    уведомить("Команда работает!")\nконец)')
+    catalogCard("TOGGLE DEMO","Переключатель с уведомлением", 'плагин "Toggle Demo"\nдобавитьПереключатель("Демо режим", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено")\n    иначе\n        уведомить("Выключено")\n    конец\nконец)')
     safeLabel(plugins,"КОНСТРУКТОР БЛОКОВ • нажми блок, чтобы вставить его в редактор")
     local function insertRussianBlock(code)
         local current=russianEditor.Text or ""
