@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V46
+-- DIAMOND BOAT HUB V1 [BETA] V47
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -270,12 +270,12 @@ end
 ButtonActions=ButtonActions or setmetatable({}, {__mode='k'})
 
 function button(page,text,callback)
-    ButtonActions[b]=callback
     local b=create("TextButton",{
         Size=UDim2.new(1,-8,0,44),BackgroundColor3=Color3.fromRGB(24,24,31),
         Text="   "..text,TextColor3=Color3.fromRGB(242,242,248),TextSize=13,Font=Enum.Font.GothamSemibold,
         TextXAlignment=Enum.TextXAlignment.Left,AutoButtonColor=false,BorderSizePixel=0
     },page)
+    ButtonActions[b]=callback
     b:SetAttribute("HubStyledButton",true)
     round(b,11)
     local stroke=outline(b)
@@ -5141,7 +5141,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=46"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=47"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
