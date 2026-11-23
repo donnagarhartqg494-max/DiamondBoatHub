@@ -587,7 +587,7 @@ local russianIdentifiers={
     ["уведомить"]="notify",["сказать"]="notify",["вкинуть"]="notify",
     ["добавитьКнопку"]="addButton",["добавитьПереключатель"]="addToggle",
     ["печать"]="print",["имба"]="imba",["рофл"]="rofl",["жёстко"]="zhestko",
-    ["топ"]="top",["включен"]="enabled",["число"]="numberValue"
+    ["топ"]="top",["включен"]="enabled",["число"]="numberValue",["прыгнуть"]="jumpPlayer"
 }
 local transliteration={
     ["а"]="a",["б"]="b",["в"]="v",["г"]="g",["д"]="d",["е"]="e",["ё"]="yo",
@@ -665,7 +665,7 @@ local function compilePluginSource(source)
         code='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
             'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
             'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
-            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus\n'..
+            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer\n'..
             'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
             'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
             'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
@@ -717,6 +717,15 @@ local function makePluginApi(key)
         local item=label(plugins,"PLUGIN • "..tostring(message))
         table.insert(loadedPlugins[key].items,item)
         return item
+    end
+    api.JumpPlayer=function(target)
+        target=target or Player
+        local character=target and target.Character
+        local humanoid=character and character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return false,"Humanoid not found" end
+        humanoid.Jump=true
+        pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
+        return true
     end
     api.GetPlayers=function() return Players:GetPlayers() end
     api.GetCharacter=function(target)
@@ -5757,7 +5766,7 @@ executePluginSource=function(source,api)
         local wrapped='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
             'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
             'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
-            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus\n'..
+            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer\n'..
             'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
             'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
             'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
@@ -5773,7 +5782,12 @@ executePluginSource=function(source,api)
         return result
     end
     if type(loadstring)~="function" then return nil,"Executor does not support loadstring" end
-    local compileOk,chunk=pcall(loadstring,source)
+    local translated=translateRussianLua(source)
+    local wrapped='local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
+        'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
+        'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer\n'..
+        translated
+    local compileOk,chunk=pcall(loadstring,wrapped)
     if not compileOk or type(chunk)~="function" then return nil,"Plugin compile failed: "..tostring(chunk) end
     local runOk,result=pcall(chunk,api)
     if not runOk then return nil,"Plugin error: "..tostring(result) end
