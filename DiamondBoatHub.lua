@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V41
+-- DIAMOND BOAT HUB V1 [BETA] V42
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -403,6 +403,7 @@ music=makePage("MUSIC")
 farm=makePage("AUTO FARM")
 shop=makePage("SHOP")
 tools=makePage("TOOLS")
+emotes=makePage("EMOTES")
 settings=makePage("SETTINGS")
 globalChat=makePage("GLOBAL CHAT")
 servers=makePage("SERVERS")
@@ -428,6 +429,7 @@ tabIcons={
     ["AUTO FARM"]="rbxassetid://10723395708",
     SHOP="rbxassetid://10734952479",
     TOOLS="rbxassetid://10723405749",
+    EMOTES="rbxassetid://10734905958",
     SETTINGS="rbxassetid://10734950309",
     CREDITS="rbxassetid://10709819149",
     ["GLOBAL CHAT"]="rbxassetid://10709819149",
@@ -435,13 +437,13 @@ tabIcons={
 }
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","CREDITS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","EMOTES","SETTINGS","GLOBAL CHAT","SERVERS","CREDITS"
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(0,58,0,56),
         ClipsDescendants=true,
         BackgroundColor3=BUTTON_WHITE,
-        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",CREDITS="CREDITS"})[name] or name,
+        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",EMOTES="EMOTES",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",CREDITS="CREDITS"})[name] or name,
         TextColor3=TEXT_DARK,
         TextSize=9,
         TextTruncate=Enum.TextTruncate.AtEnd,
@@ -4709,50 +4711,106 @@ button(tools,"STOP CUSTOM ANIMATION",function()
     if activeAnimation then pcall(function() activeAnimation:Stop(0.15); activeAnimation:Destroy() end); activeAnimation=nil end
 end)
 
--- DIAMOND EMOTES V1: use emotes available to the current avatar/experience.
-label(tools,"EMOTE HUB — 32+ EMOTIONS")
-label(tools,"Tap an emote to play it. Availability depends on your avatar and game.")
-local emoteNames = {
-    {"WAVE — ПОМАХАТЬ","wave"},{"POINT — УКАЗАТЬ","point"},
-    {"CHEER — ЛИКОВАТЬ","cheer"},{"LAUGH — СМЕЯТЬСЯ","laugh"},
-    {"DANCE — ТАНЕЦ 1","dance"},{"DANCE 2 — ТАНЕЦ 2","dance2"},
-    {"DANCE 3 — ТАНЕЦ 3","dance3"},{"SALUTE — САЛЮТ","salute"},
-    {"CLAP — ХЛОПАТЬ","clap"},{"BOW — ПОКЛОН","bow"},
-    {"SHRUG — ПОЖАТЬ ПЛЕЧАМИ","shrug"},{"TILT — НАКЛОНИТЬСЯ","tilt"},
-    {"YES — ДА","yes"},{"NO — НЕТ","no"},
-    {"HELLO — ПРИВЕТ","hello"},{"BYE — ПОКА","bye"},
-    {"AGREE — СОГЛАСИЕ","agree"},{"DISAGREE — НЕ СОГЛАСИЕ","disagree"},
-    {"HAPPY — РАДОСТЬ","happy"},{"SAD — ГРУСТЬ","sad"},
-    {"ANGRY — ЗЛОСТЬ","angry"},{"SHY — СТЕСНЕНИЕ","shy"},
-    {"TIRED — УСТАЛОСТЬ","tired"},{"YAWN — ЗЕВОТА","yawn"},
-    {"SIT — СЕСТЬ","sit"},{"JUMP — ПРЫЖОК","jump"},
-    {"DIZZY — ГОЛОВОКРУЖЕНИЕ","dizzy"},{"FACEPALM — ФЕЙСПАЛМ","facepalm"},
-    {"STADIUM — СТАДИОН","stadium"},{"ROBOT — РОБОТ","robot"},
-    {"WAVE 2 — МАХАТЬ 2","wave2"},{"POSE — ПОЗА","pose"},
-    {"PRAISE — ПОХВАЛА","praise"},{"CONFUSED — ЗАМЕШАТЕЛЬСТВО","confused"},
-    {"MEDITATE — МЕДИТАЦИЯ","meditate"},{"FLOAT — ПАРЕНИЕ","float"}
-}
-for _,entry in ipairs(emoteNames) do
-    local caption,emoteName=entry[1],entry[2]
-    button(tools,caption,function()
-        local _,hum=getCharacter()
-        if not hum then warn("[DIAMOND EMOTES] Character or Humanoid not found"); return end
-        local ok,result=pcall(function() return hum:PlayEmote(emoteName) end)
-        if not ok or result==false then
-            warn("[DIAMOND EMOTES] Emote unavailable: "..emoteName..". This game/avatar may not support it.")
-        end
-    end)
-end
-button(tools,"STOP ALL EMOTES",function()
+-- EMOTE HUB: load actual emote assets equipped on the current avatar.
+label(emotes,"DIAMOND EMOTE HUB")
+label(emotes,"Loads emotes equipped on your Roblox avatar. Refresh after respawning or changing avatar.")
+local emoteStatus=label(emotes,"EMOTES: not loaded")
+local emoteTracks={}
+local function stopEmoteTracks()
+    for _,track in ipairs(emoteTracks) do
+        pcall(function() track:Stop(0.15); track:Destroy() end)
+    end
+    table.clear(emoteTracks)
     local _,hum=getCharacter()
-    if not hum then return end
-    local animator=hum:FindFirstChildOfClass("Animator")
-    if animator then
-        for _,track in ipairs(animator:GetPlayingAnimationTracks()) do
-            pcall(function() track:Stop(0.15) end)
+    if hum then
+        local animator=hum:FindFirstChildOfClass("Animator")
+        if animator then
+            for _,track in ipairs(animator:GetPlayingAnimationTracks()) do
+                if track.Priority==Enum.AnimationPriority.Action then
+                    pcall(function() track:Stop(0.12) end)
+                end
+            end
         end
     end
+end
+local emoteListFrame=create("Frame",{Size=UDim2.new(1,-8,0,10),BackgroundTransparency=1},emotes)
+local emoteListLayout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},emoteListFrame)
+local function refreshEmotes()
+    for _,child in ipairs(emoteListFrame:GetChildren()) do
+        if child:IsA("TextButton") or child:IsA("TextLabel") then child:Destroy() end
+    end
+    local _,hum=getCharacter()
+    if not hum then emoteStatus.Text="EMOTES: character not ready"; return end
+    local ok,description=pcall(function() return hum:GetAppliedDescription() end)
+    if not ok or not description then emoteStatus.Text="EMOTES: could not read avatar"; return end
+    local got,available=pcall(function() return description:GetEmotes() end)
+    if not got or type(available)~="table" then
+        emoteStatus.Text="EMOTES: avatar emotes unavailable"
+        return
+    end
+    local entries={}
+    for name,ids in pairs(available) do
+        if type(ids)=="table" then
+            for _,assetId in ipairs(ids) do
+                local id=tonumber(assetId)
+                if id and id>0 then table.insert(entries,{name=tostring(name),id=id}) end
+            end
+        end
+    end
+    table.sort(entries,function(a,b) return a.name:lower()<b.name:lower() end)
+    emoteListFrame.Size=UDim2.new(1,-8,0,#entries*48)
+    if #entries==0 then
+        emoteStatus.Text="EMOTES: none equipped on this avatar"
+        local info=create("TextLabel",{Size=UDim2.new(1,-8,0,58),BackgroundTransparency=1,
+            Text="Equip emotes in Roblox Avatar Editor, then press REFRESH EMOTES.",
+            TextColor3=Color3.fromRGB(190,190,205),TextWrapped=true,TextSize=12,
+            Font=Enum.Font.Gotham},emoteListFrame)
+        return
+    end
+    emoteStatus.Text="EMOTES: "..#entries.." available"
+    for index,entry in ipairs(entries) do
+        local b=create("TextButton",{Name="Emote_"..index,Size=UDim2.new(1,-8,0,42),
+            BackgroundColor3=Color3.fromRGB(24,24,31),Text="  "..entry.name.."  •  ▶",
+            TextColor3=Color3.fromRGB(242,242,248),TextSize=13,Font=Enum.Font.GothamSemibold,
+            TextXAlignment=Enum.TextXAlignment.Left,AutoButtonColor=false,BorderSizePixel=0},emoteListFrame)
+        round(b,10); outline(b)
+        b.Activated:Connect(function()
+            local _,currentHum=getCharacter()
+            if not currentHum then emoteStatus.Text="EMOTES: character unavailable"; return end
+            local animator=currentHum:FindFirstChildOfClass("Animator") or Instance.new("Animator",currentHum)
+            local animation=Instance.new("Animation")
+            animation.AnimationId="rbxassetid://"..tostring(entry.id)
+            local loaded,track=pcall(function() return animator:LoadAnimation(animation) end)
+            animation:Destroy()
+            if not loaded or not track then
+                emoteStatus.Text="EMOTES: failed to load "..entry.name.." (permissions?)"
+                return
+            end
+            stopEmoteTracks()
+            track.Priority=Enum.AnimationPriority.Action
+            table.insert(emoteTracks,track)
+            local played,err=pcall(function() track:Play(0.15,1,1) end)
+            if played then emoteStatus.Text="PLAYING: "..entry.name
+            else emoteStatus.Text="EMOTES: playback failed"; pcall(function() track:Destroy() end) end
+        end)
+    end
+    emoteListFrame.Size=UDim2.new(1,-8,0,math.max(48,#entries*48))
+end
+button(emotes,"REFRESH EMOTES",refreshEmotes)
+button(emotes,"STOP CURRENT EMOTE",function()
+    stopEmoteTracks()
+    emoteStatus.Text="EMOTES: stopped"
 end)
+button(emotes,"RELOAD AVATAR DESCRIPTION",function()
+    local _,hum=getCharacter()
+    if hum then
+        pcall(function() hum:ApplyDescription(hum:GetAppliedDescription()) end)
+    end
+    task.wait(0.25)
+    refreshEmotes()
+end)
+refreshEmotes()
+
 
 -- WAYPOINTS: local marker at current position; no server teleport.
 label(teleport,"WAYPOINTS")
@@ -5026,7 +5084,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=41"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=42"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
