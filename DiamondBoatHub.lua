@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V50
+-- DIAMOND BOAT HUB V1 [BETA] V51
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -19,6 +19,8 @@ TeleportService = game:GetService("TeleportService")
 Stats = game:GetService("Stats")
 
 Player = Players.LocalPlayer
+local DIAMOND_PLUGIN_OWNER_ID = 7162643277
+local isPluginOwner = Player.UserId == DIAMOND_PLUGIN_OWNER_ID
 Camera = Workspace.CurrentCamera
 
 function getParent()
@@ -243,6 +245,7 @@ credits=makePage("CREDITS")
 TabButtons={}
 ToggleSetters={}
 function showPage(name)
+    if name=="PLUGINS" and not isPluginOwner then name="HOME" end
     for n,p in pairs(Pages) do p.Visible=(n==name) end
     for n,b in pairs(TabButtons) do
         local active=(n==name)
@@ -440,10 +443,12 @@ tabIcons={
     SERVERS="rbxassetid://10734906744",
     PLUGINS="rbxassetid://10723384394"
 }
-for _,name in ipairs({
+local tabNames={
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","PLUGINS","CREDITS"
-}) do
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","CREDITS"
+}
+if isPluginOwner then table.insert(tabNames,"PLUGINS") end
+for _,name in ipairs(tabNames) do
     local b=create("TextButton",{
         Size=UDim2.new(0,68,0,58),
         ClipsDescendants=true,
@@ -485,6 +490,7 @@ for _,name in ipairs({
     b.Activated:Connect(function() showPage(name) end)
 end
 
+if isPluginOwner then
 -- PLUGIN MANAGER: load user-supplied modules that return a plugin table.
 label(plugins,"PLUGIN MANAGER")
 label(plugins,"Load your own Lua plugin from a direct raw URL. Only use code you trust.")
@@ -584,6 +590,10 @@ button(plugins,"ADD PLUGIN URL",function()
 end)
 button(plugins,"REFRESH PLUGIN LIST",refreshPluginList)
 refreshPluginList()
+else
+    label(plugins,"ACCESS DENIED")
+    label(plugins,"Plugin management is restricted to the owner account.")
+end
 
 -- HOME
 
@@ -5495,7 +5505,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=50"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=51"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
