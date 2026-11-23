@@ -652,6 +652,32 @@ local function translateRussianLua(source)
     return table.concat(out)
 end
 
+local function compilePluginSource(source)
+    if type(source)~="string" or source=="" then return false,"Пустой код" end
+    local firstLineEnd=source:find("\n",1,true) or (#source+1)
+    local firstLine=string.gsub(source:sub(1,firstLineEnd-1),"^%s*(.-)%s*$","%1")
+    local pluginName=firstLine:match('^плагин%s+"(.-)"')
+    local code=source
+    if pluginName then
+        code=source:sub(math.min(firstLineEnd+1,#source+1))
+        code='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
+            'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
+            'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
+            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus\n'..
+            'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
+            'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
+            'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
+            'local top=function(x) api.Notify("🏆 "..tostring(x or "Топ!")) end\n'..
+            translateRussianLua(code)..'\nend}'
+    else
+        code=translateRussianLua(code)
+    end
+    if type(loadstring)~="function" then return false,"Executor не поддерживает loadstring" end
+    local ok,chunk=pcall(loadstring,code)
+    if not ok or type(chunk)~="function" then return false,"Ошибка синтаксиса: "..tostring(chunk) end
+    return true,"Синтаксис OK • код не запускался"
+end
+
 local function makePluginApi(key)
     loadedPlugins[key]=loadedPlugins[key] or {name="Plugin",items={}}
     local api={}
@@ -676,6 +702,28 @@ local function makePluginApi(key)
         table.insert(loadedPlugins[key].items,item)
         return item
     end
+    api.AddCommand=function(commandName,callback)
+        assert(type(commandName)=="string" and type(callback)=="function","AddCommand expects name and callback")
+        local item=button(plugins,"COMMAND • "..commandName,function()
+            local ok,err=pcall(callback,api)
+            if not ok then pluginMessage("Command error: "..tostring(err)) end
+        end)
+        table.insert(loadedPlugins[key].items,item)
+        return item
+    end
+    api.AddLabel=function(message)
+        local item=label(plugins,"PLUGIN • "..tostring(message))
+        table.insert(loadedPlugins[key].items,item)
+        return item
+    end
+    api.GetPlayers=function() return Players:GetPlayers() end
+    api.GetCharacter=function(target)
+        target=target or Player
+        local character=target and target.Character
+        return character,character and character:FindFirstChildOfClass("Humanoid"),character and character:FindFirstChild("HumanoidRootPart")
+    end
+    api.Log=function(message) print("[DIAMOND PLUGIN]",tostring(message)) end
+    api.SetStatus=function(message) pluginMessage(message) end
     return api
 end
 
