@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V39
+-- DIAMOND BOAT HUB V1 [BETA] V40
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -4825,6 +4825,51 @@ button(tools,"STOP CUSTOM ANIMATION",function()
     if activeAnimation then pcall(function() activeAnimation:Stop(0.15); activeAnimation:Destroy() end); activeAnimation=nil end
 end)
 
+-- DIAMOND EMOTES V1: use emotes available to the current avatar/experience.
+label(tools,"EMOTE HUB — 32+ EMOTIONS")
+label(tools,"Tap an emote to play it. Availability depends on your avatar and game.")
+local emoteNames = {
+    {"WAVE — ПОМАХАТЬ","wave"},{"POINT — УКАЗАТЬ","point"},
+    {"CHEER — ЛИКОВАТЬ","cheer"},{"LAUGH — СМЕЯТЬСЯ","laugh"},
+    {"DANCE — ТАНЕЦ 1","dance"},{"DANCE 2 — ТАНЕЦ 2","dance2"},
+    {"DANCE 3 — ТАНЕЦ 3","dance3"},{"SALUTE — САЛЮТ","salute"},
+    {"CLAP — ХЛОПАТЬ","clap"},{"BOW — ПОКЛОН","bow"},
+    {"SHRUG — ПОЖАТЬ ПЛЕЧАМИ","shrug"},{"TILT — НАКЛОНИТЬСЯ","tilt"},
+    {"YES — ДА","yes"},{"NO — НЕТ","no"},
+    {"HELLO — ПРИВЕТ","hello"},{"BYE — ПОКА","bye"},
+    {"AGREE — СОГЛАСИЕ","agree"},{"DISAGREE — НЕ СОГЛАСИЕ","disagree"},
+    {"HAPPY — РАДОСТЬ","happy"},{"SAD — ГРУСТЬ","sad"},
+    {"ANGRY — ЗЛОСТЬ","angry"},{"SHY — СТЕСНЕНИЕ","shy"},
+    {"TIRED — УСТАЛОСТЬ","tired"},{"YAWN — ЗЕВОТА","yawn"},
+    {"SIT — СЕСТЬ","sit"},{"JUMP — ПРЫЖОК","jump"},
+    {"DIZZY — ГОЛОВОКРУЖЕНИЕ","dizzy"},{"FACEPALM — ФЕЙСПАЛМ","facepalm"},
+    {"STADIUM — СТАДИОН","stadium"},{"ROBOT — РОБОТ","robot"},
+    {"WAVE 2 — МАХАТЬ 2","wave2"},{"POSE — ПОЗА","pose"},
+    {"PRAISE — ПОХВАЛА","praise"},{"CONFUSED — ЗАМЕШАТЕЛЬСТВО","confused"},
+    {"MEDITATE — МЕДИТАЦИЯ","meditate"},{"FLOAT — ПАРЕНИЕ","float"}
+}
+for _,entry in ipairs(emoteNames) do
+    local caption,emoteName=entry[1],entry[2]
+    button(tools,caption,function()
+        local _,hum=getCharacter()
+        if not hum then warn("[DIAMOND EMOTES] Character or Humanoid not found"); return end
+        local ok,result=pcall(function() return hum:PlayEmote(emoteName) end)
+        if not ok or result==false then
+            warn("[DIAMOND EMOTES] Emote unavailable: "..emoteName..". This game/avatar may not support it.")
+        end
+    end)
+end
+button(tools,"STOP ALL EMOTES",function()
+    local _,hum=getCharacter()
+    if not hum then return end
+    local animator=hum:FindFirstChildOfClass("Animator")
+    if animator then
+        for _,track in ipairs(animator:GetPlayingAnimationTracks()) do
+            pcall(function() track:Stop(0.15) end)
+        end
+    end
+end)
+
 -- WAYPOINTS: local marker at current position; no server teleport.
 label(teleport,"WAYPOINTS")
 local waypoint=nil
@@ -5097,7 +5142,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=39"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=40"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
