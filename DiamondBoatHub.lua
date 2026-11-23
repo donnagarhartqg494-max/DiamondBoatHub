@@ -161,6 +161,18 @@ TitleLabel=create("TextLabel",{
     Active=false,ZIndex=3
 },Top)
 
+PhoneModeButton=create("TextButton",{
+    Name="PhoneModeButton",Size=UDim2.fromOffset(30,28),
+    AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-82,0,10),
+    BackgroundColor3=Color3.fromRGB(235,242,255),BackgroundTransparency=0.18,
+    Text="▦",TextColor3=Color3.fromRGB(45,50,70),TextSize=18,
+    Font=Enum.Font.GothamBold,AutoButtonColor=false,BorderSizePixel=0
+},Top)
+round(PhoneModeButton,9)
+local phoneButtonStroke=outline(PhoneModeButton)
+phoneButtonStroke.Color=Color3.fromRGB(255,255,255)
+phoneButtonStroke.Transparency=0.15
+
 Min = create("TextButton",{
     Size=UDim2.fromOffset(30,28),
     AnchorPoint=Vector2.new(1,0),
@@ -484,16 +496,16 @@ if not isPluginStaff then
 end
 -- Original DiamondBoatHub line icons, drawn from Roblox GUI primitives (no emoji or external image assets).
 local function drawTabIcon(parent,name,color)
-    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(28,24),Position=UDim2.new(0.5,-14,0,4),BackgroundTransparency=1},parent)
+    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(32,30),Position=UDim2.new(0.5,-16,0,2),BackgroundTransparency=1},parent)
     local function strokeLine(x,y,w,h,rotation,thickness)
         local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),AnchorPoint=Vector2.new(0.5,0.5),Rotation=rotation or 0,BackgroundColor3=color,BorderSizePixel=0},root)
-        round(p,thickness or 2)
+        round(p,thickness or 3)
         return p
     end
     local function ring(x,y,w,h,thick)
         local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),BackgroundTransparency=1,BorderSizePixel=0},root)
         round(p,math.floor(math.min(w,h)/2))
-        local st=outline(p); st.Color=color; st.Thickness=thick or 2
+        local st=outline(p); st.Color=color; st.Thickness=thick or 2.5
         return p
     end
     local function dot(x,y,size)
@@ -596,6 +608,85 @@ for _,name in ipairs(tabNames) do
     end)
     b.Activated:Connect(function() showPage(name) end)
 end
+
+-- iPhone-like app launcher. Apps open the existing hub pages; no feature logic is duplicated.
+local PhoneLauncher=create("Frame",{
+    Name="DiamondPhoneLauncher",Visible=false,Size=UDim2.fromScale(1,1),
+    BackgroundColor3=Color3.fromRGB(19,22,34),BackgroundTransparency=0.08,
+    BorderSizePixel=0,ZIndex=80
+},GUI)
+round(PhoneLauncher,24)
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(35,45,68),Color3.fromRGB(12,15,26)),Rotation=90},PhoneLauncher)
+local phoneTitle=create("TextLabel",{
+    Size=UDim2.new(1,-30,0,42),Position=UDim2.fromOffset(15,16),
+    BackgroundTransparency=1,Text="DIAMOND • APPS",
+    TextColor3=Color3.fromRGB(245,248,255),TextSize=20,
+    Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=81
+},PhoneLauncher)
+local phoneSubtitle=create("TextLabel",{
+    Size=UDim2.new(1,-30,0,24),Position=UDim2.fromOffset(15,55),
+    BackgroundTransparency=1,Text="Выбери приложение",
+    TextColor3=Color3.fromRGB(180,190,215),TextSize=12,
+    Font=Enum.Font.Gotham,ZIndex=81
+},PhoneLauncher)
+local appGrid=create("Frame",{
+    Size=UDim2.new(1,-28,1,-126),Position=UDim2.fromOffset(14,92),
+    BackgroundTransparency=1,ZIndex=81
+},PhoneLauncher)
+local gridLayout=create("UIGridLayout",{
+    CellSize=UDim2.new(0,92,0,100),CellPadding=UDim2.fromOffset(10,12),
+    SortOrder=Enum.SortOrder.LayoutOrder,HorizontalAlignment=Enum.HorizontalAlignment.Center,
+    VerticalAlignment=Enum.VerticalAlignment.Top
+},appGrid)
+local appOrder=0
+for _,appName in ipairs(tabNames) do
+    local app=create("TextButton",{
+        Name="App_"..appName,BackgroundColor3=Color3.fromRGB(225,235,255),
+        BackgroundTransparency=0.78,Text="",AutoButtonColor=false,
+        BorderSizePixel=0,LayoutOrder=appOrder,ZIndex=82
+    },appGrid)
+    appOrder+=1
+    round(app,20)
+    local appStroke=outline(app)
+    appStroke.Color=Color3.fromRGB(255,255,255); appStroke.Transparency=0.55
+    local iconPlate=create("Frame",{
+        Size=UDim2.fromOffset(52,52),Position=UDim2.new(0.5,-26,0,8),
+        BackgroundColor3=Color3.fromRGB(225,232,255),BackgroundTransparency=0.18,
+        BorderSizePixel=0,ZIndex=83
+    },app)
+    round(iconPlate,16)
+    local iconStroke=outline(iconPlate)
+    iconStroke.Color=Color3.fromRGB(255,255,255); iconStroke.Transparency=0.25
+    drawTabIcon(iconPlate,appName,Color3.fromRGB(55,65,95))
+    local caption=create("TextLabel",{
+        Size=UDim2.new(1,-4,0,28),Position=UDim2.new(0,2,1,-32),
+        BackgroundTransparency=1,Text=({HOME="Home",MOVEMENT="Movement",VISUALS="Visuals",TELEPORTS="Teleport",["AUTO BUILD"]="Build",MUSIC="Music",["AUTO FARM"]="Farm",SHOP="Shop",TOOLS="Tools",SETTINGS="Settings",["GLOBAL CHAT"]="Chat",SERVERS="Servers",PLUGINS="Plugins",["PLUGIN CATALOG"]="Catalog",CREDITS="Credits"})[appName] or appName,
+        TextColor3=Color3.fromRGB(245,247,255),TextSize=11,
+        Font=Enum.Font.GothamSemibold,TextWrapped=true,ZIndex=83
+    },app)
+    app.Activated:Connect(function()
+        PhoneLauncher.Visible=false
+        Main.Visible=true
+        showPage(appName)
+    end)
+end
+local phoneBack=create("TextButton",{
+    Size=UDim2.fromOffset(150,38),AnchorPoint=Vector2.new(0.5,1),
+    Position=UDim2.new(0.5,0,1,-16),BackgroundColor3=Color3.fromRGB(225,235,255),
+    BackgroundTransparency=0.78,Text="←  ВЕРНУТЬСЯ В HUB",
+    TextColor3=Color3.fromRGB(245,247,255),TextSize=12,
+    Font=Enum.Font.GothamBold,AutoButtonColor=false,ZIndex=83
+},PhoneLauncher)
+round(phoneBack,18)
+outline(phoneBack)
+phoneBack.Activated:Connect(function()
+    PhoneLauncher.Visible=false
+    Main.Visible=true
+end)
+PhoneModeButton.Activated:Connect(function()
+    Main.Visible=false
+    PhoneLauncher.Visible=true
+end)
 
 -- BUG REPORT: local report composer; copies text for the user to send.
 local function bugReportLabel(text)
