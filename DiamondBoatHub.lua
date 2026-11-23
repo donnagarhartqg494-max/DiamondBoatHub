@@ -150,7 +150,7 @@ DragHandle=create("TextButton",{
     BackgroundTransparency=1,Text="",AutoButtonColor=false,Active=true,ZIndex=2
 },Top)
 TitleLabel=create("TextLabel",{
-    Size=UDim2.new(1,-150,1,0),
+    Size=UDim2.new(1,-205,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
     Text="DIAMOND BOAT HUB V1 [BETA]",
@@ -162,16 +162,24 @@ TitleLabel=create("TextLabel",{
 },Top)
 
 PhoneModeButton=create("TextButton",{
-    Name="PhoneModeButton",Size=UDim2.fromOffset(34,30),ZIndex=10,
-    AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-82,0,10),
-    BackgroundColor3=Color3.fromRGB(235,242,255),BackgroundTransparency=0.18,
-    Text="▣",TextColor3=Color3.fromRGB(45,50,70),TextSize=19,
-    Font=Enum.Font.GothamBold,AutoButtonColor=false,BorderSizePixel=0
+    Name="PhoneModeButton",Size=UDim2.fromOffset(72,30),ZIndex=30,
+    AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-82,0,9),
+    BackgroundColor3=Color3.fromRGB(235,242,255),BackgroundTransparency=0.08,
+    Text="▯  iPHONE",TextColor3=Color3.fromRGB(35,42,66),TextSize=12,
+    Font=Enum.Font.GothamBold,AutoButtonColor=false,BorderSizePixel=0,
+    Visible=true,Active=true
 },Top)
-round(PhoneModeButton,9)
+round(PhoneModeButton,10)
 local phoneButtonStroke=outline(PhoneModeButton)
 phoneButtonStroke.Color=Color3.fromRGB(255,255,255)
-phoneButtonStroke.Transparency=0.15
+phoneButtonStroke.Transparency=0.05
+phoneButtonStroke.Thickness=1.5
+PhoneModeButton.MouseEnter:Connect(function()
+    PhoneModeButton.BackgroundTransparency=0
+end)
+PhoneModeButton.MouseLeave:Connect(function()
+    PhoneModeButton.BackgroundTransparency=0.08
+end)
 
 Min = create("TextButton",{
     Size=UDim2.fromOffset(30,28),
