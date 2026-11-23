@@ -20,7 +20,9 @@ Stats = game:GetService("Stats")
 
 Player = Players.LocalPlayer
 local DIAMOND_PLUGIN_OWNER_ID = 7162643277
+local DIAMOND_SCRIPT_DEV_ID = 4918761384
 local isPluginOwner = Player.UserId == DIAMOND_PLUGIN_OWNER_ID
+local isPluginStaff = isPluginOwner or Player.UserId == DIAMOND_SCRIPT_DEV_ID
 Camera = Workspace.CurrentCamera
 
 function getParent()
@@ -245,7 +247,7 @@ credits=makePage("CREDITS")
 TabButtons={}
 ToggleSetters={}
 function showPage(name)
-    if name=="PLUGINS" and not isPluginOwner then name="HOME" end
+    if name=="PLUGINS" and not isPluginStaff then name="HOME" end
     for n,p in pairs(Pages) do p.Visible=(n==name) end
     for n,b in pairs(TabButtons) do
         local active=(n==name)
@@ -447,6 +449,9 @@ local tabNames={
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
     "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","PLUGINS","CREDITS"
 }
+if not isPluginStaff then
+    for i=#tabNames,1,-1 do if tabNames[i]=="PLUGINS" then table.remove(tabNames,i) end end
+end
 for _,name in ipairs(tabNames) do
     local b=create("TextButton",{
         Size=UDim2.new(0,68,0,58),
@@ -5662,7 +5667,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=56"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=57"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
@@ -5674,7 +5679,7 @@ button(settings,"RELOAD SCRIPT",function()
     if not ok then warn("[DIAMOND RELOAD] Failed:",tostring(err)) end
 end)
 
-print("DIAMOND BOAT HUB V1 [BETA] LOADED")
+print("DIAMOND BOAT HUB V57 [BETA] LOADED")
 )
     if pluginName then
         local body=source:sub(math.min(firstLineEnd+1,#source+1))
@@ -5709,7 +5714,7 @@ print("DIAMOND BOAT HUB V1 [BETA] LOADED")
     return result
 end
 
-if isPluginOwner then
+if isPluginStaff then
     label(plugins,"DIAMOND SCRIPT • РУССКИЙ LUA")
     label(plugins,"Пиши почти как Lua, только ключевые слова — по-русски. Можно собирать код кнопками-блоками.")
     local russianEditor=create("TextBox",{
