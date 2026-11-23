@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V51
+-- DIAMOND BOAT HUB V1 [BETA] V52
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -445,9 +445,8 @@ tabIcons={
 }
 local tabNames={
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","CREDITS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","PLUGINS","CREDITS"
 }
-if isPluginOwner then table.insert(tabNames,"PLUGINS") end
 for _,name in ipairs(tabNames) do
     local b=create("TextButton",{
         Size=UDim2.new(0,68,0,58),
@@ -490,8 +489,7 @@ for _,name in ipairs(tabNames) do
     b.Activated:Connect(function() showPage(name) end)
 end
 
-if isPluginOwner then
--- PLUGIN MANAGER: load user-supplied modules that return a plugin table.
+-- PLUGIN MANAGER: everyone may run listed plugins; only owner may add/remove them.
 label(plugins,"PLUGIN MANAGER")
 label(plugins,"Load your own Lua plugin from a direct raw URL. Only use code you trust.")
 local pluginUrlBox=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,PlaceholderText="https://raw.githubusercontent.com/user/repo/main/plugin.lua",Text="",ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=12},plugins)
@@ -557,19 +555,27 @@ local function refreshPluginList()
             pluginMessage("Loaded: "..tostring(result.Name or name))
         end)
         loadBtn.Size=UDim2.new(0.19,-3,1,0)
-        local removeBtn=button(row,"REMOVE",function()
-            local record=loadedPlugins[url]
-            if record then for _,item in ipairs(record.items or {}) do if item and item.Parent then item:Destroy() end end end
-            loadedPlugins[url]=nil
-            table.remove(pluginStore.__DIAMOND_PLUGIN_URLS,index)
-            pluginMessage("Plugin removed from list")
-            refreshPluginList()
-        end)
-        removeBtn.Size=UDim2.new(0.23,-3,1,0)
+        if isPluginOwner then
+            info.Size=UDim2.new(0.56,-4,1,0)
+            local removeBtn=button(row,"REMOVE",function()
+                if not isPluginOwner then return end
+                local record=loadedPlugins[url]
+                if record then for _,item in ipairs(record.items or {}) do if item and item.Parent then item:Destroy() end end end
+                loadedPlugins[url]=nil
+                table.remove(pluginStore.__DIAMOND_PLUGIN_URLS,index)
+                pluginMessage("Plugin removed from list")
+                refreshPluginList()
+            end)
+            removeBtn.Size=UDim2.new(0.23,-3,1,0)
+        else
+            info.Size=UDim2.new(0.79,-4,1,0)
+        end
     end
     if #urls==0 then label(pluginListFrame,"No plugins added yet") end
 end
+if isPluginOwner then
 button(plugins,"ADD PLUGIN URL",function()
+    if not isPluginOwner then return end
     local url=string.gsub(pluginUrlBox.Text or "","^%s*(.-)%s*$","%1")
     if not string.match(url,"^https://") or not string.find(url,"raw%.githubusercontent%.com",1,false) then
         pluginMessage("Use a direct HTTPS raw.githubusercontent.com URL")
@@ -588,12 +594,13 @@ button(plugins,"ADD PLUGIN URL",function()
     pluginMessage("Added plugin URL. Press LOAD to run it.")
     refreshPluginList()
 end)
-button(plugins,"REFRESH PLUGIN LIST",refreshPluginList)
-refreshPluginList()
-else
-    label(plugins,"ACCESS DENIED")
-    label(plugins,"Plugin management is restricted to the owner account.")
 end
+button(plugins,"REFRESH PLUGIN LIST",refreshPluginList)
+if not isPluginOwner then
+    pluginUrlBox.Visible=false
+    label(plugins,"Plugins can be launched by everyone. Only the owner can add or remove plugins.")
+end
+refreshPluginList()
 
 -- HOME
 
@@ -5505,7 +5512,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=51"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=52"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
