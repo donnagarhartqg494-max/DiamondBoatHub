@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V47
+-- DIAMOND BOAT HUB V1 [BETA] V48
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -4071,6 +4071,9 @@ function addGlobalChatMessage(record)
         end
     end
     who:SetAttribute("ChatMessageId",record.id)
+    if record.userId and type(record.message)=="string" and showOverheadChat then
+        showOverheadChat(record.userId,record.message)
+    end
 end
 function fetchGlobalChat()
     local result,err=relayRequest("GET","/chat?gameId="..tostring(game.PlaceId))
@@ -4138,17 +4141,8 @@ local function showOverheadChat(userId,messageText)
     end
     if not character or not head then return end
 
-    -- DisplayBubble creates the standard Roblox chat cloud above the character.
-    local nativeShown=false
-    if overheadTextChat then
-        local ok=pcall(function()
-            overheadTextChat:DisplayBubble(character,messageText)
-        end)
-        nativeShown=ok
-    end
-    if nativeShown then return end
-
-    -- Fallback for clients/executors where DisplayBubble is unavailable.
+    -- Always draw our own bubble: DisplayBubble may return without showing anything
+    -- in executor/client contexts, so a successful pcall is not proof it appeared.
     local old=head:FindFirstChild("DiamondChatBubble")
     if old then old:Destroy() end
     local bubble=Instance.new("BillboardGui")
@@ -5055,29 +5049,38 @@ function getSharedConfig()
     if type(env)=="table" then return env end
     return _G
 end
-function saveHubConfig()
+function saveHubConfig(targetFile)
     local data={version=2,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,backgroundMode=backgroundMode,prefix=playerPrefix,prefixColor=prefixColor and {prefixColor.R,prefixColor.G,prefixColor.B} or nil,speed=configuredSpeed,jump=configuredJump,speedOn=speedOn,jumpOn=jumpOn,infiniteJump=infiniteJump,noclipOn=noclipOn,flyOn=flyOn,spinEnabled=spinEnabled,spinSpeed=spinSpeed}
     local encoded=HttpService:JSONEncode(data)
     local shared=getSharedConfig()
     shared.__DIAMOND_BOAT_HUB_CONFIG=data
+    local destination=type(targetFile)=="string" and targetFile or CONFIG_FILE
     if type(writefile)=="function" then
-        local ok,err=pcall(function() writefile(CONFIG_FILE,encoded) end)
-        if ok then setConfigStatus("CONFIG: saved to "..CONFIG_FILE); return true end
+        local ok,err=pcall(function()
+            if destination~=CONFIG_FILE and type(makefolder)=="function" then
+                if type(isfolder)~="function" or not isfolder("DiamondBoatHub") then makefolder("DiamondBoatHub") end
+                if type(isfolder)~="function" or not isfolder("DiamondBoatHub/Configs") then makefolder("DiamondBoatHub/Configs") end
+            end
+            writefile(destination,encoded)
+        end)
+        if ok then setConfigStatus("CONFIG: saved to "..destination); return true end
         warn("[DIAMOND CONFIG] File save failed:",tostring(err))
     end
     setConfigStatus("CONFIG: kept in executor session (file API unavailable)")
     return true
 end
-function loadHubConfig()
+function loadHubConfig(targetFile)
     local data
-    if type(isfile)=="function" and type(readfile)=="function" then
+    if type(targetFile)=="table" then data=targetFile end
+    local sourceFile=type(targetFile)=="string" and targetFile or CONFIG_FILE
+    if not data and type(isfile)=="function" and type(readfile)=="function" then
         local ok,result=pcall(function()
-            if not isfile(CONFIG_FILE) then error("config file not found") end
-            return HttpService:JSONDecode(readfile(CONFIG_FILE))
+            if not isfile(sourceFile) then error("config file not found") end
+            return HttpService:JSONDecode(readfile(sourceFile))
         end)
         if ok and type(result)=="table" then data=result end
     end
-    if not data then
+    if not data and not targetFile then
         local shared=getSharedConfig()
         if type(shared.__DIAMOND_BOAT_HUB_CONFIG)=="table" then data=shared.__DIAMOND_BOAT_HUB_CONFIG end
     end
@@ -5128,6 +5131,83 @@ end
 configStatus=label(settings,"CONFIG: ready")
 button(settings,"SAVE CONFIG",function() saveHubConfig() end)
 button(settings,"LOAD CONFIG",function() loadHubConfig() end)
+
+-- Named config library: unlimited named profiles, files when supported, session fallback otherwise.
+label(settings,"NAMED CONFIGS / ИМЕНОВАННЫЕ КОНФИГИ")
+label(settings,"Create as many profiles as you want. Names are used as file names.")
+local namedConfigBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=Color3.fromRGB(245,245,250),PlaceholderColor3=Color3.fromRGB(145,145,155),PlaceholderText="Config name (e.g. PvP, Builder, Speed)",Text="My Config",ClearTextOnFocus=false,Font=Enum.Font.GothamSemibold,TextSize=14},settings)
+round(namedConfigBox,9); outline(namedConfigBox)
+local namedConfigStatus=label(settings,"Named configs: ready")
+local namedConfigFolder="DiamondBoatHub/Configs"
+local namedConfigStore=getSharedConfig()
+namedConfigStore.__DIAMOND_NAMED_CONFIGS=namedConfigStore.__DIAMOND_NAMED_CONFIGS or {}
+local function cleanNamedConfig(value)
+    local name=string.gsub(tostring(value or ""),"[^%w _%-]","")
+    name=string.gsub(name,"^%s+",""); name=string.gsub(name,"%s+$","")
+    return string.sub(name,1,36)
+end
+local function namedConfigPath(name) return namedConfigFolder.."/"..name..".json" end
+local function saveNamedConfig()
+    local name=cleanNamedConfig(namedConfigBox.Text)
+    if name=="" then namedConfigStatus.Text="Enter a config name first"; return end
+    saveHubConfig(namedConfigPath(name))
+    namedConfigStore.__DIAMOND_NAMED_CONFIGS[name]=namedConfigStore.__DIAMOND_BOAT_HUB_CONFIG
+    namedConfigStatus.Text="Saved config: "..name
+end
+local function loadNamedConfig(name)
+    local path=namedConfigPath(name)
+    local ok=loadHubConfig(path)
+    if not ok then
+        local cached=namedConfigStore.__DIAMOND_NAMED_CONFIGS[name]
+        if cached then ok=loadHubConfig(cached) end
+    end
+    namedConfigStatus.Text=ok and ("Loaded config: "..name) or ("Config not found: "..name)
+end
+local function deleteNamedConfig(name)
+    namedConfigStore.__DIAMOND_NAMED_CONFIGS[name]=nil
+    if type(isfile)=="function" and type(delfile)=="function" then
+        pcall(function() if isfile(namedConfigPath(name)) then delfile(namedConfigPath(name)) end end)
+    end
+    namedConfigStatus.Text="Deleted config: "..name
+end
+local namedConfigList=create("Frame",{Size=UDim2.new(1,-8,0,0),BackgroundTransparency=1,AutomaticSize=Enum.AutomaticSize.Y},settings)
+local namedListLayout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},namedConfigList)
+local function refreshNamedConfigList()
+    for _,child in ipairs(namedConfigList:GetChildren()) do
+        if child:IsA("GuiObject") and child~=namedListLayout then child:Destroy() end
+    end
+    local names={}
+    for name in pairs(namedConfigStore.__DIAMOND_NAMED_CONFIGS) do names[name]=true end
+    if type(listfiles)=="function" then
+        pcall(function()
+            if type(isfolder)~="function" or isfolder(namedConfigFolder) then
+                for _,path in ipairs(listfiles(namedConfigFolder)) do
+                    local file=string.match(path,"([^/]+)%.json$")
+                    if file then names[file]=true end
+                end
+            end
+        end)
+    end
+    local ordered={}
+    for name in pairs(names) do table.insert(ordered,name) end
+    table.sort(ordered)
+    for _,name in ipairs(ordered) do
+        local row=create("Frame",{Size=UDim2.new(1,-2,0,40),BackgroundTransparency=1},namedConfigList)
+        create("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},row)
+        local loadBtn=button(row,"LOAD  "..name,function() namedConfigBox.Text=name; loadNamedConfig(name) end)
+        loadBtn.Size=UDim2.new(0.62,-4,1,0)
+        local deleteBtn=button(row,"DELETE",function() deleteNamedConfig(name); refreshNamedConfigList() end)
+        deleteBtn.Size=UDim2.new(0.36,-4,1,0)
+    end
+    if #ordered==0 then label(namedConfigList,"No named configs saved yet") end
+end
+button(settings,"SAVE AS NAMED CONFIG",function() saveNamedConfig(); refreshNamedConfigList() end)
+button(settings,"LOAD NAMED CONFIG",function()
+    local name=cleanNamedConfig(namedConfigBox.Text)
+    if name~="" then loadNamedConfig(name) else namedConfigStatus.Text="Enter a config name first" end
+end)
+button(settings,"REFRESH CONFIG LIST",refreshNamedConfigList)
+refreshNamedConfigList()
 button(settings,"DESTROY HUB",function()
     -- Stop active loops and release any movement/input state before removing the UI.
     farmEnabled=false
@@ -5141,7 +5221,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=47"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=48"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
