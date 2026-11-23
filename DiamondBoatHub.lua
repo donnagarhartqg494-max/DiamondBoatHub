@@ -739,6 +739,13 @@ local function refreshPluginList()
         local name=loadedPlugins[url] and loadedPlugins[url].name or ("Plugin "..index)
         local info=label(row,name)
         info.Size=UDim2.new(0.56,-4,1,0)
+        local testBtn=button(row,"TEST",function()
+            local sourceOk,source=pcall(function() return game:HttpGet(url) end)
+            if not sourceOk or type(source)~="string" or #source<5 then pluginMessage("TEST: download failed: "..tostring(source)); return end
+            local passed,result=compilePluginSource(source)
+            pluginMessage(name.." • "..result)
+        end)
+        testBtn.Size=UDim2.new(0.16,-3,1,0)
         local loadBtn=button(row,"LOAD",function()
             pluginUrlBox.Text=url
             local sourceOk,source=pcall(function() return game:HttpGet(url) end)
@@ -755,9 +762,10 @@ local function refreshPluginList()
             loadedPlugins[url].name=tostring(result.Name or name)
             pluginMessage("Loaded: "..tostring(result.Name or name))
         end)
-        loadBtn.Size=UDim2.new(0.19,-3,1,0)
+        loadBtn.Size=UDim2.new(0.16,-3,1,0)
+        info.Size=UDim2.new(0.43,-4,1,0)
         if isPluginOwner then
-            info.Size=UDim2.new(0.56,-4,1,0)
+            info.Size=UDim2.new(0.43,-4,1,0)
             local removeBtn=button(row,"REMOVE",function()
                 if not isPluginOwner then return end
                 local record=loadedPlugins[url]
@@ -767,9 +775,9 @@ local function refreshPluginList()
                 pluginMessage("Plugin removed from list")
                 refreshPluginList()
             end)
-            removeBtn.Size=UDim2.new(0.23,-3,1,0)
+            removeBtn.Size=UDim2.new(0.19,-3,1,0)
         else
-            info.Size=UDim2.new(0.79,-4,1,0)
+            info.Size=UDim2.new(0.65,-4,1,0)
         end
     end
     if #urls==0 then label(pluginListFrame,"No plugins added yet") end
