@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V35
+-- DIAMOND BOAT HUB V1 [BETA] V36
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -3377,7 +3377,7 @@ function applyTheme(name)
         b.BackgroundColor3=active and t.main or Color3.fromRGB(35,35,44)
         b.TextColor3=WHITE
         local icon=b:FindFirstChild("TabIcon")
-        if icon then icon.ImageColor3=WHITE end
+        if icon then icon.ImageColor3=(backgroundMode=="Winter") and Color3.fromRGB(0,0,0) or WHITE end
     end
     for _,obj in ipairs(GUI:GetDescendants()) do
         if obj:GetAttribute("HubSwitchTrack") then
@@ -3423,6 +3423,10 @@ function setBackgroundMode(name)
     if not preset then return end
     backgroundMode=name
     seasonalSnow=(name=="Winter" or name=="Christmas")
+    for _,b in pairs(TabButtons) do
+        local icon=b:FindFirstChild("TabIcon")
+        if icon then icon.ImageColor3=(name=="Winter") and Color3.fromRGB(0,0,0) or WHITE end
+    end
     local first=preset.Keypoints[1].Value
     local last=preset.Keypoints[#preset.Keypoints].Value
     -- Apply the selected palette directly to visible panels as well as the background layer.
@@ -4658,7 +4662,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=35"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=36"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
