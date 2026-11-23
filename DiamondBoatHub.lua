@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V37
+-- DIAMOND BOAT HUB V1 [BETA] V38
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -1187,6 +1187,108 @@ function getPlayerZone(plr)
     end
     return nil
 end
+
+-- ANTI-ISOLATION: briefly leave a foreign team's isolated plot, then return.
+local antiIsolationRunning = false
+local antiIsolationLabel = label(teleport,"ANTI-ISOLATION: waiting for foreign isolation")
+
+local function zoneIsolationActive(zone)
+    if not zone then return false end
+    local function matches(name)
+        name = string.lower(tostring(name or ""))
+        return string.find(name,"isolation",1,true) ~= nil
+            or name == "isolated"
+            or name == "isolate"
+    end
+    for name,value in pairs(zone:GetAttributes()) do
+        if matches(name) and value == true then return true end
+    end
+    for _,obj in ipairs(zone:GetDescendants()) do
+        if obj:IsA("BoolValue") and matches(obj.Name) and obj.Value == true then
+            return true
+        end
+        for name,value in pairs(obj:GetAttributes()) do
+            if matches(name) and value == true then return true end
+        end
+    end
+    return false
+end
+
+local function getZoneForeignOwner(zone)
+    if not zone then return nil end
+    local teamColor = zone:FindFirstChild("TeamColor")
+    if not teamColor then return nil end
+    for _,candidate in ipairs(Players:GetPlayers()) do
+        if candidate ~= Player and candidate.TeamColor == teamColor.Value
+            and candidate.TeamColor ~= Player.TeamColor then
+            return candidate
+        end
+    end
+    return nil
+end
+
+local function getSafeOwnPlotCFrame()
+    local ownZone = getPlayerZone(Player)
+    if not ownZone then return nil end
+    if ownZone:IsA("BasePart") then
+        return ownZone.CFrame * CFrame.new(0, math.max(ownZone.Size.Y/2 + 8, 12), 0)
+    end
+    if ownZone:IsA("Model") then
+        local cf,size = ownZone:GetBoundingBox()
+        return cf * CFrame.new(0, size.Y/2 + 8, 0)
+    end
+    local part = ownZone:FindFirstChildWhichIsA("BasePart",true)
+    return part and (part.CFrame * CFrame.new(0, part.Size.Y/2 + 8, 0)) or nil
+end
+
+toggle(teleport,"ANTI-ISOLATION",false,function(enabled)
+    antiIsolationRunning = enabled
+    if not enabled then
+        antiIsolationLabel.Text = "ANTI-ISOLATION: OFF"
+    else
+        antiIsolationLabel.Text = "ANTI-ISOLATION: watching other teams"
+        task.spawn(function()
+            while antiIsolationRunning do
+                local activeZone, activeOwner = nil, nil
+                for _,zone in ipairs(Workspace:GetChildren()) do
+                    local owner = getZoneForeignOwner(zone)
+                    if owner and zoneIsolationActive(zone) then
+                        activeZone, activeOwner = zone, owner
+                        break
+                    end
+                end
+
+                if activeZone and activeOwner then
+                    local _,hum,root = getCharacter()
+                    if root and hum and hum.Health > 0 then
+                        local returnCFrame = root.CFrame
+                        local safeCFrame = getSafeOwnPlotCFrame()
+                        if safeCFrame then
+                            antiIsolationLabel.Text = "ANTI-ISOLATION: avoiding "..activeOwner.Name
+                            root.CFrame = safeCFrame
+                            task.wait(2)
+                            if antiIsolationRunning and zoneIsolationActive(activeZone)
+                                and activeZone.Parent and hum.Health > 0
+                                and root.Parent then
+                                root.CFrame = returnCFrame
+                                antiIsolationLabel.Text = "ANTI-ISOLATION: returned to plot"
+                            end
+                            task.wait(0.35)
+                        else
+                            antiIsolationLabel.Text = "ANTI-ISOLATION: own plot not found"
+                            task.wait(1)
+                        end
+                    else
+                        task.wait(0.5)
+                    end
+                else
+                    antiIsolationLabel.Text = "ANTI-ISOLATION: no foreign isolation"
+                    task.wait(0.35)
+                end
+            end
+        end)
+    end
+end)
 
 function getBuildTool()
     local char,hum=getCharacter()
@@ -4981,7 +5083,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=37"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=38"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
