@@ -209,7 +209,7 @@ create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRG
 
 Pages = {}
 CurrentPage = nil
-buttonStyle="Modern"
+buttonStyle="Liquid Glass"
 animatedBackground=true
 playerPrefix="Player"
 prefixColor=Color3.fromRGB(185,205,255)
@@ -290,11 +290,13 @@ function button(page,text,callback)
     local accent=create("Frame",{Size=UDim2.new(0,3,1,-14),Position=UDim2.fromOffset(0,7),BackgroundColor3=PURPLE,BorderSizePixel=0},b)
     round(accent,3)
     if buttonStyle=="Liquid Glass" then
-        b.BackgroundColor3=Color3.fromRGB(75,82,100)
-        b.BackgroundTransparency=0.38
-        stroke.Color=Color3.fromRGB(210,225,255)
-        stroke.Transparency=0.22
-        create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(220,235,255),Color3.fromRGB(85,100,135)),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.22),NumberSequenceKeypoint.new(1,0.62)}),Rotation=90},b)
+        b.BackgroundColor3=Color3.fromRGB(238,244,255)
+        b.BackgroundTransparency=0.22
+        stroke.Color=Color3.fromRGB(255,255,255)
+        stroke.Transparency=0.08
+        stroke.Thickness=1.25
+        create("UIGradient",{Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),ColorSequenceKeypoint.new(0.48,Color3.fromRGB(220,230,250)),ColorSequenceKeypoint.new(1,Color3.fromRGB(170,190,225))}),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.12),NumberSequenceKeypoint.new(0.55,0.38),NumberSequenceKeypoint.new(1,0.2)}),Rotation=90},b)
+        create("Frame",{Name="GlassHighlight",Size=UDim2.new(1,-12,0,1),Position=UDim2.fromOffset(6,1),BackgroundColor3=Color3.fromRGB(255,255,255),BackgroundTransparency=0.18,BorderSizePixel=0},b)
     elseif buttonStyle=="Neon" then
         b.BackgroundColor3=Color3.fromRGB(15,18,28)
         stroke.Color=PURPLE
@@ -302,14 +304,16 @@ function button(page,text,callback)
         stroke.Thickness=1.5
     end
     b.MouseEnter:Connect(function()
-        TweenService:Create(b,TweenInfo.new(0.13),{BackgroundColor3=Color3.fromRGB(39,39,51)}):Play()
-        TweenService:Create(stroke,TweenInfo.new(0.13),{Transparency=0.12}):Play()
-        TweenService:Create(accent,TweenInfo.new(0.13),{Size=UDim2.new(0,4,1,-8),Position=UDim2.fromOffset(0,4)}):Play()
+        local glass=buttonStyle=="Liquid Glass"
+        TweenService:Create(b,TweenInfo.new(0.16),{BackgroundTransparency=glass and 0.08 or 0}):Play()
+        TweenService:Create(stroke,TweenInfo.new(0.16),{Transparency=glass and 0 or 0.12}):Play()
+        TweenService:Create(accent,TweenInfo.new(0.16),{Size=UDim2.new(0,4,1,-8),Position=UDim2.fromOffset(0,4)}):Play()
     end)
     b.MouseLeave:Connect(function()
-        TweenService:Create(b,TweenInfo.new(0.13),{BackgroundColor3=Color3.fromRGB(24,24,31)}):Play()
-        TweenService:Create(stroke,TweenInfo.new(0.13),{Transparency=0.55}):Play()
-        TweenService:Create(accent,TweenInfo.new(0.13),{Size=UDim2.new(0,3,1,-14),Position=UDim2.fromOffset(0,7)}):Play()
+        local glass=buttonStyle=="Liquid Glass"
+        TweenService:Create(b,TweenInfo.new(0.16),{BackgroundTransparency=glass and 0.22 or 0}):Play()
+        TweenService:Create(stroke,TweenInfo.new(0.16),{Transparency=glass and 0.08 or 0.55}):Play()
+        TweenService:Create(accent,TweenInfo.new(0.16),{Size=UDim2.new(0,3,1,-14),Position=UDim2.fromOffset(0,7)}):Play()
     end)
     b.Activated:Connect(callback)
     return b
@@ -324,11 +328,14 @@ function setButtonStyle(style)
             local grad=obj:FindFirstChildOfClass("UIGradient")
             if grad then grad:Destroy() end
             obj.BackgroundTransparency=0
+            local oldHighlight=obj:FindFirstChild("GlassHighlight")
+            if oldHighlight then oldHighlight:Destroy() end
             if style=="Liquid Glass" then
-                obj.BackgroundColor3=Color3.fromRGB(75,82,100)
-                obj.BackgroundTransparency=0.34
-                if stroke then stroke.Color=Color3.fromRGB(210,225,255); stroke.Transparency=0.18 end
-                create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(220,235,255),Color3.fromRGB(75,90,125)),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(1,0.58)}),Rotation=90},obj)
+                obj.BackgroundColor3=Color3.fromRGB(238,244,255)
+                obj.BackgroundTransparency=0.22
+                if stroke then stroke.Color=Color3.fromRGB(255,255,255); stroke.Transparency=0.08; stroke.Thickness=1.25 end
+                create("UIGradient",{Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),ColorSequenceKeypoint.new(0.48,Color3.fromRGB(220,230,250)),ColorSequenceKeypoint.new(1,Color3.fromRGB(170,190,225))}),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.12),NumberSequenceKeypoint.new(0.55,0.38),NumberSequenceKeypoint.new(1,0.2)}),Rotation=90},obj)
+                create("Frame",{Name="GlassHighlight",Size=UDim2.new(1,-12,0,1),Position=UDim2.fromOffset(6,1),BackgroundColor3=Color3.fromRGB(255,255,255),BackgroundTransparency=0.18,BorderSizePixel=0},obj)
             elseif style=="Neon" then
                 obj.BackgroundColor3=Color3.fromRGB(15,18,28)
                 if stroke then stroke.Color=PURPLE; stroke.Transparency=0.02; stroke.Thickness=1.5 end
@@ -349,7 +356,13 @@ function toggle(page,text,default,callback)
     row:SetAttribute("HubSwitchRow",true)
     round(row,10)
     local stroke=outline(row)
-    stroke.Color=Color3.fromRGB(75,75,94); stroke.Transparency=0.55
+    stroke.Color=buttonStyle=="Liquid Glass" and Color3.fromRGB(255,255,255) or Color3.fromRGB(75,75,94)
+    stroke.Transparency=buttonStyle=="Liquid Glass" and 0.12 or 0.55
+    if buttonStyle=="Liquid Glass" then
+        row.BackgroundColor3=Color3.fromRGB(235,242,255)
+        row.BackgroundTransparency=0.3
+        create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(255,255,255),Color3.fromRGB(175,195,225)),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.22),NumberSequenceKeypoint.new(1,0.48)}),Rotation=90},row)
+    end
     local title=create("TextLabel",{
         Name="SwitchTitle",Size=UDim2.new(1,-78,1,0),Position=UDim2.fromOffset(12,0),
         BackgroundTransparency=1,Text=text,TextColor3=Color3.fromRGB(242,242,248),
