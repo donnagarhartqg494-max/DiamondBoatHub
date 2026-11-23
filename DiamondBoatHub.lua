@@ -4838,7 +4838,8 @@ end)
 -- PRESET MANAGER: three session presets; saved config still uses the existing config system.
 label(settings,"PRESET MANAGER")
 local presetStatus=label(settings,"Presets are kept in this executor session")
-local presetStore=getSharedConfig()
+local presetStore=_G
+if type(getgenv)=="function" then pcall(function() local env=getgenv(); if type(env)=="table" then presetStore=env end end) end
 presetStore.__DIAMOND_PRESETS=presetStore.__DIAMOND_PRESETS or {}
 local function capturePreset()
     return {speed=configuredSpeed,jump=configuredJump,spin=spinSpeed,
