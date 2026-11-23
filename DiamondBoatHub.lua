@@ -3817,10 +3817,12 @@ RunService.Heartbeat:Connect(function(dt)
         speed,ping,memory,formatElapsed(os.clock()-analyticsStarted))
 end)
 
+local safeLabel = label
+
 -- MACRO RECORDER: record a route and replay it using normal Humanoid movement.
-label(tools,"MACRO RECORDER")
-label(tools,"Records your walking route. Playback uses MoveTo, not teleporting.")
-local macroStatus=label(tools,"Macro: idle")
+safeLabel(tools,"MACRO RECORDER")
+safeLabel(tools,"Records your walking route. Playback uses MoveTo, not teleporting.")
+local macroStatus=safeLabel(tools,"Macro: idle")
 local macroPoints={}
 local macroRecording=false
 local macroPlaying=false
@@ -3891,8 +3893,8 @@ button(tools,"CLEAR RECORDED ROUTE",function()
 end)
 
 -- PERFORMANCE MONITOR: live FPS, ping and memory.
-label(tools,"PERFORMANCE MODE")
-local performanceLabel=label(tools,"FPS: --  •  PING: --  •  MEMORY: --")
+safeLabel(tools,"PERFORMANCE MODE")
+local performanceLabel=safeLabel(tools,"FPS: --  •  PING: --  •  MEMORY: --")
 local performanceFrames,performanceTime,performanceTick=0,0,0
 RunService.RenderStepped:Connect(function(dt)
     performanceFrames+=1; performanceTime+=dt; performanceTick+=dt
@@ -3911,8 +3913,8 @@ end)
 
 -- SETTINGS
 
-label(settings,"Hub settings")
-label(settings,"Window size")
+safeLabel(settings,"Hub settings")
+safeLabel(settings,"Window size")
 
 function setWindowMode(mode)
     windowMode=mode
@@ -3944,7 +3946,7 @@ end)
 button(settings,"Restore camera FOV",function()
     Camera.FieldOfView=originalFov
 end)
-label(settings,"Appearance / Внешний вид")
+safeLabel(settings,"Appearance / Внешний вид")
 themes={
     Purple={main=Color3.fromRGB(130,90,255),panel=Color3.fromRGB(27,27,40),dark=Color3.fromRGB(17,17,25)},
     Cyan={main=Color3.fromRGB(0,190,220),panel=Color3.fromRGB(20,38,48),dark=Color3.fromRGB(10,20,28)},
@@ -4006,11 +4008,11 @@ button(settings,"Theme: Red",function() applyTheme("Red") end)
 button(settings,"Theme: Green",function() applyTheme("Green") end)
 button(settings,"Theme: Gold",function() applyTheme("Gold") end)
 button(settings,"Reset appearance",function() applyTheme("Purple") end)
-label(settings,"GUI STYLE / СТИЛЬ ИНТЕРФЕЙСА")
+safeLabel(settings,"GUI STYLE / СТИЛЬ ИНТЕРФЕЙСА")
 button(settings,"Style: Modern",function() setButtonStyle("Modern") end)
 button(settings,"Style: Liquid Glass (iPhone)",function() setButtonStyle("Liquid Glass") end)
 button(settings,"Style: Neon",function() setButtonStyle("Neon") end)
-label(settings,"ANIMATED BACKGROUND / ФОН")
+safeLabel(settings,"ANIMATED BACKGROUND / ФОН")
 backgroundMode="Aurora"
 seasonalSnow=false
 backgroundPresets={
@@ -4078,7 +4080,7 @@ button(settings,"Animated background: ON / OFF",function()
     if mainBackgroundGradient then mainBackgroundGradient.Enabled=true end
     if BackgroundLayer then BackgroundLayer.Visible=true end
 end)
-label(settings,"PLAYER TAG PREFIX")
+safeLabel(settings,"PLAYER TAG PREFIX")
 prefixBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,PlaceholderText="Your prefix",Text=playerPrefix,ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=13},settings)
 round(prefixBox,9)
 local function censorPrefixText(value)
@@ -4106,7 +4108,7 @@ prefixBox.FocusLost:Connect(function()
     refreshPlayerTags()
     if publishPrefix then task.spawn(publishPrefix) end
 end)
-label(settings,"PREFIX COLOR / ЦВЕТ ПРЕФИКСА")
+safeLabel(settings,"PREFIX COLOR / ЦВЕТ ПРЕФИКСА")
 for _,choice in ipairs({
     {"White",Color3.fromRGB(255,255,255)},{"Red",Color3.fromRGB(255,75,75)},
     {"Orange",Color3.fromRGB(255,150,55)},{"Yellow",Color3.fromRGB(255,225,70)},
@@ -4122,11 +4124,11 @@ for _,choice in ipairs({
     end)
     colorButton.TextColor3=choice[2]
 end
-label(settings,"PREFIX CENSOR / ЦЕНЗУРА")
-label(settings,"Нецензурные слова в пользовательском префиксе частично заменяются звёздочками. Это локальная базовая проверка, не официальная фильтрация Roblox.")
-label(settings,"PREFIX VISIBILITY")
-label(settings,"Префиксы DiamondBoatHub синхронизируются через Cloudflare. Это общие непроверенные display-данные.")
-prefixRelayStatus=label(settings,"PREFIX RELAY: CONNECTING...")
+safeLabel(settings,"PREFIX CENSOR / ЦЕНЗУРА")
+safeLabel(settings,"Нецензурные слова в пользовательском префиксе частично заменяются звёздочками. Это локальная базовая проверка, не официальная фильтрация Roblox.")
+safeLabel(settings,"PREFIX VISIBILITY")
+safeLabel(settings,"Префиксы DiamondBoatHub синхронизируются через Cloudflare. Это общие непроверенные display-данные.")
+prefixRelayStatus=safeLabel(settings,"PREFIX RELAY: CONNECTING...")
 
 
 -- Dedicated animated background layer. Keep every large panel translucent
@@ -4412,7 +4414,7 @@ globalChat.ScrollingEnabled=false
 chatMessagesSeen={}
 chatMessageOrder={}
 chatLastFetch=0
-chatStatus=label(globalChat,"GLOBAL CHAT: CONNECTING...")
+chatStatus=safeLabel(globalChat,"GLOBAL CHAT: CONNECTING...")
 chatStatus.Position=UDim2.fromOffset(8,3)
 chatStatus.Size=UDim2.new(1,-150,0,24)
 chatFeed=create("ScrollingFrame",{
@@ -4654,10 +4656,10 @@ task.spawn(function()
 end)
 
 -- SERVERS: list active DiamondBoatHub instances for this place.
-label(servers,"ACTIVE DIAMONDBOATHUB SERVERS")
-label(servers,"Players shown here have recently sent a presence heartbeat.")
+safeLabel(servers,"ACTIVE DIAMONDBOATHUB SERVERS")
+safeLabel(servers,"Players shown here have recently sent a presence heartbeat.")
 local serversRefresh=button(servers,"REFRESH SERVERS",function() end)
-local serversStatus=label(servers,"SERVERS: WAITING")
+local serversStatus=safeLabel(servers,"SERVERS: WAITING")
 local serversFeed=create("ScrollingFrame",{
     Name="HubServersFeed",Size=UDim2.new(1,-8,0,300),
     BackgroundColor3=Color3.fromRGB(12,12,16),BorderSizePixel=0,
@@ -4746,10 +4748,10 @@ task.spawn(function()
 end)
 
 -- CREDITS PAGE
-label(credits,"DIAMOND BABFT")
-label(credits,"Script creators")
-label(credits,"Gfhkm_20")
-label(credits,"Xone42_2")
+safeLabel(credits,"DIAMOND BABFT")
+safeLabel(credits,"Script creators")
+safeLabel(credits,"Gfhkm_20")
+safeLabel(credits,"Xone42_2")
 button(credits,"OPEN TELEGRAM CHANNEL",function()
     local url="https://t.me/diamond_scripts"
     local opened=false
@@ -4769,7 +4771,7 @@ button(credits,"OPEN TELEGRAM CHANNEL",function()
         end
     end
 end)
-label(credits,"DIAMOND BOAT HUB V1 [BETA]")
+safeLabel(credits,"DIAMOND BOAT HUB V1 [BETA]")
 
 -- DRAG
 
@@ -5168,7 +5170,7 @@ showPage("HOME")
 --==================================================
 
 -- AURA SYSTEM: local-only character aura.
-label(visuals,"AURA SYSTEM")
+safeLabel(visuals,"AURA SYSTEM")
 local auraEnabled=false
 local auraColor=Color3.fromRGB(90,190,255)
 local auraObjects={}
@@ -5202,7 +5204,7 @@ end)
 Player.CharacterAdded:Connect(function() task.wait(1); if auraEnabled then applyAura() end end)
 
 -- PLAYER ESP: local highlights and labels only.
-label(visuals,"PLAYER ESP (LOCAL)")
+safeLabel(visuals,"PLAYER ESP (LOCAL)")
 local espEnabled=false
 local espObjects={}
 local function clearESP()
@@ -5240,7 +5242,7 @@ Players.PlayerRemoving:Connect(function(plr)
 end)
 
 -- CROSSHAIR: fixed screen reticle.
-label(visuals,"CROSSHAIR")
+safeLabel(visuals,"CROSSHAIR")
 local crosshair=Instance.new("Frame"); crosshair.Name="DiamondCrosshair"
 crosshair.AnchorPoint=Vector2.new(0.5,0.5); crosshair.Position=UDim2.fromScale(0.5,0.5)
 crosshair.Size=UDim2.fromOffset(18,18); crosshair.BackgroundTransparency=1
@@ -5255,7 +5257,7 @@ end
 toggle(visuals,"Show crosshair",false,function(v) crosshair.Visible=v end)
 
 -- ADVANCED HUD: FPS already exists above; add coordinates, speed and session time.
-label(visuals,"ADVANCED HUD")
+safeLabel(visuals,"ADVANCED HUD")
 local advancedHud=Instance.new("TextLabel")
 advancedHud.Name="DiamondAdvancedHUD"; advancedHud.Size=UDim2.fromOffset(190,66)
 advancedHud.Position=UDim2.fromOffset(12,46); advancedHud.BackgroundColor3=Color3.fromRGB(10,16,25)
@@ -5285,7 +5287,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 -- ANIMATION HUB: user-supplied animation asset ID; Roblox permissions still apply.
-label(tools,"ANIMATION HUB")
+safeLabel(tools,"ANIMATION HUB")
 local animationIdBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),
     TextColor3=WHITE,PlaceholderText="Animation asset ID",Text="",ClearTextOnFocus=false,
     Font=Enum.Font.Gotham,TextSize=13},tools)
@@ -5308,9 +5310,9 @@ button(tools,"STOP CUSTOM ANIMATION",function()
 end)
 
 -- WAYPOINTS: local marker at current position; no server teleport.
-label(teleport,"WAYPOINTS")
+safeLabel(teleport,"WAYPOINTS")
 local waypoint=nil
-local waypointLabel=label(teleport,"Waypoint: not set")
+local waypointLabel=safeLabel(teleport,"Waypoint: not set")
 button(teleport,"SET WAYPOINT AT MY POSITION",function()
     local _,_,root=getCharacter(); if not root then waypointLabel.Text="Waypoint: character unavailable"; return end
     if waypoint then waypoint:Destroy() end
@@ -5330,7 +5332,7 @@ button(teleport,"CLEAR WAYPOINT",function()
     if waypoint then waypoint:Destroy(); waypoint=nil end
     waypointLabel.Text="Waypoint: not set"
 end)
-local waypointDistance=label(teleport,"Distance: --")
+local waypointDistance=safeLabel(teleport,"Distance: --")
 RunService.Heartbeat:Connect(function()
     if waypoint and waypoint.Parent then
         local _,_,root=getCharacter()
@@ -5339,13 +5341,13 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- PLAYER TRACKER: select a player by username and show distance/direction text.
-label(teleport,"PLAYER TRACKER")
+safeLabel(teleport,"PLAYER TRACKER")
 local trackerInput=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),
     TextColor3=WHITE,PlaceholderText="Player username",Text="",ClearTextOnFocus=false,
     Font=Enum.Font.Gotham,TextSize=13},teleport)
 round(trackerInput,8); outline(trackerInput)
 local trackedPlayer=nil
-local trackerStatus=label(teleport,"Tracker: off")
+local trackerStatus=safeLabel(teleport,"Tracker: off")
 button(teleport,"TRACK PLAYER",function()
     local query=trackerInput.Text:lower():gsub("^%s+",""):gsub("%s+$","")
     trackedPlayer=nil
@@ -5364,7 +5366,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- CAMERA TOOLS: free-look toggle with safe restoration.
-label(tools,"CAMERA TOOLS")
+safeLabel(tools,"CAMERA TOOLS")
 local freeCamera=false
 local savedCameraType,savedCameraSubject
 local freeCameraPosition=nil
@@ -5407,8 +5409,8 @@ button(tools,"RESET CAMERA",function()
 end)
 
 -- BUILDING TOOLS: local selection and safe local duplicate preview.
-label(build,"BUILDING TOOLS")
-local buildToolStatus=label(build,"Build tools: select a part in the world")
+safeLabel(build,"BUILDING TOOLS")
+local buildToolStatus=safeLabel(build,"Build tools: select a part in the world")
 local buildMouse=Player:GetMouse()
 local selectedBuildPart=nil
 button(build,"SELECT BLOCK UNDER CURSOR",function()
@@ -5434,8 +5436,8 @@ button(build,"REMOVE LOCAL GHOST COPIES",function()
 end)
 
 -- PRESET MANAGER: three session presets; saved config still uses the existing config system.
-label(settings,"PRESET MANAGER")
-local presetStatus=label(settings,"Presets are kept in this executor session")
+safeLabel(settings,"PRESET MANAGER")
+local presetStatus=safeLabel(settings,"Presets are kept in this executor session")
 local presetStore=_G
 if type(getgenv)=="function" then pcall(function() local env=getgenv(); if type(env)=="table" then presetStore=env end end) end
 presetStore.__DIAMOND_PRESETS=presetStore.__DIAMOND_PRESETS or {}
@@ -5572,16 +5574,16 @@ function loadHubConfig(targetFile)
     return true
 end
 
-configStatus=label(settings,"CONFIG: ready")
+configStatus=safeLabel(settings,"CONFIG: ready")
 button(settings,"SAVE CONFIG",function() saveHubConfig() end)
 button(settings,"LOAD CONFIG",function() loadHubConfig() end)
 
 -- Named config library: unlimited named profiles, files when supported, session fallback otherwise.
-label(settings,"NAMED CONFIGS / ИМЕНОВАННЫЕ КОНФИГИ")
-label(settings,"Create as many profiles as you want. Names are used as file names.")
+safeLabel(settings,"NAMED CONFIGS / ИМЕНОВАННЫЕ КОНФИГИ")
+safeLabel(settings,"Create as many profiles as you want. Names are used as file names.")
 local namedConfigBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=Color3.fromRGB(245,245,250),PlaceholderColor3=Color3.fromRGB(145,145,155),PlaceholderText="Config name (e.g. PvP, Builder, Speed)",Text="My Config",ClearTextOnFocus=false,Font=Enum.Font.GothamSemibold,TextSize=14},settings)
 round(namedConfigBox,9); outline(namedConfigBox)
-local namedConfigStatus=label(settings,"Named configs: ready")
+local namedConfigStatus=safeLabel(settings,"Named configs: ready")
 local namedConfigFolder="DiamondBoatHub/Configs"
 local namedConfigStore=getSharedConfig()
 namedConfigStore.__DIAMOND_NAMED_CONFIGS=namedConfigStore.__DIAMOND_NAMED_CONFIGS or {}
@@ -5643,7 +5645,7 @@ local function refreshNamedConfigList()
         local deleteBtn=button(row,"DELETE",function() deleteNamedConfig(name); refreshNamedConfigList() end)
         deleteBtn.Size=UDim2.new(0.36,-4,1,0)
     end
-    if #ordered==0 then label(namedConfigList,"No named configs saved yet") end
+    if #ordered==0 then safeLabel(namedConfigList,"No named configs saved yet") end
 end
 button(settings,"SAVE AS NAMED CONFIG",function() saveNamedConfig(); refreshNamedConfigList() end)
 button(settings,"LOAD NAMED CONFIG",function()
@@ -5715,8 +5717,8 @@ executePluginSource=function(source,api)
 end
 
 if isPluginStaff then
-    label(plugins,"DIAMOND SCRIPT • РУССКИЙ LUA")
-    label(plugins,"Пиши почти как Lua, только ключевые слова — по-русски. Можно собирать код кнопками-блоками.")
+    safeLabel(plugins,"DIAMOND SCRIPT • РУССКИЙ LUA")
+    safeLabel(plugins,"Пиши почти как Lua, только ключевые слова — по-русски. Можно собирать код кнопками-блоками.")
     local russianEditor=create("TextBox",{
         Size=UDim2.new(1,-8,0,190),BackgroundColor3=Color3.fromRGB(20,22,29),
         TextColor3=WHITE,PlaceholderColor3=Color3.fromRGB(150,150,160),
@@ -5726,7 +5728,7 @@ if isPluginStaff then
         Font=Enum.Font.Code,TextSize=13
     },plugins)
     round(russianEditor,9); outline(russianEditor)
-    label(plugins,"КОНСТРУКТОР БЛОКОВ • нажми блок, чтобы вставить его в редактор")
+    safeLabel(plugins,"КОНСТРУКТОР БЛОКОВ • нажми блок, чтобы вставить его в редактор")
     local function insertRussianBlock(code)
         local current=russianEditor.Text or ""
         if current~="" and not current:match("\n$") then current=current.."\n" end
@@ -5743,9 +5745,9 @@ if isPluginStaff then
     button(plugins,"БЛОК • переключатель",function() insertRussianBlock('добавитьПереключатель("Мой переключатель", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено!")\n    иначе\n        уведомить("Выключено!")\n    конец\nконец)') end)
     button(plugins,"БЛОК • цикл",function() insertRussianBlock('для число = 1, 3 делать\n    печать(число)\nконец') end)
     button(plugins,"ОЧИСТИТЬ РЕДАКТОР",function() russianEditor.Text="" end)
-    label(plugins,"ПОДСКАЗКИ • пусть=local, функция=function, если=if, тогда=then, иначе=else, конец=end, вернуть=return, и=and, или=or, не=not")
-    label(plugins,"МОЛОДЁЖНЫЕ КОМАНДЫ • имба(), рофл(), жёстко(), топ(), сказать(), вкинуть() — показывают уведомление")
-    label(plugins,"Roblox: игра=game, игроки=Players, игрок=LocalPlayer. API: добавитьКнопку(), добавитьПереключатель(), уведомить().")
+    safeLabel(plugins,"ПОДСКАЗКИ • пусть=local, функция=function, если=if, тогда=then, иначе=else, конец=end, вернуть=return, и=and, или=or, не=not")
+    safeLabel(plugins,"МОЛОДЁЖНЫЕ КОМАНДЫ • имба(), рофл(), жёстко(), топ(), сказать(), вкинуть() — показывают уведомление")
+    safeLabel(plugins,"Roblox: игра=game, игроки=Players, игрок=LocalPlayer. API: добавитьКнопку(), добавитьПереключатель(), уведомить().")
     button(plugins,"ЗАПУСТИТЬ РУССКИЙ КОД",function()
         local key="__diamond_russian_editor"
         if loadedPlugins[key] then
