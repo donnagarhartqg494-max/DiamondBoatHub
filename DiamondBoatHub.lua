@@ -681,9 +681,6 @@ end
 
 local executePluginSource
 local function refreshPluginList()
-    local firstLineEnd=source:find("\n",1,true) or (#source+1)
-    local firstLine=string.gsub(source:sub(1,firstLineEnd-1),"^%s*(.-)%s*$","%1")
-    local pluginName=firstLine:match('^плагин%s+"(.-)"')
     for _,child in ipairs(pluginListFrame:GetChildren()) do
         if child:IsA("GuiObject") and child~=pluginListLayout then child:Destroy() end
     end
