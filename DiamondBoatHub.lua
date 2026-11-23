@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V49
+-- DIAMOND BOAT HUB V1 [BETA] V50
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -411,6 +411,7 @@ tools=makePage("TOOLS")
 settings=makePage("SETTINGS")
 globalChat=makePage("GLOBAL CHAT")
 servers=makePage("SERVERS")
+plugins=makePage("PLUGINS")
 
 tabLayout=create("UIListLayout",{
     FillDirection=Enum.FillDirection.Horizontal,
@@ -436,17 +437,18 @@ tabIcons={
     SETTINGS="rbxassetid://10734950309",
     CREDITS="rbxassetid://10709819149",
     ["GLOBAL CHAT"]="rbxassetid://10709819149",
-    SERVERS="rbxassetid://10734906744"
+    SERVERS="rbxassetid://10734906744",
+    PLUGINS="rbxassetid://10723384394"
 }
 for _,name in ipairs({
     "HOME","MOVEMENT","VISUALS","TELEPORTS",
-    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","CREDITS"
+    "AUTO BUILD","MUSIC","AUTO FARM","SHOP","TOOLS","SETTINGS","GLOBAL CHAT","SERVERS","PLUGINS","CREDITS"
 }) do
     local b=create("TextButton",{
         Size=UDim2.new(0,68,0,58),
         ClipsDescendants=true,
         BackgroundColor3=BUTTON_WHITE,
-        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",CREDITS="CREDITS"})[name] or name,
+        Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",CREDITS="CREDITS"})[name] or name,
         TextColor3=TEXT_DARK,
         TextSize=10,
         TextTruncate=Enum.TextTruncate.AtEnd,
@@ -482,6 +484,106 @@ for _,name in ipairs({
     end)
     b.Activated:Connect(function() showPage(name) end)
 end
+
+-- PLUGIN MANAGER: load user-supplied modules that return a plugin table.
+label(plugins,"PLUGIN MANAGER")
+label(plugins,"Load your own Lua plugin from a direct raw URL. Only use code you trust.")
+local pluginUrlBox=create("TextBox",{Size=UDim2.new(1,-8,0,40),BackgroundColor3=Color3.fromRGB(24,24,31),TextColor3=WHITE,PlaceholderText="https://raw.githubusercontent.com/user/repo/main/plugin.lua",Text="",ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=12},plugins)
+round(pluginUrlBox,9); outline(pluginUrlBox)
+local pluginStatus=label(plugins,"Plugins: ready")
+local pluginListFrame=create("Frame",{Size=UDim2.new(1,-8,0,0),BackgroundTransparency=1,AutomaticSize=Enum.AutomaticSize.Y},plugins)
+local pluginListLayout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},pluginListFrame)
+local pluginStore=getSharedConfig and getSharedConfig() or _G
+pluginStore.__DIAMOND_PLUGIN_URLS=pluginStore.__DIAMOND_PLUGIN_URLS or {}
+local loadedPlugins={}
+local function pluginMessage(message)
+    pluginStatus.Text=tostring(message)
+    print("[DIAMOND PLUGINS]",tostring(message))
+end
+local function refreshPluginList()
+    for _,child in ipairs(pluginListFrame:GetChildren()) do
+        if child:IsA("GuiObject") and child~=pluginListLayout then child:Destroy() end
+    end
+    local urls=pluginStore.__DIAMOND_PLUGIN_URLS
+    for index,url in ipairs(urls) do
+        local row=create("Frame",{Size=UDim2.new(1,-2,0,40),BackgroundTransparency=1},pluginListFrame)
+        create("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,6)},row)
+        local name=loadedPlugins[url] and loadedPlugins[url].name or ("Plugin "..index)
+        local info=label(row,name)
+        info.Size=UDim2.new(0.56,-4,1,0)
+        local loadBtn=button(row,"LOAD",function()
+            pluginUrlBox.Text=url
+            local sourceOk,source=pcall(function() return game:HttpGet(url) end)
+            if not sourceOk or type(source)~="string" or #source<5 then pluginMessage("Download failed: "..tostring(source)); return end
+            if type(loadstring)~="function" then pluginMessage("Executor does not support loadstring"); return end
+            local compileOk,chunk=pcall(loadstring,source)
+            if not compileOk or type(chunk)~="function" then pluginMessage("Plugin compile failed: "..tostring(chunk)); return end
+            local api={}
+            api.GetPlayer=function() return Player end
+            api.GetService=function(serviceName) return game:GetService(serviceName) end
+            api.Notify=function(message) pluginMessage(message) end
+            api.AddButton=function(buttonName,callback)
+                assert(type(buttonName)=="string" and type(callback)=="function","AddButton expects name and callback")
+                local item=button(plugins,"PLUGIN • "..buttonName,function()
+                    local ok,err=pcall(callback,api)
+                    if not ok then pluginMessage("Plugin error: "..tostring(err)) end
+                end)
+                table.insert(loadedPlugins[url].items,item)
+                return item
+            end
+            api.AddToggle=function(toggleName,default,callback)
+                assert(type(toggleName)=="string" and type(callback)=="function","AddToggle expects name and callback")
+                local item=toggle(plugins,"PLUGIN • "..toggleName,default==true,function(value)
+                    local ok,err=pcall(callback,value,api)
+                    if not ok then pluginMessage("Plugin error: "..tostring(err)) end
+                end)
+                table.insert(loadedPlugins[url].items,item)
+                return item
+            end
+            local runOk,result=pcall(chunk,api)
+            if not runOk then pluginMessage("Plugin error: "..tostring(result)); return end
+            if type(result)~="table" then pluginMessage("Plugin must return a table"); return end
+            if type(result.Init)=="function" then
+                local initOk,initErr=pcall(result.Init,api)
+                if not initOk then pluginMessage("Plugin init failed: "..tostring(initErr)); return end
+            end
+            loadedPlugins[url]={name=tostring(result.Name or name),items=loadedPlugins[url] and loadedPlugins[url].items or {}}
+            pluginMessage("Loaded: "..tostring(result.Name or name))
+        end)
+        loadBtn.Size=UDim2.new(0.19,-3,1,0)
+        local removeBtn=button(row,"REMOVE",function()
+            local record=loadedPlugins[url]
+            if record then for _,item in ipairs(record.items or {}) do if item and item.Parent then item:Destroy() end end end
+            loadedPlugins[url]=nil
+            table.remove(pluginStore.__DIAMOND_PLUGIN_URLS,index)
+            pluginMessage("Plugin removed from list")
+            refreshPluginList()
+        end)
+        removeBtn.Size=UDim2.new(0.23,-3,1,0)
+    end
+    if #urls==0 then label(pluginListFrame,"No plugins added yet") end
+end
+button(plugins,"ADD PLUGIN URL",function()
+    local url=string.gsub(pluginUrlBox.Text or "","^%s*(.-)%s*$","%1")
+    if not string.match(url,"^https://") or not string.find(url,"raw%.githubusercontent%.com",1,false) then
+        pluginMessage("Use a direct HTTPS raw.githubusercontent.com URL")
+        return
+    end
+    for _,existing in ipairs(pluginStore.__DIAMOND_PLUGIN_URLS) do
+        if existing==url then pluginMessage("Plugin URL already exists"); return end
+    end
+    table.insert(pluginStore.__DIAMOND_PLUGIN_URLS,url)
+    if type(writefile)=="function" then
+        pcall(function()
+            if type(isfolder)~="function" or not isfolder("DiamondBoatHub") then makefolder("DiamondBoatHub") end
+            writefile("DiamondBoatHub/Plugins.json",HttpService:JSONEncode(pluginStore.__DIAMOND_PLUGIN_URLS))
+        end)
+    end
+    pluginMessage("Added plugin URL. Press LOAD to run it.")
+    refreshPluginList()
+end)
+button(plugins,"REFRESH PLUGIN LIST",refreshPluginList)
+refreshPluginList()
 
 -- HOME
 
@@ -5393,7 +5495,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=49"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=50"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
