@@ -1,5 +1,5 @@
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V60
+-- DIAMOND BOAT HUB V1 [BETA] V61
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -586,8 +586,13 @@ local russianIdentifiers={
     ["игра"]="game",["игроки"]="players",["игрок"]="player",
     ["уведомить"]="notify",["сказать"]="notify",["вкинуть"]="notify",
     ["добавитьКнопку"]="addButton",["добавитьПереключатель"]="addToggle",
+    ["добавитьКоманду"]="addCommand",["добавитьНадпись"]="addLabel",
+    ["получитьИгроков"]="getPlayers",["получитьПерсонажа"]="getCharacter",
+    ["получитьСервис"]="getService",["журнал"]="log",["статус"]="setStatus",
     ["печать"]="print",["имба"]="imba",["рофл"]="rofl",["жёстко"]="zhestko",
-    ["топ"]="top",["включен"]="enabled",["число"]="numberValue",["прыгнуть"]="jumpPlayer",["скорость"]="setWalkSpeed",["силаПрыжка"]="setJumpPower",["бесконечныйПрыжок"]="setInfiniteJump"
+    ["топ"]="top",["включен"]="enabled",["число"]="numberValue",
+    ["прыгнуть"]="jumpPlayer",["скорость"]="setWalkSpeed",
+    ["силаПрыжка"]="setJumpPower",["бесконечныйПрыжок"]="setInfiniteJump"
 }
 local transliteration={
     ["а"]="a",["б"]="b",["в"]="v",["г"]="g",["д"]="d",["е"]="e",["ё"]="yo",
@@ -5762,7 +5767,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=60"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=61"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
@@ -5863,11 +5868,15 @@ if isPluginStaff then
     button(plugins,"БЛОК • функция",function() insertRussianBlock('функция мояФункция()\n    уведомить("Функция работает!")\nконец') end)
     button(plugins,"БЛОК • кнопка",function() insertRussianBlock('добавитьКнопку("Моя кнопка", функция()\n    уведомить("Нажато!")\nконец)') end)
     button(plugins,"БЛОК • команда",function() insertRussianBlock('добавитьКоманду("Моя команда", функция()\n    уведомить("Команда выполнена!")\nконец)') end)
+    button(plugins,"БЛОК • надпись",function() insertRussianBlock('добавитьНадпись("Моя надпись")') end)
+    button(plugins,"БЛОК • получить игроков",function() insertRussianBlock('пусть список = получитьИгроков()\nуведомить("Игроков: ".. #список)') end)
+    button(plugins,"БЛОК • получить персонажа",function() insertRussianBlock('пусть персонаж, гуманоид, корень = получитьПерсонажа()\nесли гуманоид тогда\n    уведомить("Персонаж найден")\nконец') end)
+    button(plugins,"БЛОК • журнал",function() insertRussianBlock('журнал("Сообщение в консоль")') end)
+    button(plugins,"БЛОК • статус",function() insertRussianBlock('статус("Скрипт работает")') end)
     button(plugins,"БЛОК • прыгнуть",function() insertRussianBlock('прыгнуть()') end)
     button(plugins,"БЛОК • скорость",function() insertRussianBlock('скорость(45)') end)
     button(plugins,"БЛОК • сила прыжка",function() insertRussianBlock('силаПрыжка(100)') end)
     button(plugins,"БЛОК • бесконечный прыжок",function() insertRussianBlock('бесконечныйПрыжок(истина)') end)
-    button(plugins,"БЛОК • список игроков",function() insertRussianBlock('пусть список = получитьИгроков()\nуведомить("Игроков: ".. #список)') end)
     button(plugins,"БЛОК • переключатель",function() insertRussianBlock('добавитьПереключатель("Мой переключатель", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено!")\n    иначе\n        уведомить("Выключено!")\n    конец\nконец)') end)
     button(plugins,"БЛОК • цикл",function() insertRussianBlock('для число = 1, 3 делать\n    печать(число)\nконец') end)
     button(plugins,"ОЧИСТИТЬ РЕДАКТОР",function() russianEditor.Text="" end)
@@ -5877,7 +5886,7 @@ if isPluginStaff then
     end)
     safeLabel(plugins,"ПОДСКАЗКИ • пусть=local, функция=function, если=if, тогда=then, иначе=else, конец=end, вернуть=return, и=and, или=or, не=not")
     safeLabel(plugins,"МОЛОДЁЖНЫЕ КОМАНДЫ • имба(), рофл(), жёстко(), топ(), сказать(), вкинуть() — показывают уведомление")
-    safeLabel(plugins,"КОМАНДЫ API: добавитьКнопку(), добавитьПереключатель(), добавитьКоманду(), добавитьНадпись(), получитьИгроков(), получитьПерсонажа(), журнал(), статус().")
+    safeLabel(plugins,"КОМАНДЫ API: уведомить(), добавитьКнопку(), добавитьПереключатель(), добавитьКоманду(), добавитьНадпись(), получитьИгроков(), получитьПерсонажа(), получитьСервис(), журнал(), статус().")
     safeLabel(plugins,"ДВИЖЕНИЕ: прыгнуть(), скорость(45), силаПрыжка(100), бесконечныйПрыжок(истина).")
     safeLabel(plugins,"Roblox: игра=game, игроки=Players, игрок=LocalPlayer. TEST проверяет синтаксис и не запускает код.")
     button(plugins,"ЗАПУСТИТЬ РУССКИЙ КОД",function()
@@ -5908,10 +5917,10 @@ task.spawn(function()
     elseif Player.UserId==DIAMOND_SCRIPT_DEV_ID then role="SCRIPT DEV" end
     local welcomeText
     if role then
-        welcomeText="Приветствуем, уважаемый "..Player.Name.." ("..role..")"
+        welcomeText="Приветствуем, уважаемый "..tostring(Player.DisplayName or Player.Name).." ("..role..")"
     else
         local prefix=tostring(playerPrefix or "Player")
-        welcomeText="Приветствуем, "..Player.Name.." ("..prefix..")"
+        welcomeText="Приветствуем, "..tostring(Player.DisplayName or Player.Name).." ("..prefix..")"
     end
     local toast=create("Frame",{
         Name="DiamondWelcomeToast",AnchorPoint=Vector2.new(0.5,0.5),
@@ -5948,4 +5957,4 @@ task.spawn(function()
     end
 end)
 
-print("DIAMOND BOAT HUB V60 [WELCOME + RUSSIAN MOVEMENT API] LOADED")
+print("DIAMOND BOAT HUB V61 [RUSSIAN COMMANDS + DISPLAY NAME WELCOME] LOADED")
