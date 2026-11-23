@@ -92,10 +92,14 @@ Main = create("Frame",{
     BackgroundColor3=DARK,
     BorderSizePixel=0
 },GUI)
-round(Main,16)
+round(Main,20)
 mainStroke=outline(Main)
-mainStroke.Thickness=1.4
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(8,8,8)),Rotation=90},Main)
+mainStroke.Color=Color3.fromRGB(235,242,255)
+mainStroke.Transparency=0.18
+mainStroke.Thickness=1.5
+Main.BackgroundTransparency=0.16
+create("UIGradient",{Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),ColorSequenceKeypoint.new(0.35,Color3.fromRGB(175,190,220)),ColorSequenceKeypoint.new(1,Color3.fromRGB(65,75,105))}),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.72),NumberSequenceKeypoint.new(0.55,0.84),NumberSequenceKeypoint.new(1,0.68)}),Rotation=90},Main)
+create("Frame",{Name="MainGlassShine",Size=UDim2.new(1,-24,0,1),Position=UDim2.fromOffset(12,1),BackgroundColor3=Color3.fromRGB(255,255,255),BackgroundTransparency=0.3,BorderSizePixel=0,ZIndex=2},Main)
 MainScale=create("UIScale",{Scale=1},Main)
 isTouchDevice=UIS.TouchEnabled
 deviceMode=isTouchDevice and "phone" or "pc"
@@ -133,8 +137,13 @@ Top = create("Frame",{
     BackgroundColor3=Color3.fromRGB(0,0,0),
     BorderSizePixel=0
 },Main)
-round(Top,15)
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(12,12,12),Color3.fromRGB(0,0,0)),Rotation=0},Top)
+round(Top,18)
+Top.BackgroundColor3=Color3.fromRGB(225,235,255)
+Top.BackgroundTransparency=0.22
+local topGlassStroke=outline(Top)
+topGlassStroke.Color=Color3.fromRGB(255,255,255)
+topGlassStroke.Transparency=0.28
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(255,255,255),Color3.fromRGB(150,170,210)),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.38),NumberSequenceKeypoint.new(1,0.68)}),Rotation=90},Top)
 
 DragHandle=create("TextButton",{
     Name="DragHandle",Size=UDim2.new(1,-100,1,0),Position=UDim2.fromOffset(0,0),
@@ -193,9 +202,12 @@ Sidebar = create("ScrollingFrame",{
     CanvasSize=UDim2.new(0,0,0,0),
     ClipsDescendants=true
 },Main)
-round(Sidebar,10)
-outline(Sidebar)
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(5,5,5)),Rotation=90},Sidebar)
+round(Sidebar,14)
+Sidebar.BackgroundTransparency=0.24
+local sidebarGlassStroke=outline(Sidebar)
+sidebarGlassStroke.Color=Color3.fromRGB(255,255,255)
+sidebarGlassStroke.Transparency=0.48
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(255,255,255),Color3.fromRGB(175,190,225)),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.48),NumberSequenceKeypoint.new(1,0.72)}),Rotation=90},Sidebar)
 
 Content = create("Frame",{
     Size=UDim2.new(1,-14,1,-136),
@@ -203,9 +215,12 @@ Content = create("Frame",{
     BackgroundColor3=PANEL,
     BorderSizePixel=0
 },Main)
-round(Content,12)
-outline(Content)
-create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(0,0,0),Color3.fromRGB(5,5,5)),Rotation=90},Content)
+round(Content,16)
+Content.BackgroundTransparency=0.26
+local contentGlassStroke=outline(Content)
+contentGlassStroke.Color=Color3.fromRGB(255,255,255)
+contentGlassStroke.Transparency=0.52
+create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(255,255,255),Color3.fromRGB(170,185,220)),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.55),NumberSequenceKeypoint.new(1,0.76)}),Rotation=90},Content)
 
 Pages = {}
 CurrentPage = nil
@@ -4190,9 +4205,14 @@ function applyTheme(name)
     currentTheme=name
     PURPLE=t.main; PANEL=t.panel; DARK=t.dark
     Main.BackgroundColor3=DARK
-    Top.BackgroundColor3=DARK
-    Sidebar.BackgroundColor3=PANEL
-    Content.BackgroundColor3=PANEL
+    Top.BackgroundColor3=DARK:Lerp(Color3.fromRGB(255,255,255),0.16)
+    Sidebar.BackgroundColor3=PANEL:Lerp(Color3.fromRGB(255,255,255),0.12)
+    Content.BackgroundColor3=PANEL:Lerp(Color3.fromRGB(255,255,255),0.08)
+    Main.BackgroundTransparency=0.16
+    Top.BackgroundTransparency=0.22
+    Sidebar.BackgroundTransparency=0.24
+    Content.BackgroundTransparency=0.26
+    if mainStroke then mainStroke.Color=Color3.fromRGB(235,242,255); mainStroke.Transparency=0.18 end
     for _,obj in ipairs(GUI:GetDescendants()) do
         if obj:IsA("UIStroke") then
             obj.Color=PURPLE
@@ -4279,10 +4299,10 @@ function setBackgroundMode(name)
             grad.Rotation= index==1 and 90 or 0
         end
     end
-    Main.BackgroundTransparency=0
-    Top.BackgroundTransparency=0.08
-    Sidebar.BackgroundTransparency=0.12
-    Content.BackgroundTransparency=0.12
+    Main.BackgroundTransparency=0.16
+    Top.BackgroundTransparency=0.22
+    Sidebar.BackgroundTransparency=0.24
+    Content.BackgroundTransparency=0.26
     if BackgroundLayer then BackgroundLayer.Visible=true end
     if snowLayer then snowLayer.Visible=seasonalSnow end
     print("[DIAMOND] Background applied:",name)
@@ -5897,7 +5917,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=65"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=68"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
