@@ -5735,7 +5735,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=57"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=58"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
@@ -5756,7 +5756,8 @@ executePluginSource=function(source,api)
         local translated=translateRussianLua(body)
         local wrapped='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
             'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
-            'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle\n'..
+            'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
+            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus\n'..
             'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
             'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
             'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
@@ -5829,6 +5830,8 @@ if isPluginStaff then
     button(plugins,"БЛОК • условие если",function() insertRussianBlock('если число > 5 тогда\n    уведомить("Условие сработало!")\nконец') end)
     button(plugins,"БЛОК • функция",function() insertRussianBlock('функция мояФункция()\n    уведомить("Функция работает!")\nконец') end)
     button(plugins,"БЛОК • кнопка",function() insertRussianBlock('добавитьКнопку("Моя кнопка", функция()\n    уведомить("Нажато!")\nконец)') end)
+    button(plugins,"БЛОК • команда",function() insertRussianBlock('добавитьКоманду("Моя команда", функция()\n    уведомить("Команда выполнена!")\nконец)') end)
+    button(plugins,"БЛОК • список игроков",function() insertRussianBlock('пусть список = получитьИгроков()\nуведомить("Игроков: ".. #список)') end)
     button(plugins,"БЛОК • переключатель",function() insertRussianBlock('добавитьПереключатель("Мой переключатель", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено!")\n    иначе\n        уведомить("Выключено!")\n    конец\nконец)') end)
     button(plugins,"БЛОК • цикл",function() insertRussianBlock('для число = 1, 3 делать\n    печать(число)\nконец') end)
     button(plugins,"ОЧИСТИТЬ РЕДАКТОР",function() russianEditor.Text="" end)
