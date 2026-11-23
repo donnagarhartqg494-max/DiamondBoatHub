@@ -670,7 +670,7 @@ local function compilePluginSource(source)
         code='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
             'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
             'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
-            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
+            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local getService=api.GetService; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
             'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
             'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
             'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
@@ -5789,7 +5789,7 @@ executePluginSource=function(source,api)
         local wrapped='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
             'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
             'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
-            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
+            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local getService=api.GetService; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
             'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
             'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
             'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
@@ -5808,7 +5808,7 @@ executePluginSource=function(source,api)
     local translated=translateRussianLua(source)
     local wrapped='local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
         'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
-        'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
+        'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local getService=api.GetService; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
         translated
     local compileOk,chunk=pcall(loadstring,wrapped)
     if not compileOk or type(chunk)~="function" then return nil,"Plugin compile failed: "..tostring(chunk) end
