@@ -1,6 +1,6 @@
 
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V36
+-- DIAMOND BOAT HUB V1 [BETA] V37
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -4562,6 +4562,324 @@ Main.Visible=false
 TweenService:Create(IntroScale,TweenInfo.new(0.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Scale=1}):Play()
 
 showPage("HOME")
+
+--==================================================
+-- DIAMOND EXPANSION PACK V1
+-- Local visual / utility features. Server-authoritative actions
+-- remain subject to the game's own permissions and remotes.
+--==================================================
+
+-- AURA SYSTEM: local-only character aura.
+label(visuals,"AURA SYSTEM")
+local auraEnabled=false
+local auraColor=Color3.fromRGB(90,190,255)
+local auraObjects={}
+local function clearAura()
+    for _,obj in ipairs(auraObjects) do if obj and obj.Parent then obj:Destroy() end end
+    table.clear(auraObjects)
+end
+local function applyAura()
+    clearAura()
+    if not auraEnabled then return end
+    local char=Player.Character
+    local root=char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local h=Instance.new("Highlight"); h.Name="DiamondAura"; h.FillColor=auraColor
+    h.OutlineColor=Color3.new(1,1,1); h.FillTransparency=0.72; h.OutlineTransparency=0.12
+    h.Adornee=char; h.Parent=GUI; table.insert(auraObjects,h)
+    local att=Instance.new("Attachment"); att.Name="DiamondAuraAttachment"; att.Parent=root
+    table.insert(auraObjects,att)
+    local p=Instance.new("ParticleEmitter"); p.Name="DiamondAuraParticles"
+    p.Texture="rbxasset://textures/particles/sparkles_main.dds"
+    p.Color=ColorSequence.new(auraColor); p.Rate=18; p.Lifetime=NumberRange.new(0.7,1.2)
+    p.Speed=NumberRange.new(0.4,1.6); p.SpreadAngle=Vector2.new(180,180)
+    p.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.18),NumberSequenceKeypoint.new(1,0)})
+    p.Parent=att
+end
+toggle(visuals,"Aura around my character",false,function(v) auraEnabled=v; applyAura() end)
+button(visuals,"AURA COLOR: BLUE / PURPLE",function()
+    auraColor=(auraColor==Color3.fromRGB(90,190,255)) and Color3.fromRGB(190,110,255) or Color3.fromRGB(90,190,255)
+    if auraEnabled then applyAura() end
+end)
+Player.CharacterAdded:Connect(function() task.wait(1); if auraEnabled then applyAura() end end)
+
+-- PLAYER ESP: local highlights and labels only.
+label(visuals,"PLAYER ESP (LOCAL)")
+local espEnabled=false
+local espObjects={}
+local function clearESP()
+    for plr,items in pairs(espObjects) do
+        for _,obj in ipairs(items) do if obj and obj.Parent then obj:Destroy() end end
+    end
+    table.clear(espObjects)
+end
+local function addESP(plr)
+    if not espEnabled or plr==Player or espObjects[plr] then return end
+    local char=plr.Character
+    local root=char and char:FindFirstChild("HumanoidRootPart")
+    local hum=char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not root or not hum then return end
+    local hi=Instance.new("Highlight"); hi.Name="DiamondPlayerESP"; hi.Adornee=char
+    hi.FillColor=Color3.fromRGB(70,190,255); hi.OutlineColor=Color3.new(1,1,1)
+    hi.FillTransparency=0.82; hi.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop; hi.Parent=GUI
+    local bb=Instance.new("BillboardGui"); bb.Name="DiamondESPLabel"; bb.Adornee=root
+    bb.Size=UDim2.fromOffset(170,34); bb.StudsOffset=Vector3.new(0,3.2,0)
+    bb.AlwaysOnTop=true; bb.Parent=GUI
+    local txt=Instance.new("TextLabel"); txt.Size=UDim2.fromScale(1,1)
+    txt.BackgroundTransparency=1; txt.Text=plr.DisplayName.."  @"..plr.Name
+    txt.TextColor3=Color3.fromRGB(190,225,255); txt.TextStrokeTransparency=0.25
+    txt.Font=Enum.Font.GothamBold; txt.TextSize=12; txt.Parent=bb
+    espObjects[plr]={hi,bb}
+end
+toggle(visuals,"Player ESP (highlight + name)",false,function(v)
+    espEnabled=v; clearESP()
+    if v then for _,plr in ipairs(Players:GetPlayers()) do addESP(plr) end end
+end)
+Players.PlayerAdded:Connect(function(plr) plr.CharacterAdded:Connect(function() task.wait(1); addESP(plr) end) end)
+Players.PlayerRemoving:Connect(function(plr)
+    local items=espObjects[plr]; if items then for _,obj in ipairs(items) do if obj.Parent then obj:Destroy() end end end
+    espObjects[plr]=nil
+end)
+
+-- CROSSHAIR: fixed screen reticle.
+label(visuals,"CROSSHAIR")
+local crosshair=Instance.new("Frame"); crosshair.Name="DiamondCrosshair"
+crosshair.AnchorPoint=Vector2.new(0.5,0.5); crosshair.Position=UDim2.fromScale(0.5,0.5)
+crosshair.Size=UDim2.fromOffset(18,18); crosshair.BackgroundTransparency=1
+crosshair.Visible=false; crosshair.ZIndex=150; crosshair.Parent=GUI
+for _,spec in ipairs({
+    {UDim2.fromOffset(18,2),UDim2.fromOffset(0,8)},
+    {UDim2.fromOffset(2,18),UDim2.fromOffset(8,0)}
+}) do
+    create("Frame",{Size=spec[1],Position=spec[2],BackgroundColor3=Color3.fromRGB(255,255,255),
+        BorderSizePixel=0,ZIndex=151},crosshair)
+end
+toggle(visuals,"Show crosshair",false,function(v) crosshair.Visible=v end)
+
+-- ADVANCED HUD: FPS already exists above; add coordinates, speed and session time.
+label(visuals,"ADVANCED HUD")
+local advancedHud=Instance.new("TextLabel")
+advancedHud.Name="DiamondAdvancedHUD"; advancedHud.Size=UDim2.fromOffset(190,66)
+advancedHud.Position=UDim2.fromOffset(12,46); advancedHud.BackgroundColor3=Color3.fromRGB(10,16,25)
+advancedHud.BackgroundTransparency=0.2; advancedHud.TextColor3=Color3.fromRGB(220,240,255)
+advancedHud.TextSize=12; advancedHud.Font=Enum.Font.GothamSemibold
+advancedHud.TextXAlignment=Enum.TextXAlignment.Left; advancedHud.TextYAlignment=Enum.TextYAlignment.Center
+advancedHud.Text="XYZ: --\nSPEED: --\nTIME: 00:00"; advancedHud.Visible=false
+advancedHud.ZIndex=100; advancedHud.Parent=GUI; round(advancedHud,8); outline(advancedHud)
+local hudStarted=os.clock()
+local function formatElapsed(t) return string.format("%02d:%02d",math.floor(t/60),math.floor(t%60)) end
+toggle(visuals,"Advanced HUD (XYZ / speed / session)",false,function(v) advancedHud.Visible=v end)
+local hudUpdate=0
+RunService.RenderStepped:Connect(function(dt)
+    if advancedHud.Visible then
+        hudUpdate+=dt
+        if hudUpdate>=0.25 then
+            hudUpdate=0
+            local _,hum,root=getCharacter()
+            if root then
+                local p=root.Position
+                advancedHud.Text=string.format("XYZ: %d, %d, %d\nSPEED: %d studs/s\nTIME: %s",
+                    math.floor(p.X),math.floor(p.Y),math.floor(p.Z),
+                    math.floor(root.AssemblyLinearVelocity.Magnitude),formatElapsed(os.clock()-hudStarted))
+            end
+        end
+    end
+end)
+
+-- ANIMATION HUB: user-supplied animation asset ID; Roblox permissions still apply.
+label(tools,"ANIMATION HUB")
+local animationIdBox=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),
+    TextColor3=WHITE,PlaceholderText="Animation asset ID",Text="",ClearTextOnFocus=false,
+    Font=Enum.Font.Gotham,TextSize=13},tools)
+round(animationIdBox,8); outline(animationIdBox)
+local activeAnimation=nil
+button(tools,"PLAY ANIMATION ID",function()
+    local id=animationIdBox.Text:match("%d+")
+    local _,hum=getCharacter()
+    if not id or not hum then warn("[DIAMOND ANIMATION] Enter a numeric asset ID and respawn if needed"); return end
+    local animator=hum:FindFirstChildOfClass("Animator") or Instance.new("Animator",hum)
+    local anim=Instance.new("Animation"); anim.AnimationId="rbxassetid://"..id
+    local ok,track=pcall(function() return animator:LoadAnimation(anim) end)
+    if ok and track then
+        if activeAnimation then pcall(function() activeAnimation:Stop(0.15); activeAnimation:Destroy() end) end
+        activeAnimation=track; track:Play(0.15)
+    else warn("[DIAMOND ANIMATION] Could not load this animation; it may not be permitted for this experience") end
+end)
+button(tools,"STOP CUSTOM ANIMATION",function()
+    if activeAnimation then pcall(function() activeAnimation:Stop(0.15); activeAnimation:Destroy() end); activeAnimation=nil end
+end)
+
+-- WAYPOINTS: local marker at current position; no server teleport.
+label(teleport,"WAYPOINTS")
+local waypoint=nil
+local waypointLabel=label(teleport,"Waypoint: not set")
+button(teleport,"SET WAYPOINT AT MY POSITION",function()
+    local _,_,root=getCharacter(); if not root then waypointLabel.Text="Waypoint: character unavailable"; return end
+    if waypoint then waypoint:Destroy() end
+    local marker=Instance.new("Part"); marker.Name="DiamondWaypoint"; marker.Anchored=true
+    marker.CanCollide=false; marker.CanTouch=false; marker.CanQuery=false
+    marker.Shape=Enum.PartType.Ball; marker.Size=Vector3.new(1.4,1.4,1.4)
+    marker.Material=Enum.Material.Neon; marker.Color=Color3.fromRGB(70,190,255)
+    marker.CFrame=root.CFrame*CFrame.new(0,3,0); marker.Parent=Workspace
+    local bb=Instance.new("BillboardGui"); bb.Size=UDim2.fromOffset(130,30); bb.StudsOffset=Vector3.new(0,1.5,0)
+    bb.AlwaysOnTop=true; bb.Adornee=marker; bb.Parent=marker
+    local t=Instance.new("TextLabel"); t.Size=UDim2.fromScale(1,1); t.BackgroundTransparency=1
+    t.Text="DIAMOND WAYPOINT"; t.TextColor3=Color3.new(1,1,1); t.TextStrokeTransparency=0.2
+    t.Font=Enum.Font.GothamBold; t.TextSize=11; t.Parent=bb
+    waypoint=marker; waypointLabel.Text="Waypoint set at your current position"
+end)
+button(teleport,"CLEAR WAYPOINT",function()
+    if waypoint then waypoint:Destroy(); waypoint=nil end
+    waypointLabel.Text="Waypoint: not set"
+end)
+local waypointDistance=label(teleport,"Distance: --")
+RunService.Heartbeat:Connect(function()
+    if waypoint and waypoint.Parent then
+        local _,_,root=getCharacter()
+        if root then waypointDistance.Text="Distance: "..math.floor((root.Position-waypoint.Position).Magnitude).." studs" end
+    end
+end)
+
+-- PLAYER TRACKER: select a player by username and show distance/direction text.
+label(teleport,"PLAYER TRACKER")
+local trackerInput=create("TextBox",{Size=UDim2.new(1,-8,0,38),BackgroundColor3=Color3.fromRGB(24,24,31),
+    TextColor3=WHITE,PlaceholderText="Player username",Text="",ClearTextOnFocus=false,
+    Font=Enum.Font.Gotham,TextSize=13},teleport)
+round(trackerInput,8); outline(trackerInput)
+local trackedPlayer=nil
+local trackerStatus=label(teleport,"Tracker: off")
+button(teleport,"TRACK PLAYER",function()
+    local query=trackerInput.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+    trackedPlayer=nil
+    for _,plr in ipairs(Players:GetPlayers()) do
+        if query~="" and (plr.Name:lower()==query or plr.DisplayName:lower()==query) then trackedPlayer=plr; break end
+    end
+    trackerStatus.Text=trackedPlayer and ("Tracking: "..trackedPlayer.Name) or "Player not found in this server"
+end)
+button(teleport,"STOP TRACKING",function() trackedPlayer=nil; trackerStatus.Text="Tracker: off" end)
+RunService.Heartbeat:Connect(function()
+    if trackedPlayer then
+        local _,_,myRoot=getCharacter()
+        local target=trackedPlayer.Character and trackedPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if myRoot and target then trackerStatus.Text=string.format("Tracking %s • %d studs",trackedPlayer.Name,math.floor((myRoot.Position-target.Position).Magnitude)) end
+    end
+end)
+
+-- CAMERA TOOLS: free-look toggle with safe restoration.
+label(tools,"CAMERA TOOLS")
+local freeCamera=false
+local savedCameraType,savedCameraSubject
+local freeCameraPosition=nil
+local freeCameraConnection=nil
+local function stopFreeCamera()
+    freeCamera=false
+    if freeCameraConnection then freeCameraConnection:Disconnect(); freeCameraConnection=nil end
+    local cam=Workspace.CurrentCamera
+    if cam then
+        cam.CameraType=savedCameraType or Enum.CameraType.Custom
+        local _,hum=getCharacter()
+        cam.CameraSubject=savedCameraSubject and savedCameraSubject.Parent and savedCameraSubject or hum
+    end
+end
+toggle(tools,"Free camera (WASD + Space/Ctrl)",false,function(v)
+    local cam=Workspace.CurrentCamera
+    if not cam then return end
+    if not v then stopFreeCamera(); return end
+    savedCameraType=cam.CameraType; savedCameraSubject=cam.CameraSubject
+    freeCameraPosition=cam.CFrame; freeCamera=true; cam.CameraType=Enum.CameraType.Scriptable
+    freeCameraConnection=RunService.RenderStepped:Connect(function(dt)
+        if not freeCamera then return end
+        local c=Workspace.CurrentCamera
+        if not c then stopFreeCamera(); return end
+        local move=Vector3.zero
+        if UIS:IsKeyDown(Enum.KeyCode.W) then move+=c.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then move-=c.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then move-=c.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then move+=c.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then move+=Vector3.yAxis end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move-=Vector3.yAxis end
+        freeCameraPosition=freeCameraPosition+move*35*dt
+        c.CFrame=CFrame.new(freeCameraPosition.Position)* (freeCameraPosition-freeCameraPosition.Position)
+    end)
+end)
+button(tools,"RESET CAMERA",function()
+    stopFreeCamera()
+    local cam=Workspace.CurrentCamera; local _,hum=getCharacter()
+    if cam and hum then cam.CameraType=Enum.CameraType.Custom; cam.CameraSubject=hum end
+end)
+
+-- BUILDING TOOLS: local selection and safe local duplicate preview.
+label(build,"BUILDING TOOLS")
+local buildToolStatus=label(build,"Build tools: select a part in the world")
+local buildMouse=Player:GetMouse()
+local selectedBuildPart=nil
+button(build,"SELECT BLOCK UNDER CURSOR",function()
+    local target=buildMouse.Target
+    if target and target:IsA("BasePart") then
+        selectedBuildPart=target; buildToolStatus.Text="Selected: "..target.Name
+    else selectedBuildPart=nil; buildToolStatus.Text="No block under cursor" end
+end)
+button(build,"LOCAL GHOST COPY OF SELECTED BLOCK",function()
+    if not selectedBuildPart or not selectedBuildPart.Parent then buildToolStatus.Text="Select a block first"; return end
+    local ghost=selectedBuildPart:Clone()
+    ghost.Name="DiamondLocalBlockGhost"; ghost.Anchored=true; ghost.CanCollide=false
+    ghost.Transparency=math.max(ghost.Transparency,0.45); ghost.CFrame=selectedBuildPart.CFrame*CFrame.new(0,0,-5)
+    ghost.Parent=Workspace
+    task.delay(20,function() if ghost and ghost.Parent then ghost:Destroy() end end)
+    buildToolStatus.Text="Local ghost copy created (20 seconds)"
+end)
+button(build,"REMOVE LOCAL GHOST COPIES",function()
+    for _,obj in ipairs(Workspace:GetChildren()) do
+        if obj.Name=="DiamondLocalBlockGhost" then obj:Destroy() end
+    end
+    buildToolStatus.Text="Local ghost copies removed"
+end)
+
+-- PRESET MANAGER: three session presets; saved config still uses the existing config system.
+label(settings,"PRESET MANAGER")
+local presetStatus=label(settings,"Presets are kept in this executor session")
+local presetStore=getSharedConfig()
+presetStore.__DIAMOND_PRESETS=presetStore.__DIAMOND_PRESETS or {}
+local function capturePreset()
+    return {speed=configuredSpeed,jump=configuredJump,spin=spinSpeed,
+        speedOn=speedOn,jumpOn=jumpOn,infiniteJump=infiniteJump,noclipOn=noclipOn,
+        flyOn=flyOn,spinEnabled=spinEnabled,theme=currentTheme,background=backgroundMode,
+        style=buttonStyle}
+end
+local function applyPreset(data)
+    if type(data)~="table" then return end
+    if tonumber(data.speed) then configuredSpeed=math.clamp(data.speed,16,250); if speedInput then speedInput.Text=tostring(configuredSpeed) end end
+    if tonumber(data.jump) then configuredJump=math.clamp(data.jump,50,300); if jumpInput then jumpInput.Text=tostring(configuredJump) end end
+    if tonumber(data.spin) then spinSpeed=math.clamp(data.spin,1,100); if spinInput then spinInput.Text=tostring(spinSpeed) end end
+    if themes[data.theme] then applyTheme(data.theme) end
+    if data.style then setButtonStyle(data.style) end
+    if backgroundPresets[data.background] then setBackgroundMode(data.background) end
+    local map={["Speed boost"]=data.speedOn,["High jump"]=data.jumpOn,
+        ["Infinite jump"]=data.infiniteJump,["Noclip"]=data.noclipOn,
+        ["Fly"]=data.flyOn,["Spin character"]=data.spinEnabled}
+    for name,value in pairs(map) do if type(value)=="boolean" and ToggleSetters[name] then ToggleSetters[name](value,true) end end
+end
+for slot=1,3 do
+    button(settings,"SAVE PRESET "..slot,function()
+        presetStore.__DIAMOND_PRESETS[slot]=capturePreset()
+        presetStatus.Text="Preset "..slot.." saved for this session"
+    end)
+    button(settings,"LOAD PRESET "..slot,function()
+        local data=presetStore.__DIAMOND_PRESETS[slot]
+        if data then applyPreset(data); presetStatus.Text="Preset "..slot.." loaded"
+        else presetStatus.Text="Preset "..slot.." is empty" end
+    end)
+end
+button(settings,"SAVE CURRENT CONFIG",function()
+    if saveHubConfig then saveHubConfig(); presetStatus.Text="Current config saved" end
+end)
+button(settings,"LOAD CURRENT CONFIG",function()
+    if loadHubConfig then loadHubConfig(); presetStatus.Text="Current config loaded" end
+end)
+
+-- Anti-AFK was already present in VISUALS; keep the existing toggle as the single implementation.
+
+
 -- DELTA-FRIENDLY CONFIGURATION + RELOAD
 HttpService=game:GetService("HttpService")
 CONFIG_FILE="DiamondBoatHub_Config.json"
@@ -4662,7 +4980,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=36"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=37"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
