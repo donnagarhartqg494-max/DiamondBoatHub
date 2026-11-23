@@ -680,6 +680,7 @@ local function makePluginApi(key)
     return api
 end
 
+local executePluginSource
 local function refreshPluginList()
     local firstLineEnd=source:find("\n",1,true) or (#source+1)
     local firstLine=string.gsub(source:sub(1,firstLineEnd-1),"^%s*(.-)%s*$","%1")
@@ -5680,7 +5681,10 @@ button(settings,"RELOAD SCRIPT",function()
     if not ok then warn("[DIAMOND RELOAD] Failed:",tostring(err)) end
 end)
 
-local function executePluginSource(source,api)
+executePluginSource=function(source,api)
+    local firstLineEnd=source:find("\n",1,true) or (#source+1)
+    local firstLine=string.gsub(source:sub(1,firstLineEnd-1),"^%s*(.-)%s*$","%1")
+    local pluginName=firstLine:match('^плагин%s+"(.-)"')
     if pluginName then
         local body=source:sub(math.min(firstLineEnd+1,#source+1))
         local translated=translateRussianLua(body)
@@ -10784,7 +10788,5 @@ button(settings,"RELOAD SCRIPT",function()
     end)
     if not ok then warn("[DIAMOND RELOAD] Failed:",tostring(err)) end
 end)
-
-print("DIAMOND BOAT HUB V1 [BETA] LOADED")
 
 print("DIAMOND BOAT HUB V57 [BETA] LOADED")
