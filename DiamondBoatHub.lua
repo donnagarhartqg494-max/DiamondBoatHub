@@ -824,6 +824,29 @@ local function pluginMessage(message)
     print("[DIAMOND PLUGINS]",tostring(message))
 end
 
+-- Notify only for important outcomes and failures, not every toggle.
+local diamondToastSerial=0
+function diamondNotify(title,message,kind)
+    diamondToastSerial+=1
+    local serial=diamondToastSerial
+    local old=GUI:FindFirstChild("DiamondEventToast")
+    if old then old:Destroy() end
+    local tint=kind=="error" and Color3.fromRGB(235,85,85) or kind=="success" and Color3.fromRGB(75,195,135) or Color3.fromRGB(145,135,245)
+    local toast=create("Frame",{Name="DiamondEventToast",AnchorPoint=Vector2.new(0.5,0),Position=UDim2.new(0.5,0,0,-92),Size=UDim2.fromOffset(340,76),BackgroundColor3=Color3.fromRGB(24,25,31),BackgroundTransparency=0.06,BorderSizePixel=0,ZIndex=250},GUI)
+    round(toast,14)
+    local stroke=outline(toast); stroke.Color=tint; stroke.Transparency=0.22
+    create("Frame",{Size=UDim2.fromOffset(4,44),Position=UDim2.fromOffset(0,16),BackgroundColor3=tint,BorderSizePixel=0,ZIndex=251},toast)
+    create("TextLabel",{BackgroundTransparency=1,Position=UDim2.fromOffset(16,9),Size=UDim2.new(1,-28,0,22),Text=tostring(title or "DIAMOND BOAT HUB"),TextColor3=tint,Font=Enum.Font.GothamBold,TextSize=13,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=251},toast)
+    create("TextLabel",{BackgroundTransparency=1,Position=UDim2.fromOffset(16,32),Size=UDim2.new(1,-28,0,34),Text=tostring(message or ""),TextColor3=Color3.fromRGB(245,245,250),Font=Enum.Font.Gotham,TextSize=12,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=251},toast)
+    TweenService:Create(toast,TweenInfo.new(0.25,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Position=UDim2.new(0.5,0,0,12)}):Play()
+    task.delay(3.2,function()
+        if serial~=diamondToastSerial or not toast.Parent then return end
+        local fade=TweenService:Create(toast,TweenInfo.new(0.22),{Position=UDim2.new(0.5,0,0,-92),BackgroundTransparency=1})
+        fade:Play(); fade.Completed:Wait()
+        if serial==diamondToastSerial and toast.Parent then toast:Destroy() end
+    end)
+end
+
 -- DIAMOND SCRIPT: русские ключевые слова + разговорные команды.
 local russianKeywords={
     {"иначеесли","elseif"},{"повторять","repeat"},{"пусть","local"},
@@ -3057,8 +3080,9 @@ function startMidiBuild()
     local noteId=getMusicBlockId("Note")
     local delayId=getMusicBlockId("Delay")
     if not noteId or not delayId then
-        warn("[MIDI BUILD] Note/Delay inventory counts exist, but their numeric block IDs were not resolved. Check ReplicatedStorage.BuildingParts/BlockData and BuildGui inventory button attributes.")
-        midiBuildStatus.Text="MIDI BUILD: Note/Delay IDs not found — inventory counts are OK"
+        warn("[MIDI BUILD] Note/Delay block arguments could not be resolved from Player.Data.")
+        midiBuildStatus.Text="MIDI BUILD: Note/Delay data values not found"
+        diamondNotify("MIDI BUILD","Не удалось прочитать значения Note/Delay из Player.Data.","error")
         return
     end
 
@@ -3085,6 +3109,7 @@ function startMidiBuild()
     if noteCount<requiredNotes or delayCount<#groups then
         midiBuildStatus.Text=string.format("Need %d Notes + %d Delays; have %d + %d",requiredNotes,#groups,noteCount,delayCount)
         warn("[MIDI BUILD] Not enough inventory. Need",requiredNotes,"Notes and",#groups,"Delays; have",noteCount,delayCount)
+        diamondNotify("MIDI BUILD","Не хватает блоков для этой композиции.","error")
         return
     end
 
@@ -3092,11 +3117,13 @@ function startMidiBuild()
     local buildRF=getBuildTool()
     if not zone or not buildRF then
         midiBuildStatus.Text="MIDI BUILD: plot or BuildingTool unavailable"
+        diamondNotify("MIDI BUILD","Не найдена база или BuildingTool.","error")
         return
     end
     local propertyRF=findPropertyRemote()
     if not propertyRF then
         midiBuildStatus.Text="MIDI BUILD: equip PropertiesTool first"
+        diamondNotify("MIDI BUILD","Возьми PropertiesTool перед запуском постройки.","error")
         return
     end
     local folder=Workspace:FindFirstChild("Blocks")
@@ -3182,6 +3209,7 @@ function startMidiBuild()
             midiBuildRunning=false
             midiBuildStatus.Text="MIDI BUILD: BindingTool.RF unavailable"
             warn("[MIDI BUILD] BindingTool.RF not found")
+            diamondNotify("MIDI BUILD","BindingTool не найден. Автосоединение блоков невозможно.","error")
             return
         end
 
@@ -3237,6 +3265,11 @@ function startMidiBuild()
         midiBuildRunning=false
         midiBuildStatus.Text=string.format("Built %d/%d Notes, %d/%d Delays, %d links, %d errors",placedNotes,requiredNotes,placedDelays,#prepared,binds,errors)
         print("[MIDI BUILD] Finished. Notes:",placedNotes,"Delays:",placedDelays,"Links:",binds,"Errors:",errors)
+        if errors==0 and placedNotes==requiredNotes and placedDelays==#prepared then
+            diamondNotify("MIDI BUILD","Постройка завершена: "..placedNotes.." нот, "..placedDelays.." задержек.","success")
+        else
+            diamondNotify("MIDI BUILD","Построено нот: "..placedNotes.."/"..requiredNotes..", задержек: "..placedDelays.."/"..#prepared..". Ошибок: "..errors,"error")
+        end
         print("[MIDI BUILD] Simultaneous notes were grouped into chords. Existing input:",input and input.Name or "none")
         print("[MIDI BUILD] Note sustain in BABFT is limited to about 0.85 seconds; longer MIDI durations cannot be reproduced exactly.")
         print("[MIDI BUILD] Long gaps over 10 seconds are clamped to 10 seconds by the Delay block limit.")
@@ -4719,6 +4752,19 @@ function relayRequest(method,path,body)
 end
 local prefixLastPublishAt=0
 local prefixPublishQueued=false
+local prefixRelayNoticeState="unknown"
+local function updatePrefixRelayNotice(online)
+    prefixRelayOnline=online==true
+    local state=prefixRelayOnline and "online" or "offline"
+    if state~=prefixRelayNoticeState then
+        prefixRelayNoticeState=state
+        if state=="online" then
+            diamondNotify("PREFIX RELAY","Префиксы синхронизированы через Cloudflare.","success")
+        else
+            diamondNotify("PREFIX RELAY","Cloudflare недоступен. Синхронизация префиксов приостановлена.","error")
+        end
+    end
+end
 function publishPrefix()
     if prefixPublishQueued then return true end
     prefixPublishQueued=true
@@ -4735,7 +4781,7 @@ function publishPrefix()
             color=prefixColorToHex(prefixColor)
         }
         local result,err=relayRequest("POST","/prefix",data)
-        prefixRelayOnline=result and result.ok==true
+        updatePrefixRelayNotice(result and result.ok==true)
         if prefixRelayStatus and prefixRelayStatus.Parent then
             prefixRelayStatus.Text=prefixRelayOnline and "PREFIX RELAY: CONNECTED" or "PREFIX RELAY: SEND FAILED"
         end
@@ -4746,6 +4792,7 @@ end
 function fetchSharedPrefixes()
     local result,err=relayRequest("GET","/players?gameId="..tostring(game.PlaceId))
     if not result or result.ok~=true or type(result.players)~="table" then
+        updatePrefixRelayNotice(false)
         if prefixRelayStatus and prefixRelayStatus.Parent then prefixRelayStatus.Text="PREFIX RELAY: CONNECTION ERROR" end
         if err then warn("[DIAMOND PREFIX RELAY] Fetch failed:",tostring(err)) end
         return false
@@ -4759,6 +4806,7 @@ function fetchSharedPrefixes()
         end
     end
     sharedPrefixRecords=nextRecords
+    updatePrefixRelayNotice(true)
     if prefixRelayStatus and prefixRelayStatus.Parent then prefixRelayStatus.Text="PREFIX RELAY: CONNECTED | "..tostring(#result.players).." USERS" end
     refreshPlayerTags()
     return true
