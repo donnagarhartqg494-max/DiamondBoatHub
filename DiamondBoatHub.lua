@@ -4867,17 +4867,16 @@ Players.PlayerRemoving:Connect(function(plr)
     if playerTagConnections[plr] then playerTagConnections[plr]:Disconnect(); playerTagConnections[plr]=nil end
 end)
 
--- Publish own prefix and refresh other DiamondBoatHub users periodically.
-task.spawn(function()
-    task.wait(2)
-    publishPrefix()
-    fetchSharedPrefixes()
-    while GUI and GUI.Parent do
-        task.wait(15)
-        publishPrefix() -- refresh the 24-hour KV expiry
-        fetchSharedPrefixes()
-    end
-end)
+-- OFFLINE PREFIX MODE:
+-- No external Worker/KV requests. Local player tags and local prefix still work;
+-- other users' custom prefixes are unavailable without a shared backend.
+sharedPrefixRecords={}
+prefixRelayOnline=false
+if prefixRelayStatus and prefixRelayStatus.Parent then
+    prefixRelayStatus.Text="PREFIX RELAY: OFFLINE (LOCAL MODE)"
+end
+-- Intentionally do not call publishPrefix() or fetchSharedPrefixes().
+
 
 
 -- CHAT tab removed: no in-game chat bypass or duplicate chat UI.
