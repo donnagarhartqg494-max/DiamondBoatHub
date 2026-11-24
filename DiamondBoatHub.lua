@@ -568,7 +568,7 @@ for _,name in ipairs(tabNames) do
     tabIcon.Image=""
     tabIcon.Visible=false
     tabIcon.ZIndex=3
-    local customIconPlate=create("Frame",{Name="TabIconPlate",Size=UDim2.fromOffset(30,28),Position=UDim2.new(0.5,-15,0,2),BackgroundTransparency=1},b)
+    local customIconPlate=create("Frame",{Name="TabIconPlate",Size=UDim2.fromOffset(34,32),Position=UDim2.new(0.5,-17,0,1),BackgroundTransparency=1},b)
     drawTabIcon(customIconPlate,name,TEXT_DARK)
     local tabCaption=create("TextLabel",{Name="TabCaption",Size=UDim2.new(1,-4,0,25),Position=UDim2.new(0,2,0,30),BackgroundTransparency=1,Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",["PLUGIN CATALOG"]="CATALOG",CREDITS="CREDITS"})[name] or name,TextColor3=TEXT_DARK,TextSize=9,TextWrapped=true,Font=Enum.Font.GothamBold},b)
     tabIcon.ScaleType=Enum.ScaleType.Fit
