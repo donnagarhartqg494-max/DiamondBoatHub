@@ -523,19 +523,24 @@ local function drawTabIcon(parent,name,color)
             dot(7,4+i*8,2)
         end
     elseif name=="PLUGINS" then
-        -- Four-piece plugin mark; square terminals avoid the old bubble look.
-        for _,p in ipairs({{4,4},{17,4},{4,16},{17,16}}) do
-            local tile=create("Frame",{Size=UDim2.fromOffset(7,7),Position=UDim2.fromOffset(p[1],p[2]),BackgroundColor3=color,BorderSizePixel=0},root)
-            round(tile,2)
-        end
-        strokeLine(14,7,3,12,0,2)
+        -- Distinct plugin/puzzle glyph: four connected modules around a hub.
+        ring(5,5,18,18,2.5)
+        strokeLine(14,1,3,7,0,2.5)
+        strokeLine(14,20,3,7,0,2.5)
+        strokeLine(1,14,7,3,0,2.5)
+        strokeLine(20,14,7,3,0,2.5)
+        dot(12,12,5)
     elseif name=="PLUGIN CATALOG" then
-        -- Bounded catalogue/list glyph.
-        strokeLine(6,4,2,19,0,2); strokeLine(22,4,2,19,0,2)
-        for row=0,2 do
-            strokeLine(15,7+row*6,9,2,0,2)
-            dot(9,6+row*6,2)
-        end
+        -- Open catalogue/book glyph with a clear center spine and page lines.
+        ring(2,3,13,23,2)
+        ring(15,3,13,23,2)
+        strokeLine(15,3,2,23,0,2.5)
+        strokeLine(5,9,6,2,0,2)
+        strokeLine(5,14,6,2,0,2)
+        strokeLine(5,19,6,2,0,2)
+        strokeLine(23,9,6,2,0,2)
+        strokeLine(23,14,6,2,0,2)
+        strokeLine(23,19,6,2,0,2)
     elseif name=="CREDITS" then
         strokeLine(14,2,15,2,45); strokeLine(14,2,15,2,-45)
         strokeLine(14,22,15,2,45); strokeLine(14,22,15,2,-45)
