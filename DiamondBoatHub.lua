@@ -5753,20 +5753,33 @@ Players.PlayerRemoving:Connect(function(plr)
     espObjects[plr]=nil
 end)
 
--- CROSSHAIR: fixed screen reticle.
-safeLabel(visuals,"CROSSHAIR")
-local crosshair=Instance.new("Frame"); crosshair.Name="DiamondCrosshair"
-crosshair.AnchorPoint=Vector2.new(0.5,0.5); crosshair.Position=UDim2.fromScale(0.5,0.5)
-crosshair.Size=UDim2.fromOffset(18,18); crosshair.BackgroundTransparency=1
-crosshair.Visible=false; crosshair.ZIndex=150; crosshair.Parent=GUI
-for _,spec in ipairs({
-    {UDim2.fromOffset(18,2),UDim2.fromOffset(0,8)},
-    {UDim2.fromOffset(2,18),UDim2.fromOffset(8,0)}
-}) do
-    create("Frame",{Size=spec[1],Position=spec[2],BackgroundColor3=Color3.fromRGB(255,255,255),
-        BorderSizePixel=0,ZIndex=151},crosshair)
+-- DESKTOP MOUSE CURSOR: replaces the old on-screen crosshair.
+-- Hidden on touch devices; changes only the local player's mouse icon.
+if UIS.MouseEnabled and not UIS.TouchEnabled then
+    safeLabel(visuals,"MOUSE CURSOR")
+    local cursorMouse=Player:GetMouse()
+    local defaultCursorIcon=cursorMouse.Icon
+    local cursorPresets={
+        {name="Default",icon=""},
+        {name="Arrow",icon="rbxasset://textures/ArrowCursor.png"},
+        {name="Far Arrow",icon="rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png"},
+        {name="Pointing Hand",icon="rbxasset://textures/Cursors/KeyboardMouse/PointingHand.png"},
+        {name="Locked Cursor",icon="rbxasset://textures/MouseLockedCursor.png"}
+    }
+    local cursorIndex=1
+    local cursorButton
+    cursorButton=button(visuals,"Mouse cursor: "..cursorPresets[cursorIndex].name,function()
+        cursorIndex=cursorIndex%#cursorPresets+1
+        local preset=cursorPresets[cursorIndex]
+        cursorMouse.Icon=preset.icon
+        cursorButton.Text="   Mouse cursor: "..preset.name
+    end)
+    button(visuals,"RESET MOUSE CURSOR",function()
+        cursorIndex=1
+        cursorMouse.Icon=defaultCursorIcon
+        cursorButton.Text="   Mouse cursor: "..cursorPresets[cursorIndex].name
+    end)
 end
-toggle(visuals,"Show crosshair",false,function(v) crosshair.Visible=v end)
 
 -- ADVANCED HUD: FPS already exists above; add coordinates, speed and session time.
 safeLabel(visuals,"ADVANCED HUD")
