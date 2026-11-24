@@ -2035,47 +2035,15 @@ function getInventoryCount(blockName)
     return n and math.max(0,n) or 0
 end
 function getBlockTypeId(blockName)
-    -- BABFT block IDs are stored as numeric values, not the child index
-    -- of ReplicatedStorage.BuildingParts (GetChildren order is not an ID).
-    local containers={
-        ReplicatedStorage:FindFirstChild("BlockData"),
-        ReplicatedStorage:FindFirstChild("BlockIds"),
-        ReplicatedStorage:FindFirstChild("BuildingParts")
-    }
-    for _,container in ipairs(containers) do
-        if container then
-            local value=container:FindFirstChild(blockName,true)
-            if value and value:IsA("ValueBase") then
-                local id=tonumber(value.Value)
-                if id then return id end
-            end
-            local template=container:FindFirstChild(blockName)
-            if not template then
-                local wanted=blockName:lower():gsub("[%s_%-]","")
-                for _,candidate in ipairs(container:GetDescendants()) do
-                    local normalized=candidate.Name:lower():gsub("[%s_%-]","")
-                    if normalized==wanted or (blockName=="Note" and (normalized=="musicnote" or normalized=="noteblock"))
-                        or (blockName=="Delay" and (normalized=="delayblock" or normalized=="musicdelay")) then
-                        if candidate:IsA("Model") or candidate:IsA("Folder") then template=candidate break end
-                        if candidate:IsA("ValueBase") then
-                            local id=tonumber(candidate.Value)
-                            if id then return id end
-                        end
-                    end
-                end
-            end
-            if template then
-                local attribute=tonumber(template:GetAttribute("ID") or template:GetAttribute("Id") or template:GetAttribute("BlockId"))
-                if attribute then return attribute end
-                for _,child in ipairs(template:GetChildren()) do
-                    if child:IsA("ValueBase") and (child.Name=="ID" or child.Name=="Id" or child.Name=="BlockId") then
-                        local id=tonumber(child.Value)
-                        if id then return id end
-                    end
-                end
-            end
-        end
-    end
+    -- BABFT BuildingTool.RF uses the player's Data value as its second
+    -- argument for the selected block. Public BABFT build scripts use
+    -- player.Data:FindFirstChild(name).Value here; it is NOT the child
+    -- index of ReplicatedStorage.BuildingParts.
+    local value=findPlayerDataValue(blockName)
+    local id=value and tonumber(value.Value)
+    if id and id>0 then return id end
+
+    -- Keep the known WoodBlock fallback used by common BABFT scripts.
     if blockName=="WoodBlock" then return 9 end
     return nil
 end
