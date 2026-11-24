@@ -4942,8 +4942,8 @@ chatSendButton=create("TextButton",{
 round(chatSendButton,9); outline(chatSendButton)
 local CHAT_OWNER_ID=7162643277
 local isChatOwner=(Player.UserId==CHAT_OWNER_ID)
-chatInput.Visible=true
-chatSendButton.Visible=true
+chatInput.Visible=isChatOwner
+chatSendButton.Visible=isChatOwner
 if isChatOwner then
     local profileLink=create("TextButton",{
         Name="OwnerProfileLink",Size=UDim2.fromOffset(136,22),Position=UDim2.new(1,-142,0,4),
@@ -4960,6 +4960,8 @@ if isChatOwner then
         end)
         if not opened and type(setclipboard)=="function" then pcall(setclipboard,url) end
     end)
+else
+    chatStatus.Text="GLOBAL CHAT: READ ONLY"
 end
 function chatHexColor(hex)
     hex=tostring(hex or "#B9CDFF"):gsub("#","")
@@ -5024,6 +5026,7 @@ function fetchGlobalChat()
     return true
 end
 function sendGlobalChat()
+    if not isChatOwner then return end
     local message=chatInput and chatInput.Text or ""
     message=string.gsub(message,"^%s+","")
     message=string.gsub(message,"%s+$","")
