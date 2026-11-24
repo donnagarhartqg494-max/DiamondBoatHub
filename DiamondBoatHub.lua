@@ -858,7 +858,7 @@ local russianIdentifiers={
     ["игра"]="game",["игроки"]="players",["игрок"]="player",
     ["уведомить"]="notify",["сказать"]="notify",["вкинуть"]="notify",
     ["добавитьКнопку"]="addButton",["добавитьПереключатель"]="addToggle",
-    ["добавитьКоманду"]="addCommand",["добавитьНадпись"]="addLabel",
+    ["добавитьКоманду"]="addCommand",["добавитьНадпись"]="addLabel",["добавитьОкно"]="addWindow",["добавитьКнопкуОкна"]="addWindowButton",
     ["получитьИгроков"]="getPlayers",["получитьПерсонажа"]="getCharacter",
     ["получитьСервис"]="getService",["журнал"]="log",["статус"]="setStatus",
     ["печать"]="print",["показать"]="print",["имба"]="imba",["рофл"]="rofl",["жёстко"]="zhestko",
@@ -942,7 +942,7 @@ local function compilePluginSource(source)
         code='return {Name='..string.format("%q",pluginName)..', Init=function(api)\n'..
             'local players=game:GetService("Players"); local player=players.LocalPlayer\n'..
             'local notify=api.Notify; local addButton=api.AddButton; local addToggle=api.AddToggle; local addCommand=api.AddCommand\n'..
-            'local addLabel=api.AddLabel; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local getService=api.GetService; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
+            'local addLabel=api.AddLabel; local addWindow=api.AddWindow; local addWindowButton=api.AddWindowButton; local getPlayers=api.GetPlayers; local getCharacter=api.GetCharacter; local getService=api.GetService; local log=api.Log; local setStatus=api.SetStatus; local jumpPlayer=api.JumpPlayer; local setWalkSpeed=api.SetWalkSpeed; local setJumpPower=api.SetJumpPower; local setInfiniteJump=api.SetInfiniteJump\n'..
             'local imba=function(x) api.Notify("🔥 "..tostring(x or "Имба!")) end\n'..
             'local rofl=function(x) api.Notify("😂 "..tostring(x or "Рофл!")) end\n'..
             'local zhestko=function(x) api.Notify("💀 "..tostring(x or "Жёстко!")) end\n'..
@@ -991,7 +991,27 @@ local function makePluginApi(key)
         return item
     end
     api.AddLabel=function(message)
-        local item=label(plugins,"PLUGIN • "..tostring(message))
+        local item=label(plugins,tostring(message))
+        table.insert(loadedPlugins[key].items,item)
+        return item
+    end
+    api.AddWindow=function(windowTitle)
+        local frame=create("Frame",{Name="DiamondPluginWindow",Size=UDim2.new(1,-8,0,120),BackgroundColor3=Color3.fromRGB(24,24,32),BorderSizePixel=0},plugins)
+        round(frame,10); outline(frame)
+        create("TextLabel",{Size=UDim2.new(1,-18,0,28),Position=UDim2.fromOffset(9,5),BackgroundTransparency=1,Text=tostring(windowTitle or "Plugin window"),TextColor3=WHITE,Font=Enum.Font.GothamBold,TextSize=14,TextXAlignment=Enum.TextXAlignment.Left},frame)
+        create("UIPadding",{PaddingTop=UDim.new(0,38),PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8),PaddingBottom=UDim.new(0,8)},frame)
+        local layout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},frame)
+        frame:SetAttribute("DiamondPluginWindow",true)
+        table.insert(loadedPlugins[key].items,frame)
+        return frame
+    end
+    api.AddWindowButton=function(window,buttonName,callback)
+        assert(typeof(window)=="Instance" and window:IsA("GuiObject") and type(callback)=="function","AddWindowButton expects window, name and callback")
+        local item=button(window,tostring(buttonName or "Action"),function()
+            local ok,err=pcall(callback,api)
+            if not ok then pluginMessage("Plugin error: "..tostring(err)) end
+        end)
+        item.Size=UDim2.new(1,-4,0,34)
         table.insert(loadedPlugins[key].items,item)
         return item
     end
@@ -5304,23 +5324,23 @@ function makeResizeGrip(name,size,pos,cursor)
     end)
     return grip
 end
-cornerGrip=makeResizeGrip("ResizeCorner",UDim2.fromOffset(26,26),UDim2.new(1,-26,1,-26))
-rightGrip=makeResizeGrip("ResizeRight",UDim2.fromOffset(8,52),UDim2.new(1,-8,0.5,-26))
-bottomGrip=makeResizeGrip("ResizeBottom",UDim2.new(0.45,0,0,8),UDim2.new(0.275,0,1,-8))
+resizeHandle=makeResizeGrip("ResizeHandle",UDim2.fromOffset(92,9),UDim2.new(0.5,-46,1,-3))
 function applyResize(inputPosition)
     if not resizing or not resizeStart then return end
     local delta=inputPosition-resizeStart
     local cam=Workspace.CurrentCamera
     local viewport=cam and cam.ViewportSize or Vector2.new(1280,720)
     local w,h=resizeStartSize.X,resizeStartSize.Y
-    if resizeGrip=="ResizeCorner" or resizeGrip=="ResizeRight" then w=w+delta.X end
-    if resizeGrip=="ResizeCorner" or resizeGrip=="ResizeBottom" then h=h+delta.Y end
+    w=w+delta.X
+    h=h+delta.Y
     local minW=isTouchDevice and 280 or 420
     local minH=isTouchDevice and 340 or 300
     w=math.clamp(w,minW,math.max(minW,viewport.X-16))
     h=math.clamp(h,minH,math.max(minH,viewport.Y-16))
     Main.Size=UDim2.fromOffset(w,h)
-    Main.Position=UDim2.new(0.5,-w/2,0.5,-h/2)
+    -- Preserve the current window position while resizing.
+    local x,y=Main.Position.X.Offset,Main.Position.Y.Offset
+    Main.Position=UDim2.fromOffset(x,y)
     windowMode="custom"
 end
 UIS.InputChanged:Connect(function(input)
@@ -5379,15 +5399,21 @@ reopen=create("TextButton",{
     Size=UDim2.fromOffset(55,55),
     Position=UDim2.new(0,15,.5,-25),
     BackgroundColor3=PURPLE,
-    Text="💎",
+    Text="",
     TextSize=23,
     TextColor3=WHITE,
     Visible=false
 },GUI)
-round(reopen,50)
+round(reopen,18)
 outline(reopen)
 reopen.AutoButtonColor=false
 create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(175,130,255),Color3.fromRGB(70,50,175)),Rotation=45},reopen)
+-- Original Diamond "D-orbit" mark.
+create("TextLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text="D",TextColor3=WHITE,TextSize=29,Font=Enum.Font.GothamBlack,ZIndex=reopen.ZIndex+1},reopen)
+local logoOrbit=create("Frame",{Size=UDim2.fromOffset(30,12),Position=UDim2.new(0.5,-15,0.5,-6),BackgroundTransparency=1,Rotation=-35,ZIndex=reopen.ZIndex+2},reopen)
+local orbitStroke=Instance.new("UIStroke"); orbitStroke.Color=Color3.fromRGB(235,220,255); orbitStroke.Thickness=1.5; orbitStroke.Parent=logoOrbit
+round(logoOrbit,50)
+create("Frame",{Size=UDim2.fromOffset(5,5),Position=UDim2.new(1,-4,0,1),BackgroundColor3=WHITE,BorderSizePixel=0,ZIndex=reopen.ZIndex+3},reopen)
 
 -- Drag the floating reopen button with mouse or touch.
 reopenDragging=false
@@ -6248,8 +6274,7 @@ executePluginSource=function(source,api)
 end
 
 if isPluginStaff then
-    safeLabel(plugins,"DIAMOND SCRIPT • РУССКИЙ LUA")
-    safeLabel(plugins,"Пиши почти как Lua, только ключевые слова — по-русски. Можно собирать код кнопками-блоками.")
+    safeLabel(plugins,"РУССКИЙ LUA • BETA 1")
     local russianEditor=create("TextBox",{
         Size=UDim2.new(1,-8,0,190),BackgroundColor3=Color3.fromRGB(20,22,29),
         TextColor3=WHITE,PlaceholderColor3=Color3.fromRGB(150,150,160),
@@ -6259,13 +6284,13 @@ if isPluginStaff then
         Font=Enum.Font.Code,TextSize=13
     },plugins)
     round(russianEditor,9); outline(russianEditor)
-    label(pluginCatalog,"PLUGIN CATALOG • ГОТОВЫЕ ШАБЛОНЫ")
-    label(pluginCatalog,"Выбери шаблон и вставь его в редактор.")
-    local function catalogCard(title,description,code)
-        local card=create("Frame",{Size=UDim2.new(1,-8,0,78),BackgroundColor3=Color3.fromRGB(24,24,31),BorderSizePixel=0},pluginCatalog)
+    local function catalogCard(icon,title,description,code)
+        local card=create("Frame",{Size=UDim2.new(1,-8,0,84),BackgroundColor3=Color3.fromRGB(24,24,31),BorderSizePixel=0},pluginCatalog)
         round(card,10); outline(card)
-        create("TextLabel",{Size=UDim2.new(1,-16,0,24),Position=UDim2.fromOffset(10,5),BackgroundTransparency=1,Text=title,TextColor3=WHITE,TextSize=14,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left},card)
-        create("TextLabel",{Size=UDim2.new(1,-16,0,20),Position=UDim2.fromOffset(10,28),BackgroundTransparency=1,Text=description,TextColor3=Color3.fromRGB(175,175,190),TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left},card)
+        local iconTile=create("TextLabel",{Size=UDim2.fromOffset(38,38),Position=UDim2.fromOffset(10,10),BackgroundColor3=Color3.fromRGB(55,42,88),Text=icon,TextColor3=Color3.fromRGB(225,215,255),TextSize=21,Font=Enum.Font.GothamBold},card)
+        round(iconTile,10)
+        create("TextLabel",{Size=UDim2.new(1,-66,0,24),Position=UDim2.fromOffset(58,7),BackgroundTransparency=1,Text=title,TextColor3=WHITE,TextSize=14,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left},card)
+        create("TextLabel",{Size=UDim2.new(1,-66,0,20),Position=UDim2.fromOffset(58,30),BackgroundTransparency=1,Text=description,TextColor3=Color3.fromRGB(175,175,190),TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left},card)
         local use=button(card,"ВСТАВИТЬ В РЕДАКТОР",function()
             russianEditor.Text=code
             showPage("PLUGINS")
@@ -6275,20 +6300,20 @@ if isPluginStaff then
         use.Position=UDim2.new(0,8,1,-27)
         use.TextSize=10
     end
-    catalogCard("HELLO DIAMOND","Пример уведомления", 'плагин "Hello Diamond"\nуведомить("Привет!")')
-    catalogCard("COMMAND DEMO","Плагин с собственной командой", 'плагин "Command Demo"\nдобавитьКоманду("Тест команды", функция()\n    уведомить("Команда работает!")\nконец)')
-    catalogCard("TOGGLE DEMO","Переключатель с уведомлением", 'плагин "Toggle Demo"\nдобавитьПереключатель("Демо режим", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено")\n    иначе\n        уведомить("Выключено")\n    конец\nконец)')
-    safeLabel(plugins,"КОНСТРУКТОР БЛОКОВ • нажми блок, чтобы вставить его в редактор")
+    catalogCard("✦","HELLO DIAMOND","Пример уведомления", 'плагин "Hello Diamond"\nуведомить("Привет!")')
+    catalogCard("⌘","COMMAND DEMO","Плагин с собственной командой", 'плагин "Command Demo"\nдобавитьКоманду("Тест команды", функция()\n    уведомить("Команда работает!")\nконец)')
+    catalogCard("☑","TOGGLE DEMO","Переключатель с уведомлением", 'плагин "Toggle Demo"\nдобавитьПереключатель("Демо режим", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено")\n    иначе\n        уведомить("Выключено")\n    конец\nконец)')
+    safeLabel(plugins,"БЛОКИ")
     local function insertRussianBlock(code)
         local current=russianEditor.Text or ""
         if current~="" and not current:match("\n$") then current=current.."\n" end
         russianEditor.Text=current..code
         pcall(function() russianEditor.CursorPosition=#russianEditor.Text+1 end)
     end
-    button(plugins,"БЛОК • уведомление",function() insertRussianBlock('уведомить("Привет!")') end)
-    button(plugins,"БЛОК • имба 🔥",function() insertRussianBlock('имба("Это имба!")') end)
-    button(plugins,"БЛОК • рофл 😂",function() insertRussianBlock('рофл("Ахах!")') end)
-    button(plugins,"БЛОК • переменная",function() insertRussianBlock('пусть число = 10') end)
+    button(plugins,"🔔  Уведомление",function() insertRussianBlock('уведомить("Привет!")') end)
+    button(plugins,"🔥  Имба",function() insertRussianBlock('имба("Это имба!")') end)
+    button(plugins,"😂  Рофл",function() insertRussianBlock('рофл("Ахах!")') end)
+    button(plugins,"ƒ  Переменная",function() insertRussianBlock('пусть число = 10') end)
     button(plugins,"БЛОК • условие если",function() insertRussianBlock('если число > 5 тогда\n    уведомить("Условие сработало!")\nконец') end)
     button(plugins,"БЛОК • функция",function() insertRussianBlock('функция мояФункция()\n    уведомить("Функция работает!")\nконец') end)
     button(plugins,"БЛОК • кнопка",function() insertRussianBlock('добавитьКнопку("Моя кнопка", функция()\n    уведомить("Нажато!")\nконец)') end)
@@ -6304,16 +6329,27 @@ if isPluginStaff then
     button(plugins,"БЛОК • бесконечный прыжок",function() insertRussianBlock('бесконечныйПрыжок(истина)') end)
     button(plugins,"БЛОК • переключатель",function() insertRussianBlock('добавитьПереключатель("Мой переключатель", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено!")\n    иначе\n        уведомить("Выключено!")\n    конец\nконец)') end)
     button(plugins,"БЛОК • цикл",function() insertRussianBlock('для число = 1, 3 делать\n    печать(число)\nконец') end)
-    button(plugins,"ОЧИСТИТЬ РЕДАКТОР",function() russianEditor.Text="" end)
+    -- Compact GUI builder: generate a plugin window and an action button.
+    local guiBuilder=create("Frame",{Size=UDim2.new(1,-8,0,168),BackgroundColor3=Color3.fromRGB(22,23,31),BorderSizePixel=0},plugins)
+    round(guiBuilder,10); outline(guiBuilder)
+    local guiTitle=create("TextBox",{Size=UDim2.new(1,-16,0,30),Position=UDim2.fromOffset(8,8),BackgroundColor3=Color3.fromRGB(13,15,22),TextColor3=WHITE,PlaceholderText="Название окна",Text="Моё окно",ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=12},guiBuilder)
+    round(guiTitle,7)
+    local guiButtonName=create("TextBox",{Size=UDim2.new(1,-16,0,30),Position=UDim2.fromOffset(8,44),BackgroundColor3=Color3.fromRGB(13,15,22),TextColor3=WHITE,PlaceholderText="Текст кнопки",Text="Нажми меня",ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=12},guiBuilder)
+    round(guiButtonName,7)
+    local guiNotice=create("TextBox",{Size=UDim2.new(1,-16,0,30),Position=UDim2.fromOffset(8,80),BackgroundColor3=Color3.fromRGB(13,15,22),TextColor3=WHITE,PlaceholderText="Текст уведомления",Text="GUI работает!",ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=12},guiBuilder)
+    round(guiNotice,7)
+    button(guiBuilder,"＋ ДОБАВИТЬ GUI В РЕДАКТОР",function()
+        local title=guiTitle.Text~="" and guiTitle.Text or "Моё окно"
+        local name=guiButtonName.Text~="" and guiButtonName.Text or "Нажми меня"
+        local notice=guiNotice.Text~="" and guiNotice.Text or "GUI работает!"
+        insertRussianBlock('пусть окно = добавитьОкно('..string.format("%q",title)..')\nдобавитьКнопкуОкна(окно, '..string.format("%q",name)..', функция()\n    уведомить('..string.format("%q",notice)..')\nконец)')
+    end)
+    button(plugins,"🧹  Очистить редактор",function() russianEditor.Text="" end)
     button(plugins,"TEST • ПРОВЕРИТЬ СИНТАКСИС",function()
         local passed,message=compilePluginSource(russianEditor.Text or "")
         pluginMessage(message)
     end)
-    safeLabel(plugins,"ПОДСКАЗКИ • пусть=local, функция=function, если=if, тогда=then, иначе=else, конец=end, вернуть=return, и=and, или=or, не=not")
-    safeLabel(plugins,"МОЛОДЁЖНЫЕ КОМАНДЫ • имба(), рофл(), жёстко(), топ(), сказать(), вкинуть() — показывают уведомление")
-    safeLabel(plugins,"КОМАНДЫ API: уведомить(), добавитьКнопку(), добавитьПереключатель(), добавитьКоманду(), добавитьНадпись(), получитьИгроков(), получитьПерсонажа(), получитьСервис(), журнал(), статус().")
-    safeLabel(plugins,"ДВИЖЕНИЕ: прыгнуть(), скорость(45), силаПрыжка(100), бесконечныйПрыжок(истина).")
-    safeLabel(plugins,"Roblox: игра=game, игроки=Players, игрок=LocalPlayer. TEST проверяет синтаксис и не запускает код.")
+    safeLabel(plugins,"Поддержка: повторять / до / в • GUI: добавитьОкно(), добавитьКнопкуОкна()")
     button(plugins,"ЗАПУСТИТЬ РУССКИЙ КОД",function()
         local key="__diamond_russian_editor"
         if loadedPlugins[key] then
@@ -6386,4 +6422,4 @@ task.spawn(function()
     end
 end)
 
-print("DIAMOND BOAT HUB V1.0.0 [RELEASE] LOADED")
+print("DIAMOND BOAT HUB BETA 1 LOADED")
