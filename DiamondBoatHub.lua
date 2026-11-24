@@ -557,10 +557,11 @@ for _,name in ipairs(tabNames) do
     tabIcon.AnchorPoint=Vector2.new(0.5,0)
     tabIcon.Size=UDim2.fromOffset(22,22)
     tabIcon.Position=UDim2.new(0.5,0,0,5)
-    tabIcon.Image=tabIcons[name] or ""
-    tabIcon.ImageColor3=TEXT_DARK
-    tabIcon.Visible=true
+    tabIcon.Image=""
+    tabIcon.Visible=false
     tabIcon.ZIndex=3
+    local customIconPlate=create("Frame",{Name="TabIconPlate",Size=UDim2.fromOffset(30,28),Position=UDim2.new(0.5,-15,0,2),BackgroundTransparency=1},b)
+    drawTabIcon(customIconPlate,name,TEXT_DARK)
     local tabCaption=create("TextLabel",{Name="TabCaption",Size=UDim2.new(1,-4,0,25),Position=UDim2.new(0,2,0,30),BackgroundTransparency=1,Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",["PLUGIN CATALOG"]="CATALOG",CREDITS="CREDITS"})[name] or name,TextColor3=TEXT_DARK,TextSize=9,TextWrapped=true,Font=Enum.Font.GothamBold},b)
     tabIcon.ScaleType=Enum.ScaleType.Fit
     tabIcon.Parent=b
@@ -5782,7 +5783,7 @@ end)
 
 -- DESKTOP MOUSE CURSOR: replaces the old on-screen crosshair.
 -- Hidden on touch devices; changes only the local player's mouse icon.
-if UIS.MouseEnabled and not UIS.TouchEnabled then
+if UIS.MouseEnabled then
     safeLabel(visuals,"MOUSE CURSOR")
     local cursorMouse=Player:GetMouse()
     local defaultCursorIcon=cursorMouse.Icon
@@ -6315,7 +6316,7 @@ if isPluginStaff then
     button(plugins,"🔥  Имба",function() insertRussianBlock('имба("Это имба!")') end)
     button(plugins,"😂  Рофл",function() insertRussianBlock('рофл("Ахах!")') end)
     button(plugins,"ƒ  Переменная",function() insertRussianBlock('пусть число = 10') end)
-    button(plugins,"БЛОК • условие если",function() insertRussianBlock('если число > 5 тогда\n    уведомить("Условие сработало!")\nконец') end)
+    button(plugins,"условие если",function() insertRussianBlock('если число > 5 тогда\n    уведомить("Условие сработало!")\nконец') end)
     button(plugins,"БЛОК • функция",function() insertRussianBlock('функция мояФункция()\n    уведомить("Функция работает!")\nконец') end)
     button(plugins,"БЛОК • кнопка",function() insertRussianBlock('добавитьКнопку("Моя кнопка", функция()\n    уведомить("Нажато!")\nконец)') end)
     button(plugins,"БЛОК • команда",function() insertRussianBlock('добавитьКоманду("Моя команда", функция()\n    уведомить("Команда выполнена!")\nконец)') end)
