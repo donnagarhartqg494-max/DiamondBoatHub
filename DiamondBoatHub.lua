@@ -229,7 +229,7 @@ create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(255,255,255),Color3.
 
 Pages = {}
 CurrentPage = nil
-buttonStyle="Liquid Glass"
+buttonStyle="Modern"
 animatedBackground=true
 playerPrefix="Player"
 prefixColor=Color3.fromRGB(185,205,255)
@@ -309,30 +309,20 @@ local function button(page,text,callback)
     stroke.Transparency=0.55
     local accent=create("Frame",{Size=UDim2.new(0,3,1,-14),Position=UDim2.fromOffset(0,7),BackgroundColor3=PURPLE,BorderSizePixel=0},b)
     round(accent,3)
-    if buttonStyle=="Liquid Glass" then
-        b.BackgroundColor3=Color3.fromRGB(238,244,255)
-        b.BackgroundTransparency=0.22
-        stroke.Color=Color3.fromRGB(255,255,255)
-        stroke.Transparency=0.08
-        stroke.Thickness=1.25
-        create("UIGradient",{Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),ColorSequenceKeypoint.new(0.48,Color3.fromRGB(220,230,250)),ColorSequenceKeypoint.new(1,Color3.fromRGB(170,190,225))}),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.12),NumberSequenceKeypoint.new(0.55,0.38),NumberSequenceKeypoint.new(1,0.2)}),Rotation=90},b)
-        create("Frame",{Name="GlassHighlight",Size=UDim2.new(1,-12,0,1),Position=UDim2.fromOffset(6,1),BackgroundColor3=Color3.fromRGB(255,255,255),BackgroundTransparency=0.18,BorderSizePixel=0},b)
-    elseif buttonStyle=="Neon" then
+    if buttonStyle=="Neon" then
         b.BackgroundColor3=Color3.fromRGB(15,18,28)
         stroke.Color=PURPLE
         stroke.Transparency=0.05
         stroke.Thickness=1.5
     end
     b.MouseEnter:Connect(function()
-        local glass=buttonStyle=="Liquid Glass"
-        TweenService:Create(b,TweenInfo.new(0.16),{BackgroundTransparency=glass and 0.08 or 0}):Play()
-        TweenService:Create(stroke,TweenInfo.new(0.16),{Transparency=glass and 0 or 0.12}):Play()
+        TweenService:Create(b,TweenInfo.new(0.16),{BackgroundTransparency=0}):Play()
+        TweenService:Create(stroke,TweenInfo.new(0.16),{Transparency=0.12}):Play()
         TweenService:Create(accent,TweenInfo.new(0.16),{Size=UDim2.new(0,4,1,-8),Position=UDim2.fromOffset(0,4)}):Play()
     end)
     b.MouseLeave:Connect(function()
-        local glass=buttonStyle=="Liquid Glass"
-        TweenService:Create(b,TweenInfo.new(0.16),{BackgroundTransparency=glass and 0.22 or 0}):Play()
-        TweenService:Create(stroke,TweenInfo.new(0.16),{Transparency=glass and 0.08 or 0.55}):Play()
+        TweenService:Create(b,TweenInfo.new(0.16),{BackgroundTransparency=0}):Play()
+        TweenService:Create(stroke,TweenInfo.new(0.16),{Transparency=0.55}):Play()
         TweenService:Create(accent,TweenInfo.new(0.16),{Size=UDim2.new(0,3,1,-14),Position=UDim2.fromOffset(0,7)}):Play()
     end)
     b.Activated:Connect(callback)
@@ -340,7 +330,7 @@ local function button(page,text,callback)
 end
 
 function setButtonStyle(style)
-    if style~="Modern" and style~="Liquid Glass" and style~="Neon" then return end
+    if style~="Modern" and style~="Neon" then return end
     buttonStyle=style
     for _,obj in ipairs(GUI:GetDescendants()) do
         if obj:IsA("TextButton") and obj:GetAttribute("HubStyledButton") then
@@ -350,13 +340,7 @@ function setButtonStyle(style)
             obj.BackgroundTransparency=0
             local oldHighlight=obj:FindFirstChild("GlassHighlight")
             if oldHighlight then oldHighlight:Destroy() end
-            if style=="Liquid Glass" then
-                obj.BackgroundColor3=Color3.fromRGB(238,244,255)
-                obj.BackgroundTransparency=0.22
-                if stroke then stroke.Color=Color3.fromRGB(255,255,255); stroke.Transparency=0.08; stroke.Thickness=1.25 end
-                create("UIGradient",{Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),ColorSequenceKeypoint.new(0.48,Color3.fromRGB(220,230,250)),ColorSequenceKeypoint.new(1,Color3.fromRGB(170,190,225))}),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.12),NumberSequenceKeypoint.new(0.55,0.38),NumberSequenceKeypoint.new(1,0.2)}),Rotation=90},obj)
-                create("Frame",{Name="GlassHighlight",Size=UDim2.new(1,-12,0,1),Position=UDim2.fromOffset(6,1),BackgroundColor3=Color3.fromRGB(255,255,255),BackgroundTransparency=0.18,BorderSizePixel=0},obj)
-            elseif style=="Neon" then
+            if style=="Neon" then
                 obj.BackgroundColor3=Color3.fromRGB(15,18,28)
                 if stroke then stroke.Color=PURPLE; stroke.Transparency=0.02; stroke.Thickness=1.5 end
             else
@@ -376,13 +360,8 @@ function toggle(page,text,default,callback)
     row:SetAttribute("HubSwitchRow",true)
     round(row,10)
     local stroke=outline(row)
-    stroke.Color=buttonStyle=="Liquid Glass" and Color3.fromRGB(255,255,255) or Color3.fromRGB(75,75,94)
-    stroke.Transparency=buttonStyle=="Liquid Glass" and 0.12 or 0.55
-    if buttonStyle=="Liquid Glass" then
-        row.BackgroundColor3=Color3.fromRGB(235,242,255)
-        row.BackgroundTransparency=0.3
-        create("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(255,255,255),Color3.fromRGB(175,195,225)),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.22),NumberSequenceKeypoint.new(1,0.48)}),Rotation=90},row)
-    end
+    stroke.Color=Color3.fromRGB(75,75,94)
+    stroke.Transparency=0.55
     local title=create("TextLabel",{
         Name="SwitchTitle",Size=UDim2.new(1,-78,1,0),Position=UDim2.fromOffset(12,0),
         BackgroundTransparency=1,Text=text,TextColor3=Color3.fromRGB(242,242,248),
@@ -4397,7 +4376,7 @@ button(settings,"Theme: Gold",function() autoThemeEnabled=false; applyTheme("Gol
 task.defer(updateAutoTheme)
 button(settings,"Reset appearance",function() applyTheme("Purple") end)
 safeLabel(settings,"GUI STYLE / СТИЛЬ ИНТЕРФЕЙСА")
-button(settings,"Style: Liquid Glass",function() setButtonStyle("Liquid Glass") end)
+button(settings,"Style: Modern",function() setButtonStyle("Modern") end)
 button(settings,"Style: Neon",function() setButtonStyle("Neon") end)
 safeLabel(settings,"ANIMATED BACKGROUND / ФОН")
 backgroundMode="Aurora"
@@ -4450,7 +4429,7 @@ for _,name in ipairs({"Aurora","Ocean","Sunset","Matrix","Mono","Winter","Christ
 end
 button(settings,"❄ WINTER THEME PACK",function()
     applyTheme("Cyan")
-    setButtonStyle("Liquid Glass")
+    setButtonStyle("Modern")
     setBackgroundMode("Winter")
     if snowLayer then snowLayer.Visible=true end
     for _,obj in ipairs(GUI:GetDescendants()) do
@@ -5930,7 +5909,7 @@ function loadHubConfig(targetFile)
         end
     end
     if type(data.theme)=="string" and themes[data.theme] then applyTheme(data.theme) end
-    if data.buttonStyle=="Modern" or data.buttonStyle=="Liquid Glass" or data.buttonStyle=="Neon" then setButtonStyle(data.buttonStyle) end
+    if data.buttonStyle=="Modern" or data.buttonStyle=="Neon" then setButtonStyle(data.buttonStyle) end
     if type(data.animatedBackground)=="boolean" then
         animatedBackground=data.animatedBackground
         if backgroundGradient then backgroundGradient.Enabled=true end
