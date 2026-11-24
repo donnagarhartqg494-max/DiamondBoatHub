@@ -153,7 +153,7 @@ TitleLabel=create("TextLabel",{
     Size=UDim2.new(1,-205,1,0),
     Position=UDim2.fromOffset(15,0),
     BackgroundTransparency=1,
-    Text="DIAMOND BOAT HUB V1 [BETA]",
+    Text="DIAMOND BOAT HUB BETA 1",
     TextColor3=WHITE,
     TextSize=18,
     Font=Enum.Font.GothamBold,
@@ -861,7 +861,7 @@ local russianIdentifiers={
     ["добавитьКоманду"]="addCommand",["добавитьНадпись"]="addLabel",
     ["получитьИгроков"]="getPlayers",["получитьПерсонажа"]="getCharacter",
     ["получитьСервис"]="getService",["журнал"]="log",["статус"]="setStatus",
-    ["печать"]="print",["имба"]="imba",["рофл"]="rofl",["жёстко"]="zhestko",
+    ["печать"]="print",["показать"]="print",["имба"]="imba",["рофл"]="rofl",["жёстко"]="zhestko",
     ["топ"]="top",["включен"]="enabled",["число"]="numberValue",
     ["прыгнуть"]="jumpPlayer",["скорость"]="setWalkSpeed",
     ["силаПрыжка"]="setJumpPower",["бесконечныйПрыжок"]="setInfiniteJump"
@@ -4146,7 +4146,7 @@ button(tools,"SCAN MY CHARACTER + PLAYER DATA",function()
 end)
 
 button(tools,"COPY DIAGNOSTIC INSTRUCTIONS",function()
-    print("DIAMOND BOAT HUB V1 [BETA]: press F9, open Client log, run FULL GAME STRUCTURE SCAN, SCAN REMOTES and SCAN INTERACTION OBJECTS. Copy the output.")
+    print("DIAMOND BOAT HUB BETA 1: press F9, open Client log, run FULL GAME STRUCTURE SCAN, SCAN REMOTES and SCAN INTERACTION OBJECTS. Copy the output.")
 end)
 
 
@@ -5282,7 +5282,7 @@ button(credits,"OPEN TELEGRAM CHANNEL",function()
         end
     end
 end)
-safeLabel(credits,"DIAMOND BOAT HUB V1 [BETA]")
+safeLabel(credits,"DIAMOND BOAT HUB BETA 1")
 
 -- DRAG
 
@@ -5500,7 +5500,7 @@ create("TextLabel",{
     Size=UDim2.new(1,-20,0,48),
     Position=UDim2.fromOffset(10,18),
     BackgroundTransparency=1,
-    Text="💎 DIAMOND BOAT HUB V1 [BETA]",
+    Text="💎 DIAMOND BOAT HUB BETA 1",
     TextColor3=WHITE,
     TextSize=20,
     Font=Enum.Font.GothamBold,
@@ -5628,7 +5628,7 @@ function applyLanguage(lang)
             obj.Text=CurrentTranslations[original] or original
         end
     end
-    TitleLabel.Text="💎  DIAMOND BOAT HUB V1 [BETA]"
+    TitleLabel.Text="💎  DIAMOND BOAT HUB BETA 1"
     Intro.Visible=false
     Main.Visible=true
     MainScale.Scale=0.88
