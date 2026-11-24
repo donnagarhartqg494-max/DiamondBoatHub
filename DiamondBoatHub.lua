@@ -2964,7 +2964,29 @@ function findPropertyRemote()
 end
 function getMusicBlockId(name)
     if getInventoryCount(name)<=0 then return nil end
-    return getBlockTypeId(name)
+    local id=getBlockTypeId(name)
+    if id then return id end
+
+    -- Some BABFT builds expose the block's numeric ID on the inventory ImageButton
+    -- rather than under ReplicatedStorage.BuildingParts.
+    local gui=Player:FindFirstChild("PlayerGui")
+    local buildGui=gui and gui:FindFirstChild("BuildGui")
+    local inventory=buildGui and buildGui:FindFirstChild("InventoryFrame",true)
+    local blocks=inventory and inventory:FindFirstChild("BlocksFrame",true)
+    local button=blocks and blocks:FindFirstChild(name)
+    if button then
+        for _,attributeName in ipairs({"ID","Id","BlockId","BlockID","ItemId","ItemID"}) do
+            local value=tonumber(button:GetAttribute(attributeName))
+            if value then return value end
+        end
+        for _,child in ipairs(button:GetDescendants()) do
+            if child:IsA("ValueBase") and ({ID=true,Id=true,BlockId=true,BlockID=true,ItemId=true,ItemID=true})[child.Name] then
+                local value=tonumber(child.Value)
+                if value then return value end
+            end
+        end
+    end
+    return nil
 end
 function equipMusicTool(tool)
     if not tool then return false end
@@ -3033,8 +3055,8 @@ function startMidiBuild()
     local noteId=getMusicBlockId("Note")
     local delayId=getMusicBlockId("Delay")
     if not noteId or not delayId then
-        warn("[MIDI BUILD] Inventory values not found. Run DEEP SCAN PLAYER INVENTORY and check F9 output.")
-        midiBuildStatus.Text="MIDI BUILD: inventory path not detected — run Deep Scan"
+        warn("[MIDI BUILD] Note/Delay inventory counts exist, but their numeric block IDs were not resolved. Check ReplicatedStorage.BuildingParts/BlockData and BuildGui inventory button attributes.")
+        midiBuildStatus.Text="MIDI BUILD: Note/Delay IDs not found — inventory counts are OK"
         return
     end
 
