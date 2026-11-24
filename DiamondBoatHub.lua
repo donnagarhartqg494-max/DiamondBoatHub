@@ -2889,6 +2889,22 @@ button(music,"SCAN MUSIC BUILDER API",function()
         local v=data and data:FindFirstChild(name)
         return v and v.Value or 0
     end
+    local function dumpIds(obj,tag)
+        if not obj then print("[MUSIC API]",tag,"MISSING"); return end
+        print("[MUSIC API]",tag,obj:GetFullName(),obj.ClassName,"Name",obj.Name)
+        for _,attr in ipairs({"ID","Id","BlockId","BlockID","ItemId","ItemID","Type","TypeId","AssetId"}) do
+            local value=obj:GetAttribute(attr)
+            if value~=nil then print("[MUSIC API] ATTRIBUTE",tag,attr,tostring(value)) end
+        end
+        for _,child in ipairs(obj:GetDescendants()) do
+            if child:IsA("ValueBase") then
+                print("[MUSIC API] VALUE",tag,child:GetFullName(),child.ClassName,tostring(child.Value))
+            end
+        end
+        if obj:IsA("ImageButton") or obj:IsA("ImageLabel") then
+            print("[MUSIC API] IMAGE",tag,"Image",obj.Image,"LayoutOrder",obj.LayoutOrder)
+        end
+    end
     print("========== DIAMOND MUSIC BUILDER API ==========")
     print("[MUSIC API] ReplicatedStorage.BuildingParts:",parts and "FOUND" or "MISSING")
     if parts then
@@ -2896,12 +2912,30 @@ button(music,"SCAN MUSIC BUILDER API",function()
         for index,obj in ipairs(children) do
             local low=obj.Name:lower()
             if low:find("note",1,true) or low:find("delay",1,true) then
-                print("[MUSIC API] TEMPLATE",obj.Name,"INDEX/ID CANDIDATE",index,"CLASS",obj.ClassName,
+                print("[MUSIC API] TEMPLATE",obj.Name,"CHILD INDEX (NOT ASSUMED ID)",index,"CLASS",obj.ClassName,
                     "PrimaryPart",obj:IsA("Model") and tostring(obj.PrimaryPart) or "n/a",
                     "PPart",tostring(obj:FindFirstChild("PPart")))
+                dumpIds(obj,"TEMPLATE")
             end
         end
         print("[MUSIC API] BuildingParts total templates:",#children)
+    end
+    local gui=Player:FindFirstChild("PlayerGui")
+    local buildGui=gui and gui:FindFirstChild("BuildGui")
+    local inv=buildGui and buildGui:FindFirstChild("InventoryFrame",true)
+    local blockFrame=inv and inv:FindFirstChild("BlocksFrame",true)
+    for _,name in ipairs({"Note","Delay"}) do
+        local button=blockFrame and blockFrame:FindFirstChild(name)
+        dumpIds(button,"INVENTORY "..name)
+    end
+    for _,folderName in ipairs({"BlockData","BlockIds"}) do
+        local folder=RS:FindFirstChild(folderName)
+        if folder then
+            for _,obj in ipairs(folder:GetDescendants()) do
+                local n=obj.Name:lower()
+                if n:find("note",1,true) or n:find("delay",1,true) then dumpIds(obj,folderName) end
+            end
+        end
     end
     print("[MUSIC API] Inventory Note:",stock("Note"),"Delay:",stock("Delay"))
     local backpack=Player:FindFirstChildOfClass("Backpack")
