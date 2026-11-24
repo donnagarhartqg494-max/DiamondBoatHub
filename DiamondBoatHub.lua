@@ -1988,30 +1988,45 @@ end
 -- Inventory counts and block template IDs are separate in BABFT.
 -- Data values are quantities; BuildingParts order supplies the placement ID.
 function findPlayerDataValue(blockName)
-    local data=Player:FindFirstChild("Data")
-    if not data then return nil end
     local function normalize(value)
         return tostring(value):lower():gsub("[%s_%-]","")
     end
     local wanted=normalize(blockName)
-    local aliases=blockName=="Note" and {note=true,musicnote=true,musicnotes=true,noteblock=true}
-        or blockName=="Delay" and {delay=true,delays=true,delayblock=true,musicdelay=true}
+    local aliases=blockName=="Note" and {note=true,musicnote=true,musicnotes=true,noteblock=true,noteblocks=true}
+        or blockName=="Delay" and {delay=true,delays=true,delayblock=true,delayblocks=true,musicdelay=true}
         or {[wanted]=true}
-    local direct=data:FindFirstChild(blockName)
-    if direct and direct:IsA("ValueBase") then return direct end
-    local exact={}
-    for _,obj in ipairs(data:GetDescendants()) do
-        if obj:IsA("ValueBase") then
-            local name=normalize(obj.Name)
-            if aliases[name] then exact[#exact+1]=obj end
+    local roots={}
+    for _,name in ipairs({"Data","Inventory","Stats","leaderstats"}) do
+        local root=Player:FindFirstChild(name)
+        if root then roots[#roots+1]=root end
+    end
+    roots[#roots+1]=Player
+    local exact,partial={},{}
+    local seen={}
+    for _,root in ipairs(roots) do
+        for _,obj in ipairs(root:GetDescendants()) do
+            if not seen[obj] and obj:IsA("ValueBase") then
+                seen[obj]=true
+                local name=normalize(obj.Name)
+                if aliases[name] then
+                    exact[#exact+1]=obj
+                elseif (blockName=="Note" and name:find("note",1,true))
+                    or (blockName=="Delay" and name:find("delay",1,true)) then
+                    partial[#partial+1]=obj
+                end
+            end
         end
     end
-    if #exact==1 then return exact[1] end
-    if #exact>1 then
-        table.sort(exact,function(a,b) return #a:GetFullName()<#b:GetFullName() end)
-        return exact[1]
-    end
-    return nil
+    local candidates=#exact>0 and exact or partial
+    if #candidates==0 then return nil end
+    if #candidates==1 then return candidates[1] end
+    -- Prefer the largest numeric stack when the game exposes duplicate aliases.
+    table.sort(candidates,function(a,b)
+        local av,bv=tonumber(a.Value) or -1,tonumber(b.Value) or -1
+        if av~=bv then return av>bv end
+        return #a:GetFullName()<#b:GetFullName()
+    end)
+    return candidates[1]
 end
 function getInventoryCount(blockName)
     local value=findPlayerDataValue(blockName)
@@ -3018,8 +3033,8 @@ function startMidiBuild()
     local noteId=getMusicBlockId("Note")
     local delayId=getMusicBlockId("Delay")
     if not noteId or not delayId then
-        warn("[MIDI BUILD] Inventory missing Note or Delay blocks")
-        midiBuildStatus.Text="MIDI BUILD: missing Note/Delay inventory"
+        warn("[MIDI BUILD] Inventory values not found. Run DEEP SCAN PLAYER INVENTORY and check F9 output.")
+        midiBuildStatus.Text="MIDI BUILD: inventory path not detected — run Deep Scan"
         return
     end
 
