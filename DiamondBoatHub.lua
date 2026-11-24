@@ -468,7 +468,7 @@ if not isPluginStaff then
 end
 -- Original DiamondBoatHub line icons, drawn from Roblox GUI primitives (no emoji or external image assets).
 local function drawTabIcon(parent,name,color)
-    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(34,32),Position=UDim2.new(0.5,-17,0,1),BackgroundTransparency=1},parent)
+    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(28,26),Position=UDim2.new(0.5,-14,0,1),BackgroundTransparency=1,ClipsDescendants=true},parent)
     local function strokeLine(x,y,w,h,rotation,thickness)
         local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),AnchorPoint=Vector2.new(0.5,0.5),Rotation=rotation or 0,BackgroundColor3=color,BorderSizePixel=0},root)
         round(p,thickness or 3)
@@ -523,11 +523,19 @@ local function drawTabIcon(parent,name,color)
             dot(7,4+i*8,2)
         end
     elseif name=="PLUGINS" then
-        ring(3,3,10,10,2); ring(15,3,10,10,2); ring(3,15,10,8,2); ring(15,15,10,8,2)
-        dot(12,10,4)
+        -- Four-piece plugin mark; square terminals avoid the old bubble look.
+        for _,p in ipairs({{4,4},{17,4},{4,16},{17,16}}) do
+            local tile=create("Frame",{Size=UDim2.fromOffset(7,7),Position=UDim2.fromOffset(p[1],p[2]),BackgroundColor3=color,BorderSizePixel=0},root)
+            round(tile,2)
+        end
+        strokeLine(14,7,3,12,0,2)
     elseif name=="PLUGIN CATALOG" then
-        ring(3,2,10,20,2); ring(15,2,10,20,2); strokeLine(14,3,2,18,0)
-        strokeLine(6,8,4,2,0); strokeLine(20,8,4,2,0)
+        -- Bounded catalogue/list glyph.
+        strokeLine(6,4,2,19,0,2); strokeLine(22,4,2,19,0,2)
+        for row=0,2 do
+            strokeLine(15,7+row*6,9,2,0,2)
+            dot(9,6+row*6,2)
+        end
     elseif name=="CREDITS" then
         strokeLine(14,2,15,2,45); strokeLine(14,2,15,2,-45)
         strokeLine(14,22,15,2,45); strokeLine(14,22,15,2,-45)
@@ -560,7 +568,7 @@ for _,name in ipairs(tabNames) do
     tabIcon.Image=""
     tabIcon.Visible=false
     tabIcon.ZIndex=3
-    local customIconPlate=create("Frame",{Name="TabIconPlate",Size=UDim2.fromOffset(30,28),Position=UDim2.new(0.5,-15,0,2),BackgroundTransparency=1},b)
+    local customIconPlate=create("Frame",{Name="TabIconPlate",Size=UDim2.fromOffset(30,28),Position=UDim2.new(0.5,-15,0,2),BackgroundTransparency=1,ClipsDescendants=true},b)
     drawTabIcon(customIconPlate,name,TEXT_DARK)
     local tabCaption=create("TextLabel",{Name="TabCaption",Size=UDim2.new(1,-4,0,25),Position=UDim2.new(0,2,0,30),BackgroundTransparency=1,Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",["PLUGIN CATALOG"]="CATALOG",CREDITS="CREDITS"})[name] or name,TextColor3=TEXT_DARK,TextSize=9,TextWrapped=true,Font=Enum.Font.GothamBold},b)
     tabIcon.ScaleType=Enum.ScaleType.Fit
