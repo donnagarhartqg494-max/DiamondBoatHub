@@ -4881,16 +4881,9 @@ end)
 -- TextChatService formats messages received in this Roblox server only.
 -- Global chat remains a separate Cloudflare-powered tab below.
 local localChatTextService=game:GetService("TextChatService")
-local previousIncomingMessage=localChatTextService.OnIncomingMessage
+-- OnIncomingMessage is write-only; never try to read its current callback.
 localChatTextService.OnIncomingMessage=function(message)
-    local properties
-    if type(previousIncomingMessage)=="function" then
-        local ok,result=pcall(previousIncomingMessage,message)
-        if ok then properties=result end
-    end
-    if not properties then
-        properties=Instance.new("TextChatMessageProperties")
-    end
+    local properties=Instance.new("TextChatMessageProperties")
     local source=message and message.TextSource
     if source and source.UserId then
         local userId=source.UserId
@@ -4898,11 +4891,8 @@ localChatTextService.OnIncomingMessage=function(message)
         local record=sharedPrefixRecords[tostring(userId)]
         local prefix=(userId==Player.UserId and (playerPrefix or "Player"))
             or (record and record.prefix) or "Player"
-        local original=properties.PrefixText
-        if (not original or original=="") and plr then
-            original=plr.DisplayName
-        end
-        properties.PrefixText="["..tostring(prefix).."] "..tostring(original or "Player")
+        local original=(plr and (plr.DisplayName.." (@"..plr.Name..")")) or "Player"
+        properties.PrefixText="["..tostring(prefix).."] "..original
     end
     return properties
 end
