@@ -4749,21 +4749,31 @@ function relayRequest(method,path,body)
     end
     return nil,lastError
 end
+local prefixLastPublishAt=0
+local prefixPublishQueued=false
 function publishPrefix()
-    local data={
-        userId=tostring(Player.UserId),
-        gameId=tostring(game.PlaceId),
-        username=Player.Name,
-        prefix=playerPrefix or "Player",
-        color=prefixColorToHex(prefixColor)
-    }
-    local result,err=relayRequest("POST","/prefix",data)
-    prefixRelayOnline=result and result.ok==true
-    if prefixRelayStatus and prefixRelayStatus.Parent then
-        prefixRelayStatus.Text=prefixRelayOnline and "PREFIX RELAY: CONNECTED" or ("PREFIX RELAY: SEND FAILED")
-    end
-    if not result then warn("[DIAMOND PREFIX RELAY] Publish failed:",tostring(err)) end
-    return prefixRelayOnline
+    if prefixPublishQueued then return true end
+    prefixPublishQueued=true
+    task.spawn(function()
+        local remaining=60-(os.clock()-prefixLastPublishAt)
+        if remaining>0 then task.wait(remaining) end
+        prefixPublishQueued=false
+        prefixLastPublishAt=os.clock()
+        local data={
+            userId=tostring(Player.UserId),
+            gameId=tostring(game.PlaceId),
+            username=Player.Name,
+            prefix=playerPrefix or "Player",
+            color=prefixColorToHex(prefixColor)
+        }
+        local result,err=relayRequest("POST","/prefix",data)
+        prefixRelayOnline=result and result.ok==true
+        if prefixRelayStatus and prefixRelayStatus.Parent then
+            prefixRelayStatus.Text=prefixRelayOnline and "PREFIX RELAY: CONNECTED" or "PREFIX RELAY: SEND FAILED"
+        end
+        if not result then warn("[DIAMOND PREFIX RELAY] Publish failed:",tostring(err)) end
+    end)
+    return true
 end
 function fetchSharedPrefixes()
     local result,err=relayRequest("GET","/players?gameId="..tostring(game.PlaceId))
@@ -4867,19 +4877,26 @@ Players.PlayerRemoving:Connect(function(plr)
     if playerTagConnections[plr] then playerTagConnections[plr]:Disconnect(); playerTagConnections[plr]=nil end
 end)
 
--- OFFLINE PREFIX MODE:
--- No external Worker/KV requests. Local player tags and local prefix still work;
--- other users' custom prefixes are unavailable without a shared backend.
+-- CLOUDFLARE PREFIX RELAY:
+-- Publish on startup and when the local prefix/color changes. Writes are throttled
+-- to one per 60 seconds to reduce Cloudflare KV daily write usage.
 sharedPrefixRecords={}
 prefixRelayOnline=false
 if prefixRelayStatus and prefixRelayStatus.Parent then
-    prefixRelayStatus.Text="PREFIX RELAY: OFFLINE (LOCAL MODE)"
+    prefixRelayStatus.Text="PREFIX RELAY: CONNECTING..."
 end
--- Intentionally do not call publishPrefix() or fetchSharedPrefixes().
+task.spawn(function()
+    task.wait(2)
+    publishPrefix()
+    while GUI and GUI.Parent do
+        fetchSharedPrefixes()
+        task.wait(25)
+    end
+end)
 
 
 
--- CHAT tab removed: no in-game chat bypass or duplicate chat UI.
+-- GLOBAL CHAT uses the shared Cloudflare relay; this is not a Roblox chat bypass.
 
 -- GLOBAL CHAT: fixed viewport; only the message feed scrolls.
 for _,child in ipairs(globalChat:GetChildren()) do
@@ -4925,8 +4942,8 @@ chatSendButton=create("TextButton",{
 round(chatSendButton,9); outline(chatSendButton)
 local CHAT_OWNER_ID=7162643277
 local isChatOwner=(Player.UserId==CHAT_OWNER_ID)
-chatInput.Visible=isChatOwner
-chatSendButton.Visible=isChatOwner
+chatInput.Visible=true
+chatSendButton.Visible=true
 if isChatOwner then
     local profileLink=create("TextButton",{
         Name="OwnerProfileLink",Size=UDim2.fromOffset(136,22),Position=UDim2.new(1,-142,0,4),
@@ -4943,8 +4960,6 @@ if isChatOwner then
         end)
         if not opened and type(setclipboard)=="function" then pcall(setclipboard,url) end
     end)
-else
-    chatStatus.Text="GLOBAL CHAT: READ ONLY"
 end
 function chatHexColor(hex)
     hex=tostring(hex or "#B9CDFF"):gsub("#","")
@@ -5009,7 +5024,6 @@ function fetchGlobalChat()
     return true
 end
 function sendGlobalChat()
-    if not isChatOwner then return end
     local message=chatInput and chatInput.Text or ""
     message=string.gsub(message,"^%s+","")
     message=string.gsub(message,"%s+$","")
