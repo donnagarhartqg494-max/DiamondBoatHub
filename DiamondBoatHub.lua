@@ -1990,11 +1990,26 @@ end
 function findPlayerDataValue(blockName)
     local data=Player:FindFirstChild("Data")
     if not data then return nil end
+    local function normalize(value)
+        return tostring(value):lower():gsub("[%s_%-]","")
+    end
+    local wanted=normalize(blockName)
+    local aliases=blockName=="Note" and {note=true,musicnote=true,musicnotes=true,noteblock=true}
+        or blockName=="Delay" and {delay=true,delays=true,delayblock=true,musicdelay=true}
+        or {[wanted]=true}
     local direct=data:FindFirstChild(blockName)
     if direct and direct:IsA("ValueBase") then return direct end
-    local wanted=string.lower(blockName)
+    local exact={}
     for _,obj in ipairs(data:GetDescendants()) do
-        if obj:IsA("ValueBase") and string.lower(obj.Name)==wanted then return obj end
+        if obj:IsA("ValueBase") then
+            local name=normalize(obj.Name)
+            if aliases[name] then exact[#exact+1]=obj end
+        end
+    end
+    if #exact==1 then return exact[1] end
+    if #exact>1 then
+        table.sort(exact,function(a,b) return #a:GetFullName()<#b:GetFullName() end)
+        return exact[1]
     end
     return nil
 end
@@ -2020,6 +2035,20 @@ function getBlockTypeId(blockName)
                 if id then return id end
             end
             local template=container:FindFirstChild(blockName)
+            if not template then
+                local wanted=blockName:lower():gsub("[%s_%-]","")
+                for _,candidate in ipairs(container:GetDescendants()) do
+                    local normalized=candidate.Name:lower():gsub("[%s_%-]","")
+                    if normalized==wanted or (blockName=="Note" and (normalized=="musicnote" or normalized=="noteblock"))
+                        or (blockName=="Delay" and (normalized=="delayblock" or normalized=="musicdelay")) then
+                        if candidate:IsA("Model") or candidate:IsA("Folder") then template=candidate break end
+                        if candidate:IsA("ValueBase") then
+                            local id=tonumber(candidate.Value)
+                            if id then return id end
+                        end
+                    end
+                end
+            end
             if template then
                 local attribute=tonumber(template:GetAttribute("ID") or template:GetAttribute("Id") or template:GetAttribute("BlockId"))
                 if attribute then return attribute end
@@ -3008,6 +3037,12 @@ function startMidiBuild()
     for _,g in ipairs(groups) do requiredNotes+=#g.notes end
     local noteCount=getInventoryCount("Note")
     local delayCount=getInventoryCount("Delay")
+    -- Re-check using the resolved Data values; do not silently treat a missing exact-name
+    -- child as zero if the game exposes an aliased MusicNote/Delay value.
+    local noteValue=findPlayerDataValue("Note")
+    local delayValue=findPlayerDataValue("Delay")
+    if noteValue then noteCount=math.max(noteCount,tonumber(noteValue.Value) or 0) end
+    if delayValue then delayCount=math.max(delayCount,tonumber(delayValue.Value) or 0) end
     if noteCount<requiredNotes or delayCount<#groups then
         midiBuildStatus.Text=string.format("Need %d Notes + %d Delays; have %d + %d",requiredNotes,#groups,noteCount,delayCount)
         warn("[MIDI BUILD] Not enough inventory. Need",requiredNotes,"Notes and",#groups,"Delays; have",noteCount,delayCount)
