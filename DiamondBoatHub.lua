@@ -6338,4 +6338,4 @@ task.spawn(function()
     end
 end)
 
-print("DIAMOND BOAT HUB V62 [DEVICE-AWARE TOP WELCOME] LOADED")
+print("DIAMOND BOAT HUB V83 [LOCAL MODE] LOADED")
