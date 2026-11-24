@@ -4877,6 +4877,36 @@ Players.PlayerRemoving:Connect(function(plr)
     if playerTagConnections[plr] then playerTagConnections[plr]:Disconnect(); playerTagConnections[plr]=nil end
 end)
 
+-- LOCAL SERVER CHAT PREFIXES:
+-- TextChatService formats messages received in this Roblox server only.
+-- Global chat remains a separate Cloudflare-powered tab below.
+local localChatTextService=game:GetService("TextChatService")
+local previousIncomingMessage=localChatTextService.OnIncomingMessage
+localChatTextService.OnIncomingMessage=function(message)
+    local properties
+    if type(previousIncomingMessage)=="function" then
+        local ok,result=pcall(previousIncomingMessage,message)
+        if ok then properties=result end
+    end
+    if not properties then
+        properties=Instance.new("TextChatMessageProperties")
+    end
+    local source=message and message.TextSource
+    if source and source.UserId then
+        local userId=source.UserId
+        local plr=Players:GetPlayerByUserId(userId)
+        local record=sharedPrefixRecords[tostring(userId)]
+        local prefix=(userId==Player.UserId and (playerPrefix or "Player"))
+            or (record and record.prefix) or "Player"
+        local original=properties.PrefixText
+        if (not original or original=="") and plr then
+            original=plr.DisplayName
+        end
+        properties.PrefixText="["..tostring(prefix).."] "..tostring(original or "Player")
+    end
+    return properties
+end
+
 -- CLOUDFLARE PREFIX RELAY:
 -- Publish on startup and when the local prefix/color changes. Writes are throttled
 -- to one per 60 seconds to reduce Cloudflare KV daily write usage.
