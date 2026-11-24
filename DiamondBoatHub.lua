@@ -477,13 +477,7 @@ local function drawTabIcon(parent,name,color)
     local function ring(x,y,w,h,thick)
         local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),BackgroundTransparency=1,BorderSizePixel=0},root)
         round(p,math.floor(math.min(w,h)/2))
-        local st=outline(p); st.Color=color; st.Thickness=thick or 2
-        return p
-    end
-    local function panel(x,y,w,h,thick)
-        local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),BackgroundTransparency=1,BorderSizePixel=0},root)
-        round(p,4)
-        local st=outline(p); st.Color=color; st.Thickness=thick or 2
+        local st=outline(p); st.Color=color; st.Thickness=thick or 2.5
         return p
     end
     local function dot(x,y,size)
@@ -491,79 +485,57 @@ local function drawTabIcon(parent,name,color)
         round(p,size)
     end
     if name=="HOME" then
-        strokeLine(14,7,17,2,-38); strokeLine(14,7,17,2,38)
-        panel(6,13,16,14,2)
-        strokeLine(14,20,5,8,0,2)
+        strokeLine(14,5,17,3,-38); strokeLine(14,5,17,3,38)
+        strokeLine(7,14,3,12,0); strokeLine(21,14,3,12,0); strokeLine(14,19,3,9,0)
+        strokeLine(14,23,16,2,0)
     elseif name=="MOVEMENT" then
-        strokeLine(14,14,17,2,0,2)
-        strokeLine(22,14,8,2,45,2); strokeLine(22,14,8,2,-45,2)
-        strokeLine(6,14,8,2,45,2); strokeLine(6,14,8,2,-45,2)
-        strokeLine(14,5,2,8,0,2); strokeLine(14,23,2,8,0,2)
+        strokeLine(7,12,18,3,0); strokeLine(17,6,3,12,45); strokeLine(17,18,3,12,-45)
+        strokeLine(7,6,2,6,0); strokeLine(7,18,2,6,0)
     elseif name=="VISUALS" then
-        ring(3,6,28,17,2)
-        ring(11,9,12,12,2)
-        dot(15,13,4)
+        ring(2,5,24,14,2); ring(10,8,8,8,2); dot(13,11,2)
     elseif name=="TELEPORTS" then
-        ring(7,2,20,18,2)
-        dot(15,8,4)
-        strokeLine(17,20,2,7,0,2); strokeLine(17,26,9,2,0,2)
+        ring(7,1,14,14,2); dot(12,6,4); strokeLine(14,18,2,7,0); strokeLine(14,22,10,2,0)
     elseif name=="AUTO BUILD" then
-        panel(3,4,12,10,2); panel(18,4,12,10,2)
-        panel(10,17,14,11,2)
-        strokeLine(9,14,2,4,0,2); strokeLine(25,14,2,4,0,2)
+        ring(2,3,10,9,2); ring(15,3,10,9,2); ring(8,14,12,9,2)
+        strokeLine(7,12,2,5,0); strokeLine(21,12,2,5,0)
     elseif name=="MUSIC" then
-        strokeLine(20,3,2,17,0,2); strokeLine(20,3,11,2,0,2)
-        strokeLine(29,4,2,14,0,2)
-        ring(7,17,10,9,2); ring(19,14,10,9,2)
+        strokeLine(18,4,2,15,0); strokeLine(18,4,10,2,0); strokeLine(23,4,2,11,0)
+        ring(5,15,8,7,2); ring(18,12,8,7,2)
     elseif name=="AUTO FARM" then
-        strokeLine(17,28,2,12,0,2)
-        strokeLine(17,20,2,11,-45,2); strokeLine(17,20,2,11,45,2)
-        ring(5,3,10,10,2); ring(19,3,10,10,2)
-        strokeLine(17,16,2,8,0,2)
+        strokeLine(14,22,2,17,0); strokeLine(14,11,13,2,-35); strokeLine(14,14,12,2,35)
+        ring(3,2,10,8,2); ring(15,2,10,8,2)
     elseif name=="SHOP" then
-        panel(6,10,22,18,2)
-        strokeLine(11,10,2,8,-25,2); strokeLine(23,10,2,8,25,2)
-        strokeLine(6,15,22,2,0,2)
+        strokeLine(5,9,18,2,0); strokeLine(7,9,2,13,0); strokeLine(21,9,2,13,0)
+        strokeLine(14,4,2,8,0); strokeLine(14,5,12,2,-35); strokeLine(14,5,12,2,35)
+        strokeLine(8,22,12,2,0)
     elseif name=="TOOLS" then
-        ring(4,3,11,11,2)
-        strokeLine(18,17,16,3,45,2)
-        strokeLine(25,24,7,3,-45,2)
-        strokeLine(5,6,7,2,0,2)
+        ring(3,3,9,9,2); strokeLine(14,14,14,3,45); strokeLine(20,20,5,3,-45)
     elseif name=="SETTINGS" then
-        ring(9,7,16,16,2.5); ring(14,12,6,6,2)
-        for a=0,7 do
-            local rad=math.rad(a*45)
-            strokeLine(17+math.cos(rad)*12,15+math.sin(rad)*12,5,2,a*45,2)
-        end
+        ring(7,4,14,14,2); ring(11,8,6,6,2)
+        for a=0,7 do local rad=math.rad(a*45); strokeLine(14+math.cos(rad)*11,11+math.sin(rad)*11,5,2,a*45,2) end
     elseif name=="GLOBAL CHAT" then
-        panel(3,3,28,19,2)
-        strokeLine(9,21,2,7,-35,2)
-        strokeLine(10,10,3,2,0,2); strokeLine(17,10,3,2,0,2); strokeLine(24,10,3,2,0,2)
+        ring(2,2,24,17,2); strokeLine(8,19,2,6,-35); strokeLine(8,19,8,2,0)
+        strokeLine(8,9,3,2,0); strokeLine(14,9,3,2,0); strokeLine(20,9,3,2,0)
     elseif name=="SERVERS" then
         for i=0,2 do
-            panel(5,3+i*9,24,7,2)
-            dot(9,5+i*9,3)
-            strokeLine(17,6+i*9,7,2,0,2)
+            local p=create("Frame",{Size=UDim2.fromOffset(20,5),Position=UDim2.fromOffset(4,2+i*8),BackgroundTransparency=1},root)
+            round(p,3); local st=outline(p); st.Color=color; st.Thickness=2
+            dot(7,4+i*8,2)
         end
     elseif name=="PLUGINS" then
-        panel(4,4,11,11,2); panel(19,4,11,11,2)
-        panel(4,19,11,11,2); panel(19,19,11,11,2)
-        dot(15,15,4)
+        ring(3,3,10,10,2); ring(15,3,10,10,2); ring(3,15,10,8,2); ring(15,15,10,8,2)
+        dot(12,10,4)
     elseif name=="PLUGIN CATALOG" then
-        panel(3,3,13,25,2); panel(18,3,13,25,2)
-        strokeLine(17,3,2,25,0,2)
-        for row=0,2 do
-            strokeLine(9,9+row*6,6,2,0,2)
-            strokeLine(24,9+row*6,6,2,0,2)
-        end
+        ring(3,2,10,20,2); ring(15,2,10,20,2); strokeLine(14,3,2,18,0)
+        strokeLine(6,8,4,2,0); strokeLine(20,8,4,2,0)
     elseif name=="CREDITS" then
-        ring(7,3,20,20,2)
-        strokeLine(17,7,2,12,0,2)
-        strokeLine(17,20,2,2,0,2)
-        strokeLine(17,2,2,6,0,2)
+        strokeLine(14,2,15,2,45); strokeLine(14,2,15,2,-45)
+        strokeLine(14,22,15,2,45); strokeLine(14,22,15,2,-45)
+        strokeLine(7,12,14,2,0); strokeLine(14,5,2,14,0)
     end
     return root
 end
+
 for _,name in ipairs(tabNames) do
     local b=create("TextButton",{
         Size=UDim2.new(0,72,0,64),
