@@ -1,5 +1,5 @@
 --==================================================
--- DIAMOND BOAT HUB V1.0.0 [RELEASE]
+-- DIAMOND BOAT HUB BETA 1
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
