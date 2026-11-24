@@ -468,7 +468,7 @@ if not isPluginStaff then
 end
 -- Original DiamondBoatHub line icons, drawn from Roblox GUI primitives (no emoji or external image assets).
 local function drawTabIcon(parent,name,color)
-    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(28,26),Position=UDim2.new(0.5,-14,0,1),BackgroundTransparency=1,ClipsDescendants=true},parent)
+    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(34,32),Position=UDim2.new(0.5,-17,0,1),BackgroundTransparency=1},parent)
     local function strokeLine(x,y,w,h,rotation,thickness)
         local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),AnchorPoint=Vector2.new(0.5,0.5),Rotation=rotation or 0,BackgroundColor3=color,BorderSizePixel=0},root)
         round(p,thickness or 3)
@@ -568,7 +568,7 @@ for _,name in ipairs(tabNames) do
     tabIcon.Image=""
     tabIcon.Visible=false
     tabIcon.ZIndex=3
-    local customIconPlate=create("Frame",{Name="TabIconPlate",Size=UDim2.fromOffset(30,28),Position=UDim2.new(0.5,-15,0,2),BackgroundTransparency=1,ClipsDescendants=true},b)
+    local customIconPlate=create("Frame",{Name="TabIconPlate",Size=UDim2.fromOffset(30,28),Position=UDim2.new(0.5,-15,0,2),BackgroundTransparency=1},b)
     drawTabIcon(customIconPlate,name,TEXT_DARK)
     local tabCaption=create("TextLabel",{Name="TabCaption",Size=UDim2.new(1,-4,0,25),Position=UDim2.new(0,2,0,30),BackgroundTransparency=1,Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",["PLUGIN CATALOG"]="CATALOG",CREDITS="CREDITS"})[name] or name,TextColor3=TEXT_DARK,TextSize=9,TextWrapped=true,Font=Enum.Font.GothamBold},b)
     tabIcon.ScaleType=Enum.ScaleType.Fit
@@ -5333,12 +5333,16 @@ function makeResizeGrip(name,size,pos,cursor)
     end)
     return grip
 end
-resizeHandle=makeResizeGrip("ResizeHandle",UDim2.fromOffset(112,12),UDim2.new(0.5,-56,1,-5))
+resizeHandle=makeResizeGrip("ResizeHandle",UDim2.fromOffset(26,26),UDim2.new(1,-32,1,-32))
 resizeHandle.BackgroundColor3=Color3.fromRGB(105,82,155)
-resizeHandle.BackgroundTransparency=0.08
-round(resizeHandle,50)
-local resizeMark=create("Frame",{Name="ResizePillMark",Size=UDim2.fromOffset(34,3),AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),BackgroundColor3=Color3.fromRGB(245,238,255),BorderSizePixel=0,ZIndex=21},resizeHandle)
-round(resizeMark,50)
+resizeHandle.BackgroundTransparency=0.02
+resizeHandle.ZIndex=200
+round(resizeHandle,7)
+-- Visible bottom-right resize grip: three diagonal marks.
+for i=0,2 do
+    local mark=create("Frame",{Name="ResizeMark"..i,Size=UDim2.fromOffset(3,7+i*3),AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.new(1,-6-i*5,1,-6-i*5),Rotation=45,BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0,ZIndex=201},resizeHandle)
+    round(mark,3)
+end
 function applyResize(inputPosition)
     if not resizing or not resizeStart then return end
     local delta=inputPosition-resizeStart
