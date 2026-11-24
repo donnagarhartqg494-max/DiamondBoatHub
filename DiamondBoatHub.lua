@@ -5430,32 +5430,72 @@ local orbitStroke=Instance.new("UIStroke"); orbitStroke.Color=Color3.fromRGB(235
 round(logoOrbit,50)
 create("Frame",{Size=UDim2.fromOffset(5,5),Position=UDim2.new(1,-4,0,1),BackgroundColor3=WHITE,BorderSizePixel=0,ZIndex=reopen.ZIndex+3},reopen)
 
--- Drag the floating reopen button with mouse or touch.
-reopenDragging=false
-reopenDragStart = nil
-reopenStartPosition = nil
+-- Reliable floating-button drag (mouse + touch).
+-- Store absolute screen coordinates and convert to the ScreenGui coordinate space.
+reopen.Active=true
+reopen.AnchorPoint=Vector2.new(0,0)
+local reopenDragging=false
+local reopenWasDragged=false
+local reopenDragStart=nil
+local reopenStartAbsolute=nil
+local reopenDragInput=nil
+local reopenDragThreshold=6
+
+local function getReopenSafeBounds()
+    local cam=Workspace.CurrentCamera
+    local viewport=cam and cam.ViewportSize or Vector2.new(1920,1080)
+    local insetTopLeft=Vector2.new(0,0)
+    local insetBottomRight=Vector2.new(0,0)
+    pcall(function()
+        insetTopLeft,insetBottomRight=game:GetService("GuiService"):GetGuiInset()
+    end)
+    local left=insetTopLeft.X
+    local top=insetTopLeft.Y
+    local right=math.max(left,viewport.X-insetBottomRight.X-reopen.AbsoluteSize.X)
+    local bottom=math.max(top,viewport.Y-insetBottomRight.Y-reopen.AbsoluteSize.Y)
+    return left,top,right,bottom
+end
+
+local function updateReopenDrag(screenPosition)
+    if not reopenDragging or not reopenDragStart or not reopenStartAbsolute then return end
+    local delta=screenPosition-reopenDragStart
+    if not reopenWasDragged and delta.Magnitude<reopenDragThreshold then return end
+    reopenWasDragged=true
+    local x=reopenStartAbsolute.X+delta.X
+    local y=reopenStartAbsolute.Y+delta.Y
+    local left,top,right,bottom=getReopenSafeBounds()
+    x=math.clamp(x,left,right)
+    y=math.clamp(y,top,bottom)
+    -- ScreenGui is the parent; account for the top-left safe inset.
+    local inset=Vector2.new(0,0)
+    pcall(function() inset=game:GetService("GuiService"):GetGuiInset() end)
+    reopen.Position=UDim2.fromOffset(x-inset.X,y-inset.Y)
+end
+
 reopen.InputBegan:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
         reopenDragging=true
+        reopenWasDragged=false
         reopenDragStart=input.Position
-        reopenStartPosition=reopen.Position
+        reopenStartAbsolute=reopen.AbsolutePosition
+        reopenDragInput=input
     end
 end)
+
 UIS.InputChanged:Connect(function(input)
-    if reopenDragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
-        local delta=input.Position-reopenDragStart
-        local x=reopenStartPosition.X.Offset+delta.X
-        local y=reopenStartPosition.Y.Offset+delta.Y
-        local cam=Workspace.CurrentCamera
-        if cam then
-            x=math.clamp(x,0,math.max(0,cam.ViewportSize.X-reopen.AbsoluteSize.X))
-            y=math.clamp(y,0,math.max(0,cam.ViewportSize.Y-reopen.AbsoluteSize.Y))
-        end
-        reopen.Position=UDim2.new(reopenStartPosition.X.Scale,x,reopenStartPosition.Y.Scale,y)
+    if not reopenDragging then return end
+    if input.UserInputType==Enum.UserInputType.MouseMovement then
+        updateReopenDrag(input.Position)
+    elseif input.UserInputType==Enum.UserInputType.Touch and input==reopenDragInput then
+        updateReopenDrag(input.Position)
     end
 end)
+
 UIS.InputEnded:Connect(function(input)
-    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then reopenDragging=false end
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input==reopenDragInput then
+        reopenDragging=false
+        reopenDragInput=nil
+    end
 end)
 
 function animateOpen()
@@ -5493,7 +5533,7 @@ end)
 
 Close.Activated:Connect(animateClose)
 
-reopen.Activated:Connect(animateOpen)
+reopen.Activated:Connect(function() if not reopenWasDragged then animateOpen() end end)
 
 Player.CharacterAdded:Connect(function()
     task.wait(1)
