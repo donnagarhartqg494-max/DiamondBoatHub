@@ -6340,13 +6340,16 @@ if isPluginStaff then
     round(guiButtonName,7)
     local guiNotice=create("TextBox",{Size=UDim2.new(1,-16,0,30),Position=UDim2.fromOffset(8,80),BackgroundColor3=Color3.fromRGB(13,15,22),TextColor3=WHITE,PlaceholderText="Текст уведомления",Text="GUI работает!",ClearTextOnFocus=false,Font=Enum.Font.Gotham,TextSize=12},guiBuilder)
     round(guiNotice,7)
-    button(guiBuilder,"＋ ДОБАВИТЬ GUI В РЕДАКТОР",function()
+    local guiBuildButton=button(guiBuilder,"＋ ДОБАВИТЬ GUI В РЕДАКТОР",function()
         local title=guiTitle.Text~="" and guiTitle.Text or "Моё окно"
         local name=guiButtonName.Text~="" and guiButtonName.Text or "Нажми меня"
         local notice=guiNotice.Text~="" and guiNotice.Text or "GUI работает!"
         insertRussianBlock('пусть окно = добавитьОкно('..string.format("%q",title)..')\nдобавитьКнопкуОкна(окно, '..string.format("%q",name)..', функция()\n    уведомить('..string.format("%q",notice)..')\nконец)')
     end)
-    button(plugins,"🧹  Очистить редактор",function() russianEditor.Text="" end)
+    guiBuildButton.Size=UDim2.new(1,-16,0,34)
+    guiBuildButton.Position=UDim2.fromOffset(8,120)
+    guiBuildButton.TextSize=11
+    local clearEditorButton=button(plugins,"🧹  Очистить редактор",function() russianEditor.Text="" end)
     button(plugins,"TEST • ПРОВЕРИТЬ СИНТАКСИС",function()
         local passed,message=compilePluginSource(russianEditor.Text or "")
         pluginMessage(message)
