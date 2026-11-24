@@ -996,14 +996,14 @@ local function makePluginApi(key)
         return item
     end
     api.AddWindow=function(windowTitle)
-        local frame=create("Frame",{Name="DiamondPluginWindow",Size=UDim2.new(1,-8,0,120),BackgroundColor3=Color3.fromRGB(24,24,32),BorderSizePixel=0},plugins)
+        local frame=create("Frame",{Name="DiamondPluginWindow",Size=UDim2.new(1,-8,0,132),BackgroundColor3=Color3.fromRGB(24,24,32),BorderSizePixel=0},plugins)
         round(frame,10); outline(frame)
         create("TextLabel",{Size=UDim2.new(1,-18,0,28),Position=UDim2.fromOffset(9,5),BackgroundTransparency=1,Text=tostring(windowTitle or "Plugin window"),TextColor3=WHITE,Font=Enum.Font.GothamBold,TextSize=14,TextXAlignment=Enum.TextXAlignment.Left},frame)
-        create("UIPadding",{PaddingTop=UDim.new(0,38),PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8),PaddingBottom=UDim.new(0,8)},frame)
-        local layout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},frame)
+        local body=create("Frame",{Name="PluginWindowContent",Size=UDim2.new(1,-16,1,-42),Position=UDim2.fromOffset(8,36),BackgroundTransparency=1},frame)
+        local layout=create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},body)
         frame:SetAttribute("DiamondPluginWindow",true)
         table.insert(loadedPlugins[key].items,frame)
-        return frame
+        return body
     end
     api.AddWindowButton=function(window,buttonName,callback)
         assert(typeof(window)=="Instance" and window:IsA("GuiObject") and type(callback)=="function","AddWindowButton expects window, name and callback")
@@ -5324,7 +5324,7 @@ function makeResizeGrip(name,size,pos,cursor)
     end)
     return grip
 end
-resizeHandle=makeResizeGrip("ResizeHandle",UDim2.fromOffset(92,9),UDim2.new(0.5,-46,1,-3))
+resizeHandle=makeResizeGrip("ResizeHandle",UDim2.fromOffset(92,9),UDim2.new(0.5,-46,1,-10))
 function applyResize(inputPosition)
     if not resizing or not resizeStart then return end
     local delta=inputPosition-resizeStart
@@ -5337,10 +5337,11 @@ function applyResize(inputPosition)
     local minH=isTouchDevice and 340 or 300
     w=math.clamp(w,minW,math.max(minW,viewport.X-16))
     h=math.clamp(h,minH,math.max(minH,viewport.Y-16))
+    -- Keep the top-left corner fixed in screen pixels, even with UIScale.
+    local screenPos=Main.AbsolutePosition
+    local scale=(MainScale and MainScale.Scale) or 1
     Main.Size=UDim2.fromOffset(w,h)
-    -- Preserve the current window position while resizing.
-    local x,y=Main.Position.X.Offset,Main.Position.Y.Offset
-    Main.Position=UDim2.fromOffset(x,y)
+    Main.Position=UDim2.fromOffset(screenPos.X/math.max(scale,0.01),screenPos.Y/math.max(scale,0.01))
     windowMode="custom"
 end
 UIS.InputChanged:Connect(function(input)
