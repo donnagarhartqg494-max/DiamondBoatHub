@@ -852,11 +852,11 @@ local russianKeywords={
     {"иначеесли","elseif"},{"повторять","repeat"},{"пусть","local"},
     {"функция","function"},{"если","if"},{"тогда","then"},{"иначе","else"},
     {"конец","end"},{"пока","while"},{"для","for"},{"вернуть","return"},
-    {"прервать","break"},{"истина","true"},{"ложь","false"},{"ничего","nil"},
+    {"прервать","break"},{"повтори","repeat"},{"каждый","in"},{"истина","true"},{"ложь","false"},{"ничего","nil"},
     {"и","and"},{"или","or"},{"не","not"},{"делать","do"},{"в","in"},{"до","until"}
 }
 local russianIdentifiers={
-    ["игра"]="game",["игроки"]="players",["игрок"]="player",
+    ["игра"]="game",["игроки"]="players",["игрок"]="player",["сервис"]="game",["локальныйИгрок"]="player",
     ["уведомить"]="notify",["сказать"]="notify",["вкинуть"]="notify",
     ["добавитьКнопку"]="addButton",["добавитьПереключатель"]="addToggle",
     ["добавитьКоманду"]="addCommand",["добавитьНадпись"]="addLabel",["добавитьОкно"]="addWindow",["добавитьКнопкуОкна"]="addWindowButton",
@@ -966,7 +966,7 @@ local function makePluginApi(key)
     api.Notify=function(message) pluginMessage(message) end
     api.AddButton=function(buttonName,callback)
         assert(type(buttonName)=="string" and type(callback)=="function","AddButton expects name and callback")
-        local item=button(plugins,"PLUGIN • "..buttonName,function()
+        local item=button(plugins,"✦  "..buttonName,function()
             local ok,err=pcall(callback,api)
             if not ok then pluginMessage("Plugin error: "..tostring(err)) end
         end)
@@ -975,7 +975,7 @@ local function makePluginApi(key)
     end
     api.AddToggle=function(toggleName,default,callback)
         assert(type(toggleName)=="string" and type(callback)=="function","AddToggle expects name and callback")
-        local item=toggle(plugins,"PLUGIN • "..toggleName,default==true,function(value)
+        local item=toggle(plugins,"◉  "..toggleName,default==true,function(value)
             local ok,err=pcall(callback,value,api)
             if not ok then pluginMessage("Plugin error: "..tostring(err)) end
         end)
@@ -984,7 +984,7 @@ local function makePluginApi(key)
     end
     api.AddCommand=function(commandName,callback)
         assert(type(commandName)=="string" and type(callback)=="function","AddCommand expects name and callback")
-        local item=button(plugins,"COMMAND • "..commandName,function()
+        local item=button(plugins,"⌘  "..commandName,function()
             local ok,err=pcall(callback,api)
             if not ok then pluginMessage("Command error: "..tostring(err)) end
         end)
@@ -5325,7 +5325,12 @@ function makeResizeGrip(name,size,pos,cursor)
     end)
     return grip
 end
-resizeHandle=makeResizeGrip("ResizeHandle",UDim2.fromOffset(92,9),UDim2.new(0.5,-46,1,-10))
+resizeHandle=makeResizeGrip("ResizeHandle",UDim2.fromOffset(112,12),UDim2.new(0.5,-56,1,-5))
+resizeHandle.BackgroundColor3=Color3.fromRGB(105,82,155)
+resizeHandle.BackgroundTransparency=0.08
+round(resizeHandle,50)
+local resizeMark=create("Frame",{Name="ResizePillMark",Size=UDim2.fromOffset(34,3),AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),BackgroundColor3=Color3.fromRGB(245,238,255),BorderSizePixel=0,ZIndex=21},resizeHandle)
+round(resizeMark,50)
 function applyResize(inputPosition)
     if not resizing or not resizeStart then return end
     local delta=inputPosition-resizeStart
@@ -6049,7 +6054,7 @@ function getSharedConfig()
     return _G
 end
 function saveHubConfig(targetFile)
-    local data={version=2,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,backgroundMode=backgroundMode,prefix=playerPrefix,prefixColor=prefixColor and {prefixColor.R,prefixColor.G,prefixColor.B} or nil,speed=configuredSpeed,jump=configuredJump,speedOn=speedOn,jumpOn=jumpOn,infiniteJump=infiniteJump,noclipOn=noclipOn,flyOn=flyOn,spinEnabled=spinEnabled,spinSpeed=spinSpeed}
+    local data={version=3,language=CurrentLanguage or "en",windowMode=windowMode or "medium",width=Main.AbsoluteSize.X,height=Main.AbsoluteSize.Y,x=Main.AbsolutePosition.X,y=Main.AbsolutePosition.Y,theme=currentTheme or "Purple",buttonStyle=buttonStyle,animatedBackground=animatedBackground,backgroundMode=backgroundMode,prefix=playerPrefix,prefixColor=prefixColor and {prefixColor.R,prefixColor.G,prefixColor.B} or nil,speed=configuredSpeed,jump=configuredJump,speedOn=speedOn,jumpOn=jumpOn,infiniteJump=infiniteJump,noclipOn=noclipOn,flyOn=flyOn,spinEnabled=spinEnabled,spinSpeed=spinSpeed}
     local encoded=HttpService:JSONEncode(data)
     local shared=getSharedConfig()
     shared.__DIAMOND_BOAT_HUB_CONFIG=data
@@ -6091,7 +6096,13 @@ function loadHubConfig(targetFile)
         elseif data.windowMode=="custom" and tonumber(data.width) and tonumber(data.height) then
             local cam=Workspace.CurrentCamera; local vp=cam and cam.ViewportSize or Vector2.new(1280,720)
             local w=math.clamp(data.width,280,vp.X-16); local h=math.clamp(data.height,340,vp.Y-16)
-            Main.Size=UDim2.fromOffset(w,h); Main.Position=UDim2.new(0.5,-w/2,0.5,-h/2); windowMode="custom"
+            Main.Size=UDim2.fromOffset(w,h)
+            local scale=(MainScale and MainScale.Scale) or 1
+            local x=tonumber(data.x) and data.x/math.max(scale,0.01) or (vp.X-w)/2
+            local y=tonumber(data.y) and data.y/math.max(scale,0.01) or (vp.Y-h)/2
+            x=math.clamp(x,0,math.max(0,vp.X-w))
+            y=math.clamp(y,0,math.max(0,vp.Y-h))
+            Main.Position=UDim2.fromOffset(x,y); windowMode="custom"
         end
     end
     if type(data.theme)=="string" and themes[data.theme] then applyTheme(data.theme) end
@@ -6276,7 +6287,7 @@ executePluginSource=function(source,api)
 end
 
 if isPluginStaff then
-    safeLabel(plugins,"РУССКИЙ LUA • BETA 1")
+    -- Compact plugin workspace: editor, templates and GUI builder.
     local russianEditor=create("TextBox",{
         Size=UDim2.new(1,-8,0,190),BackgroundColor3=Color3.fromRGB(20,22,29),
         TextColor3=WHITE,PlaceholderColor3=Color3.fromRGB(150,150,160),
@@ -6305,7 +6316,7 @@ if isPluginStaff then
     catalogCard("✦","HELLO DIAMOND","Пример уведомления", 'плагин "Hello Diamond"\nуведомить("Привет!")')
     catalogCard("⌘","COMMAND DEMO","Плагин с собственной командой", 'плагин "Command Demo"\nдобавитьКоманду("Тест команды", функция()\n    уведомить("Команда работает!")\nконец)')
     catalogCard("☑","TOGGLE DEMO","Переключатель с уведомлением", 'плагин "Toggle Demo"\nдобавитьПереключатель("Демо режим", ложь, функция(включен)\n    если включен тогда\n        уведомить("Включено")\n    иначе\n        уведомить("Выключено")\n    конец\nконец)')
-    safeLabel(plugins,"БЛОКИ")
+    -- Quick insert blocks
     local function insertRussianBlock(code)
         local current=russianEditor.Text or ""
         if current~="" and not current:match("\n$") then current=current.."\n" end
@@ -6354,7 +6365,7 @@ if isPluginStaff then
         local passed,message=compilePluginSource(russianEditor.Text or "")
         pluginMessage(message)
     end)
-    safeLabel(plugins,"Поддержка: повторять / до / в • GUI: добавитьОкно(), добавитьКнопкуОкна()")
+    -- Language keywords and GUI API are documented in the HTML studio.
     button(plugins,"ЗАПУСТИТЬ РУССКИЙ КОД",function()
         local key="__diamond_russian_editor"
         if loadedPlugins[key] then
