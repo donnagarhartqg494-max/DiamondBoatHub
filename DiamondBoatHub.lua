@@ -1,5 +1,5 @@
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V65
+-- DIAMOND BOAT HUB V1 [BETA] V76
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -162,24 +162,9 @@ TitleLabel=create("TextLabel",{
 },Top)
 
 PhoneModeButton=create("TextButton",{
-    Name="PhoneModeButton",Size=UDim2.fromOffset(72,30),ZIndex=30,
-    AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-82,0,9),
-    BackgroundColor3=Color3.fromRGB(235,242,255),BackgroundTransparency=0.08,
-    Text="▯  iPHONE",TextColor3=Color3.fromRGB(35,42,66),TextSize=12,
-    Font=Enum.Font.GothamBold,AutoButtonColor=false,BorderSizePixel=0,
-    Visible=true,Active=true
+    Name="PhoneModeButton",Size=UDim2.fromOffset(1,1),Position=UDim2.fromOffset(-10,-10),
+    BackgroundTransparency=1,Text="",Visible=false,Active=false
 },Top)
-round(PhoneModeButton,10)
-local phoneButtonStroke=outline(PhoneModeButton)
-phoneButtonStroke.Color=Color3.fromRGB(255,255,255)
-phoneButtonStroke.Transparency=0.05
-phoneButtonStroke.Thickness=1.5
-PhoneModeButton.MouseEnter:Connect(function()
-    PhoneModeButton.BackgroundTransparency=0
-end)
-PhoneModeButton.MouseLeave:Connect(function()
-    PhoneModeButton.BackgroundTransparency=0.08
-end)
 
 Min = create("TextButton",{
     Size=UDim2.fromOffset(30,28),
@@ -593,9 +578,10 @@ for _,name in ipairs(tabNames) do
     tabIcon.AnchorPoint=Vector2.new(0.5,0)
     tabIcon.Size=UDim2.fromOffset(22,22)
     tabIcon.Position=UDim2.new(0.5,0,0,5)
-    tabIcon.Image=tabIcons[name] or ""; tabIcon.ImageColor3=TEXT_DARK
-    tabIcon.Visible=false
-    drawTabIcon(b,name,Color3.fromRGB(72,82,112))
+    tabIcon.Image=tabIcons[name] or ""
+    tabIcon.ImageColor3=TEXT_DARK
+    tabIcon.Visible=true
+    tabIcon.ZIndex=3
     local tabCaption=create("TextLabel",{Name="TabCaption",Size=UDim2.new(1,-4,0,25),Position=UDim2.new(0,2,0,30),BackgroundTransparency=1,Text=({HOME="HOME",MOVEMENT="MOVE",VISUALS="VISUAL",TELEPORTS="TELEPORT",["AUTO BUILD"]="BUILD",MUSIC="MUSIC",["AUTO FARM"]="FARM",SHOP="SHOP",TOOLS="TOOLS",SETTINGS="SET",["GLOBAL CHAT"]="CHAT",SERVERS="SERVERS",PLUGINS="PLUGINS",["PLUGIN CATALOG"]="CATALOG",CREDITS="CREDITS"})[name] or name,TextColor3=TEXT_DARK,TextSize=9,TextWrapped=true,Font=Enum.Font.GothamBold},b)
     tabIcon.ScaleType=Enum.ScaleType.Fit
     tabIcon.Parent=b
@@ -3777,7 +3763,7 @@ function farmFlyTo(root,targetCFrame,runId)
     farmHoldVelocity=nil
     if not root or not root.Parent then return false end
     local distance=(root.Position-targetCFrame.Position).Magnitude
-    local duration=math.clamp(distance/150,0.08,0.45)
+    local duration=math.clamp(distance/300,0.04,0.24)
     local tween=TweenService:Create(root,TweenInfo.new(duration,Enum.EasingStyle.Linear),{CFrame=targetCFrame})
     tween:Play()
     local finished=false
@@ -3852,14 +3838,14 @@ function runFarm(runId)
 
         local confirmed=false
         if progress then
-            local deadline=os.clock()+6
+            local deadline=os.clock()+3.5
             while farmEnabled and runId==farmRunId and os.clock()<deadline do
                 if farmHasProgress(progress.Value) and
                     (progress.Value~=oldValue or not farmHasProgress(oldValue)) then
                     confirmed=true
                     break
                 end
-                task.wait(0.03)
+                task.wait(0.015)
             end
         end
         if not confirmed and typeof(firetouchinterest)=="function" then
@@ -3870,14 +3856,14 @@ function runFarm(runId)
                 firetouchinterest(root,dark,1)
             end)
             if progress then
-                local deadline=os.clock()+4
+                local deadline=os.clock()+2.0
                 while farmEnabled and runId==farmRunId and os.clock()<deadline do
                     if farmHasProgress(progress.Value) and
                         (progress.Value~=oldValue or not farmHasProgress(oldValue)) then
                         confirmed=true
                         break
                     end
-                    task.wait(0.03)
+                    task.wait(0.015)
                 end
             end
         end
@@ -4340,6 +4326,7 @@ themes={
     Gold={main=Color3.fromRGB(220,170,55),panel=Color3.fromRGB(48,40,25),dark=Color3.fromRGB(25,21,14)}
 }
 currentTheme="Purple"
+autoThemeEnabled=true
 function applyTheme(name)
     local t=themes[name]
     if not t then return end
@@ -4392,15 +4379,25 @@ function applyTheme(name)
     Close.TextColor3=WHITE
     print("[DIAMOND] Theme:",name)
 end
-button(settings,"Theme: Purple",function() applyTheme("Purple") end)
-button(settings,"Theme: Cyan",function() applyTheme("Cyan") end)
-button(settings,"Theme: Red",function() applyTheme("Red") end)
-button(settings,"Theme: Green",function() applyTheme("Green") end)
-button(settings,"Theme: Gold",function() applyTheme("Gold") end)
+function updateAutoTheme()
+    if not autoThemeEnabled then return end
+    local hour=Lighting.ClockTime
+    applyTheme((hour>=7 and hour<19) and "Cyan" or "Purple")
+end
+Lighting:GetPropertyChangedSignal("ClockTime"):Connect(updateAutoTheme)
+button(settings,"Theme: Automatic",function()
+    autoThemeEnabled=true
+    updateAutoTheme()
+end)
+button(settings,"Theme: Purple",function() autoThemeEnabled=false; applyTheme("Purple") end)
+button(settings,"Theme: Cyan",function() autoThemeEnabled=false; applyTheme("Cyan") end)
+button(settings,"Theme: Red",function() autoThemeEnabled=false; applyTheme("Red") end)
+button(settings,"Theme: Green",function() autoThemeEnabled=false; applyTheme("Green") end)
+button(settings,"Theme: Gold",function() autoThemeEnabled=false; applyTheme("Gold") end)
+task.defer(updateAutoTheme)
 button(settings,"Reset appearance",function() applyTheme("Purple") end)
 safeLabel(settings,"GUI STYLE / СТИЛЬ ИНТЕРФЕЙСА")
-button(settings,"Style: Modern",function() setButtonStyle("Modern") end)
-button(settings,"Style: Liquid Glass (iPhone)",function() setButtonStyle("Liquid Glass") end)
+button(settings,"Style: Liquid Glass",function() setButtonStyle("Liquid Glass") end)
 button(settings,"Style: Neon",function() setButtonStyle("Neon") end)
 safeLabel(settings,"ANIMATED BACKGROUND / ФОН")
 backgroundMode="Aurora"
