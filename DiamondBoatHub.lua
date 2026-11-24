@@ -1,5 +1,5 @@
 --==================================================
--- DIAMOND BOAT HUB V1 [BETA] V76
+-- DIAMOND BOAT HUB V1.0.0 [RELEASE]
 -- Build A Boat For Treasure
 -- Desktop + Mobile
 --==================================================
@@ -729,10 +729,9 @@ button(credits,"COPY BUG REPORT",function()
     if description=="" then bugReportStatus.Text="Сначала опиши ошибку."; return end
     local reportText=table.concat({
         "DIAMOND BOAT HUB • BUG REPORT",
-        "Version: V65",
-        "Player: "..tostring(Player.Name).." ("..tostring(Player.UserId)..")",
+        "Version: V1.0.0",
+        "Player: "..tostring(Player.Name),
         "PlaceId: "..tostring(game.PlaceId),
-        "JobId: "..tostring(game.JobId),
         "Device: "..tostring(deviceMode),
         "Viewport: "..tostring(Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or "unknown"),
         "Description: "..description
@@ -6180,7 +6179,7 @@ button(settings,"RELOAD SCRIPT",function()
     farmEnabled=false
     farmRunId+=1
     farmRelease()
-    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=68"
+    local url="https://raw.githubusercontent.com/donnagarhartqg494-max/DiamondBoatHub/main/DiamondBoatHub.lua?v=1.0.0"
     local ok,err=pcall(function()
         assert(type(loadstring)=="function","loadstring unavailable")
         local source=game:HttpGet(url)
@@ -6374,4 +6373,4 @@ task.spawn(function()
     end
 end)
 
-print("DIAMOND BOAT HUB V83 [LOCAL MODE] LOADED")
+print("DIAMOND BOAT HUB V1.0.0 [RELEASE] LOADED")
