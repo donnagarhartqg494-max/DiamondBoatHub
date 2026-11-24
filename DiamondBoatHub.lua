@@ -5353,16 +5353,37 @@ function makeResizeGrip(name,size,pos,cursor)
     end)
     return grip
 end
-resizeHandle=makeResizeGrip("ResizeHandle",UDim2.fromOffset(26,26),UDim2.new(1,-32,1,-32))
-resizeHandle.BackgroundColor3=Color3.fromRGB(105,82,155)
-resizeHandle.BackgroundTransparency=0.02
+-- Standard bottom-right resize grip: transparent hit area with three diagonal strokes.
+resizeHandle=makeResizeGrip("ResizeHandle",UDim2.fromOffset(32,32),UDim2.new(1,-34,1,-34))
+resizeHandle.BackgroundTransparency=1
 resizeHandle.ZIndex=200
-round(resizeHandle,7)
--- Visible bottom-right resize grip: three diagonal marks.
+resizeHandle.AutoButtonColor=false
+local resizeHover=false
 for i=0,2 do
-    local mark=create("Frame",{Name="ResizeMark"..i,Size=UDim2.fromOffset(3,7+i*3),AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.new(1,-6-i*5,1,-6-i*5),Rotation=45,BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0,ZIndex=201},resizeHandle)
-    round(mark,3)
+    local mark=create("Frame",{
+        Name="ResizeMark"..i,
+        Size=UDim2.fromOffset(2,7+i*4),
+        AnchorPoint=Vector2.new(0.5,0.5),
+        Position=UDim2.new(1,-7-i*5,1,-7-i*5),
+        Rotation=45,
+        BackgroundColor3=Color3.fromRGB(145,145,155),
+        BorderSizePixel=0,
+        ZIndex=201
+    },resizeHandle)
+    round(mark,2)
 end
+resizeHandle.MouseEnter:Connect(function()
+    resizeHover=true
+    for _,mark in ipairs(resizeHandle:GetChildren()) do
+        if mark:IsA("Frame") then mark.BackgroundColor3=Color3.fromRGB(145,105,220) end
+    end
+end)
+resizeHandle.MouseLeave:Connect(function()
+    resizeHover=false
+    for _,mark in ipairs(resizeHandle:GetChildren()) do
+        if mark:IsA("Frame") then mark.BackgroundColor3=Color3.fromRGB(145,145,155) end
+    end
+end)
 function applyResize(inputPosition)
     if not resizing or not resizeStart then return end
     local delta=inputPosition-resizeStart
@@ -5865,24 +5886,71 @@ if UIS.MouseEnabled then
     local cursorMouse=Player:GetMouse()
     local defaultCursorIcon=cursorMouse.Icon
     local cursorPresets={
-        {name="Default",icon=""},
-        {name="Arrow",icon="rbxasset://textures/ArrowCursor.png"},
-        {name="Far Arrow",icon="rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png"},
-        {name="Pointing Hand",icon="rbxasset://textures/Cursors/KeyboardMouse/PointingHand.png"},
-        {name="Locked Cursor",icon="rbxasset://textures/MouseLockedCursor.png"}
+        {name="Default",icon="",preview="rbxasset://textures/ArrowCursor.png"},
+        {name="Arrow",icon="rbxasset://textures/ArrowCursor.png",preview="rbxasset://textures/ArrowCursor.png"},
+        {name="Far",icon="rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png",preview="rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png"},
+        {name="Hand",icon="rbxasset://textures/Cursors/KeyboardMouse/PointingHand.png",preview="rbxasset://textures/Cursors/KeyboardMouse/PointingHand.png"},
+        {name="Locked",icon="rbxasset://textures/MouseLockedCursor.png",preview="rbxasset://textures/MouseLockedCursor.png"}
     }
     local cursorIndex=1
-    local cursorButton
-    cursorButton=button(visuals,"Mouse cursor: "..cursorPresets[cursorIndex].name,function()
-        cursorIndex=cursorIndex%#cursorPresets+1
-        local preset=cursorPresets[cursorIndex]
-        cursorMouse.Icon=preset.icon
-        cursorButton.Text="   Mouse cursor: "..preset.name
-    end)
+    local cursorPicker=create("Frame",{
+        Name="CursorImagePicker",
+        Size=UDim2.new(1,-8,0,68),
+        BackgroundTransparency=1
+    },visuals)
+    local cursorTiles={}
+    local function selectCursor(index)
+        cursorIndex=index
+        local preset=cursorPresets[index]
+        cursorMouse.Icon=(preset.icon=="") and defaultCursorIcon or preset.icon
+        for i,tile in ipairs(cursorTiles) do
+            local stroke=tile:FindFirstChildOfClass("UIStroke")
+            if stroke then
+                stroke.Color=(i==index) and PURPLE or Color3.fromRGB(95,95,105)
+                stroke.Transparency=(i==index) and 0 or 0.55
+                stroke.Thickness=(i==index) and 2 or 1
+            end
+            tile.BackgroundColor3=(i==index) and Color3.fromRGB(48,40,65) or Color3.fromRGB(29,29,37)
+        end
+    end
+    for i,preset in ipairs(cursorPresets) do
+        local x=(i-0.5)*0.2
+        local tile=create("ImageButton",{
+            Name="CursorPreview_"..preset.name,
+            Size=UDim2.fromOffset(42,42),
+            AnchorPoint=Vector2.new(0.5,0),
+            Position=UDim2.new(x,0,0,0),
+            BackgroundColor3=Color3.fromRGB(48,40,65),
+            BorderSizePixel=0,
+            AutoButtonColor=false,
+            Image=preset.preview,
+            ImageColor3=Color3.fromRGB(245,245,250),
+            ScaleType=Enum.ScaleType.Fit
+        },cursorPicker)
+        round(tile,8)
+        local stroke=outline(tile)
+        stroke.Color=Color3.fromRGB(95,95,105)
+        stroke.Transparency=0.55
+        stroke.Thickness=1
+        cursorTiles[i]=tile
+        local caption=create("TextLabel",{
+            Name="CursorName_"..preset.name,
+            Size=UDim2.new(0.2,0,0,18),
+            AnchorPoint=Vector2.new(0.5,0),
+            Position=UDim2.new(x,0,0,47),
+            BackgroundTransparency=1,
+            Text=preset.name,
+            TextColor3=Color3.fromRGB(220,220,228),
+            TextSize=9,
+            Font=Enum.Font.GothamSemibold,
+            TextXAlignment=Enum.TextXAlignment.Center
+        },cursorPicker)
+        tile.Activated:Connect(function() selectCursor(i) end)
+    end
+    selectCursor(1)
     button(visuals,"RESET MOUSE CURSOR",function()
-        cursorIndex=1
         cursorMouse.Icon=defaultCursorIcon
-        cursorButton.Text="   Mouse cursor: "..cursorPresets[cursorIndex].name
+        selectCursor(1)
     end)
 end
 
