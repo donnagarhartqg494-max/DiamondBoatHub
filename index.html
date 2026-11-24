@@ -71,11 +71,11 @@ function render(){ $('catalog').innerHTML=plugins.map((p,i)=>'<div class="plugin
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 $('savePlugin').onclick=()=>{const m=editor.value.match(/^плагин\s+"([^"]+)"/);plugins.push({name:m?m[1]:'Без названия',code:editor.value});localStorage.setItem('diamondStudioPlugins',JSON.stringify(plugins));render();status('Черновик плагина сохранён локально.')};
 $('catalog').onclick=e=>{const o=e.target.closest('[data-open]'),d=e.target.closest('[data-del]');if(o){editor.value=plugins[+o.dataset.open].code;document.querySelector('[data-view="editor"]').click()}if(d){plugins.splice(+d.dataset.del,1);localStorage.setItem('diamondStudioPlugins',JSON.stringify(plugins));render()}};
-function buildGuiCode(){const q=s=>JSON.stringify(s||'');return 'плагин "GUI Plugin"\\nпусть окно = добавитьОкно('+q($('guiTitle').value)+')\\nдобавитьКнопкуОкна(окно, '+q($('guiButton').value)+', функция()\\n    уведомить('+q($('guiNotice').value)+')\\nконец)'}
+function buildGuiCode(){const q=v=>JSON.stringify(v||'');return ['пусть окно = добавитьОкно('+q($('guiTitle').value)+')','добавитьКнопкуОкна(окно, '+q($('guiButton').value)+', функция()','    уведомить('+q($('guiNotice').value)+')','конец)'].join('\n')}
 function refreshGuiPreview(){const title=esc($('guiTitle').value||'Моё окно'),btn=esc($('guiButton').value||'Нажми меня');$('guiPreviewBox').innerHTML='<b>'+title+'</b><div class="hint" style="margin-top:8px">'+btn+'</div>';$('guiCode').textContent=buildGuiCode()}
 ['guiTitle','guiButton','guiNotice'].forEach(id=>$(id).addEventListener('input',refreshGuiPreview));
 $('guiPreview').onclick=refreshGuiPreview;
-$('guiInsert').onclick=()=>{editor.value+=(editor.value?'\\n':'')+buildGuiCode();document.querySelector('[data-view="editor"]').click();status('GUI-код добавлен в редактор.')};
+$('guiInsert').onclick=()=>{editor.value+=(editor.value?'\n':'')+buildGuiCode();document.querySelector('[data-view="editor"]').click();status('GUI-код добавлен в редактор.')};
 refreshGuiPreview();
 $('exportPlugins').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(plugins,null,2)],{type:'application/json'}));a.download='diamond-plugins.json';a.click();URL.revokeObjectURL(a.href)};
 const draft=localStorage.getItem('diamondStudioDraft');if(draft)editor.value=draft;render();
