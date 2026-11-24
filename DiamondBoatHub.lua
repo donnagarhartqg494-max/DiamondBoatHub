@@ -468,20 +468,22 @@ if not isPluginStaff then
 end
 -- Original DiamondBoatHub line icons, drawn from Roblox GUI primitives (no emoji or external image assets).
 local function drawTabIcon(parent,name,color)
-    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(34,32),Position=UDim2.new(0.5,-17,0,1),BackgroundTransparency=1},parent)
+    -- Keep every icon layer above its parent plate/button (especially in the phone launcher).
+    local iconZ=(parent.ZIndex or 1)+1
+    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(34,32),Position=UDim2.new(0.5,-17,0,1),BackgroundTransparency=1,ZIndex=iconZ},parent)
     local function strokeLine(x,y,w,h,rotation,thickness)
-        local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),AnchorPoint=Vector2.new(0.5,0.5),Rotation=rotation or 0,BackgroundColor3=color,BorderSizePixel=0},root)
+        local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),AnchorPoint=Vector2.new(0.5,0.5),Rotation=rotation or 0,BackgroundColor3=color,BorderSizePixel=0,ZIndex=iconZ},root)
         round(p,thickness or 3)
         return p
     end
     local function ring(x,y,w,h,thick)
-        local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),BackgroundTransparency=1,BorderSizePixel=0},root)
+        local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=iconZ},root)
         round(p,math.floor(math.min(w,h)/2))
         local st=outline(p); st.Color=color; st.Thickness=thick or 2.5
         return p
     end
     local function dot(x,y,size)
-        local p=create("Frame",{Size=UDim2.fromOffset(size,size),Position=UDim2.fromOffset(x,y),BackgroundColor3=color,BorderSizePixel=0},root)
+        local p=create("Frame",{Size=UDim2.fromOffset(size,size),Position=UDim2.fromOffset(x,y),BackgroundColor3=color,BorderSizePixel=0,ZIndex=iconZ},root)
         round(p,size)
     end
     if name=="HOME" then
@@ -518,7 +520,7 @@ local function drawTabIcon(parent,name,color)
         strokeLine(8,9,3,2,0); strokeLine(14,9,3,2,0); strokeLine(20,9,3,2,0)
     elseif name=="SERVERS" then
         for i=0,2 do
-            local p=create("Frame",{Size=UDim2.fromOffset(20,5),Position=UDim2.fromOffset(4,2+i*8),BackgroundTransparency=1},root)
+            local p=create("Frame",{Size=UDim2.fromOffset(20,5),Position=UDim2.fromOffset(4,2+i*8),BackgroundTransparency=1,ZIndex=iconZ},root)
             round(p,3); local st=outline(p); st.Color=color; st.Thickness=2
             dot(7,4+i*8,2)
         end
