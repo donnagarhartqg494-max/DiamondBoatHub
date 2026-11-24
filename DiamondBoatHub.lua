@@ -4336,10 +4336,15 @@ function applyTheme(name)
     end
     for _,b in pairs(TabButtons) do
         local active=(CurrentPage and b==TabButtons[CurrentPage])
-        b.BackgroundColor3=active and t.main or Color3.fromRGB(35,35,44)
-        b.TextColor3=WHITE
+        b.BackgroundColor3=active and t.main or Color3.fromRGB(255,255,255)
+        b.TextColor3=Color3.fromRGB(0,0,0)
         local icon=b:FindFirstChild("TabIcon")
-        if icon then icon.ImageColor3=(backgroundMode=="Winter") and Color3.fromRGB(0,0,0) or WHITE end
+        if icon then
+            icon.ImageColor3=Color3.fromRGB(0,0,0)
+            icon.ImageTransparency=0
+        end
+        local caption=b:FindFirstChild("TabCaption")
+        if caption then caption.TextColor3=Color3.fromRGB(0,0,0) end
     end
     for _,obj in ipairs(GUI:GetDescendants()) do
         if obj:GetAttribute("HubSwitchTrack") then
