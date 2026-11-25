@@ -466,76 +466,23 @@ local tabNames={
 if not isPluginStaff then
     for i=#tabNames,1,-1 do if tabNames[i]=="PLUGINS" or tabNames[i]=="PLUGIN CATALOG" then table.remove(tabNames,i) end end
 end
--- Original DiamondBoatHub line icons, drawn from Roblox GUI primitives (no emoji or external image assets).
+-- Use the actual Roblox image assets for crisp, consistent tab icons.
+-- The same renderer is used by the sidebar and phone launcher; color is supplied by each caller.
 local function drawTabIcon(parent,name,color)
-    -- Keep every icon layer above its parent plate/button (especially in the phone launcher).
-    local iconZ=(parent.ZIndex or 1)+1
-    local root=create("Frame",{Name="CustomTabIcon",Size=UDim2.fromOffset(34,32),Position=UDim2.new(0.5,-17,0,1),BackgroundTransparency=1,ZIndex=iconZ},parent)
-    local function strokeLine(x,y,w,h,rotation,thickness)
-        local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),AnchorPoint=Vector2.new(0.5,0.5),Rotation=rotation or 0,BackgroundColor3=color,BorderSizePixel=0,ZIndex=iconZ},root)
-        round(p,thickness or 3)
-        return p
-    end
-    local function ring(x,y,w,h,thick)
-        local p=create("Frame",{Size=UDim2.fromOffset(w,h),Position=UDim2.fromOffset(x,y),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=iconZ},root)
-        round(p,math.floor(math.min(w,h)/2))
-        local st=outline(p); st.Color=color; st.Thickness=thick or 2.5
-        return p
-    end
-    local function dot(x,y,size)
-        local p=create("Frame",{Size=UDim2.fromOffset(size,size),Position=UDim2.fromOffset(x,y),BackgroundColor3=color,BorderSizePixel=0,ZIndex=iconZ},root)
-        round(p,size)
-    end
-    if name=="HOME" then
-        strokeLine(14,5,17,3,-38); strokeLine(14,5,17,3,38)
-        strokeLine(7,14,3,12,0); strokeLine(21,14,3,12,0); strokeLine(14,19,3,9,0)
-        strokeLine(14,23,16,2,0)
-    elseif name=="MOVEMENT" then
-        strokeLine(7,12,18,3,0); strokeLine(17,6,3,12,45); strokeLine(17,18,3,12,-45)
-        strokeLine(7,6,2,6,0); strokeLine(7,18,2,6,0)
-    elseif name=="VISUALS" then
-        ring(2,5,24,14,2); ring(10,8,8,8,2); dot(13,11,2)
-    elseif name=="TELEPORTS" then
-        ring(7,1,14,14,2); dot(12,6,4); strokeLine(14,18,2,7,0); strokeLine(14,22,10,2,0)
-    elseif name=="AUTO BUILD" then
-        ring(2,3,10,9,2); ring(15,3,10,9,2); ring(8,14,12,9,2)
-        strokeLine(7,12,2,5,0); strokeLine(21,12,2,5,0)
-    elseif name=="MUSIC" then
-        strokeLine(18,4,2,15,0); strokeLine(18,4,10,2,0); strokeLine(23,4,2,11,0)
-        ring(5,15,8,7,2); ring(18,12,8,7,2)
-    elseif name=="AUTO FARM" then
-        strokeLine(14,22,2,17,0); strokeLine(14,11,13,2,-35); strokeLine(14,14,12,2,35)
-        ring(3,2,10,8,2); ring(15,2,10,8,2)
-    elseif name=="SHOP" then
-        strokeLine(5,9,18,2,0); strokeLine(7,9,2,13,0); strokeLine(21,9,2,13,0)
-        strokeLine(14,4,2,8,0); strokeLine(14,5,12,2,-35); strokeLine(14,5,12,2,35)
-        strokeLine(8,22,12,2,0)
-    elseif name=="TOOLS" then
-        ring(3,3,9,9,2); strokeLine(14,14,14,3,45); strokeLine(20,20,5,3,-45)
-    elseif name=="SETTINGS" then
-        ring(7,4,14,14,2); ring(11,8,6,6,2)
-        for a=0,7 do local rad=math.rad(a*45); strokeLine(14+math.cos(rad)*11,11+math.sin(rad)*11,5,2,a*45,2) end
-    elseif name=="GLOBAL CHAT" then
-        ring(2,2,24,17,2); strokeLine(8,19,2,6,-35); strokeLine(8,19,8,2,0)
-        strokeLine(8,9,3,2,0); strokeLine(14,9,3,2,0); strokeLine(20,9,3,2,0)
-    elseif name=="SERVERS" then
-        for i=0,2 do
-            local p=create("Frame",{Size=UDim2.fromOffset(20,5),Position=UDim2.fromOffset(4,2+i*8),BackgroundTransparency=1,ZIndex=iconZ},root)
-            round(p,3); local st=outline(p); st.Color=color; st.Thickness=2
-            dot(7,4+i*8,2)
-        end
-    elseif name=="PLUGINS" then
-        ring(3,3,10,10,2); ring(15,3,10,10,2); ring(3,15,10,8,2); ring(15,15,10,8,2)
-        dot(12,10,4)
-    elseif name=="PLUGIN CATALOG" then
-        ring(3,2,10,20,2); ring(15,2,10,20,2); strokeLine(14,3,2,18,0)
-        strokeLine(6,8,4,2,0); strokeLine(20,8,4,2,0)
-    elseif name=="CREDITS" then
-        strokeLine(14,2,15,2,45); strokeLine(14,2,15,2,-45)
-        strokeLine(14,22,15,2,45); strokeLine(14,22,15,2,-45)
-        strokeLine(7,12,14,2,0); strokeLine(14,5,2,14,0)
-    end
-    return root
+    local iconSize=parent.Name=="TabIconPlate" and 24 or 30
+    local icon=create("ImageLabel",{
+        Name="CustomTabIcon",
+        Size=UDim2.fromOffset(iconSize,iconSize),
+        AnchorPoint=Vector2.new(0.5,0.5),
+        Position=UDim2.fromScale(0.5,0.5),
+        BackgroundTransparency=1,
+        Image=tabIcons[name] or "",
+        ImageColor3=color,
+        ImageTransparency=0,
+        ScaleType=Enum.ScaleType.Fit,
+        ZIndex=(parent.ZIndex or 1)+1
+    },parent)
+    return icon
 end
 
 for _,name in ipairs(tabNames) do
